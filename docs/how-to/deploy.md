@@ -160,6 +160,15 @@ the rules apply to admins too, so a hotfix also goes through a PR.
 
 [../../.github/workflows/ci.yml](../../.github/workflows/ci.yml) runs on push and PR:
 
+- Every job starts from the shared
+  [../../.github/actions/setup/action.yml](../../.github/actions/setup/action.yml) composite action:
+  Node 22, corepack, `yarn install --immutable`, and Yarn's global cache keyed on `yarn.lock`. The
+  two e2e tiers pass `playwright: "true"`, which adds a `~/.cache/ms-playwright` cache keyed on the
+  installed `@playwright/test` version — an exact-match key, since a partial hit yields a browser
+  build Playwright refuses to launch. A hit re-runs `playwright install-deps` alone: the apt packages
+  Chromium links against sit outside the cached path.
+  - Actions scopes a cache to the branch that wrote it plus that branch's base, so the first run on a
+    new branch installs cold and populates its own entry. Timings settle from the second run on.
 - **verify** — `lint` (oxlint, including type-aware rules via `oxlint-tsgolint`), `format:check`
   (oxfmt), `typecheck` (client, Worker, both e2e tiers), `test` (client + Worker), the build, the CSP
   gate, and the secret gate.

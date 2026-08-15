@@ -1,0 +1,53 @@
+name: Setup
+description: Node 22, Yarn 4 via corepack, installed dependencies, and optionally Playwright's Chromium.
+
+inputs:
+  playwright:
+    description: Provision the Chromium build Playwright needs. Only the e2e tiers want this.
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - run: corepack enable
+      shell: bash
+    # Yarn's global cache holds the downloaded package archives, so a hit turns `yarn install` into a
+    # local tree build with no registry traffic. Keyed on the lockfile, with a prefix fallback so a
+    # single dependency bump still starts from the previous run's archives instead of from nothing.
+    - name: Restore the Yarn cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.yarn/berry/cache
+        key: yarn-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+        restore-keys: yarn-${{ runner.os }}-
+    - run: yarn install --immutable
+      shell: bash
+    # Read the version from the installed package rather than the lockfile: it keys the browser cache
+    # below, and a browser build belongs to a Playwright version, not to the whole dependency set.
+    - name: Resolve the Playwright version
+      if: inputs.playwright == 'true'
+      id: playwright
+      shell: bash
+      run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+    # Exact-match only (no restore-keys): a partial hit would hand Playwright a browser build it
+    # refuses to launch, which is slower to debug than the download it saved.
+    - name: Restore the Playwright browser cache
+      if: inputs.playwright == 'true'
+      id: browsers
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+    - name: Install Chromium
+      if: inputs.playwright == 'true' && steps.browsers.outputs.cache-hit != 'true'
+      shell: bash
+      run: yarn playwright install --with-deps chromium
+    # The cache covers the browser under ~/.cache/ms-playwright but not the apt packages it links
+    # against, which live outside the runner's cacheable paths — so re-run just that half on a hit.
+    - name: Install Chromium's system dependencies
+      if: inputs.playwright == 'true' && steps.browsers.outputs.cache-hit == 'true'
+      shell: bash
+      run: yarn playwright install-deps chromium

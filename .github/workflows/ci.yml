@@ -18,11 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: corepack enable
-      - run: yarn install --immutable
+      - uses: ./.github/actions/setup
       - run: yarn lint
       - run: yarn format:check
       - run: yarn typecheck
@@ -46,12 +42,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/setup
         with:
-          node-version: 22
-      - run: corepack enable
-      - run: yarn install --immutable
-      - run: yarn playwright install --with-deps chromium
+          playwright: "true"
       - run: yarn test:e2e
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
@@ -79,16 +72,10 @@ jobs:
           fi
       - uses: actions/checkout@v4
         if: steps.gate.outputs.enabled == 'true'
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/setup
         if: steps.gate.outputs.enabled == 'true'
         with:
-          node-version: 22
-      - if: steps.gate.outputs.enabled == 'true'
-        run: corepack enable
-      - if: steps.gate.outputs.enabled == 'true'
-        run: yarn install --immutable
-      - if: steps.gate.outputs.enabled == 'true'
-        run: yarn playwright install --with-deps chromium
+          playwright: "true"
       - name: Write Worker dev-vars
         if: steps.gate.outputs.enabled == 'true'
         run: |
@@ -146,14 +133,8 @@ jobs:
           echo "enabled=true" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         if: steps.gate.outputs.enabled == 'true'
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/setup
         if: steps.gate.outputs.enabled == 'true'
-        with:
-          node-version: 22
-      - if: steps.gate.outputs.enabled == 'true'
-        run: corepack enable
-      - if: steps.gate.outputs.enabled == 'true'
-        run: yarn install --immutable
       # Build and gate before deploying anything: a failure here must not leave the Worker deployed
       # against an SPA that never shipped.
       - name: Build SPA
