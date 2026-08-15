@@ -1,7 +1,10 @@
 name: CI
 
 on:
+  # Branch work is covered by the pull_request trigger — main is protected, so every commit arrives
+  # through a PR. Listening to pushes on other branches would only duplicate those runs.
   push:
+    branches: [main]
   pull_request:
 
 # One run per ref. Branch runs cancel their own predecessor (a push and its PR would otherwise run
