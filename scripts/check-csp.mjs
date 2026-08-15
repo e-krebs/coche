@@ -7,6 +7,7 @@ import {
   readCspFile,
   resolveViteEnv,
   unresolvedTokens,
+  withoutInjectedViteVars,
 } from "./csp.mjs";
 
 const REQUIRED_DIRECTIVES = [
@@ -92,9 +93,10 @@ if (tokens.length !== 2) {
 }
 
 // Resolved exactly as `vite dev` would, so a key kept in .env.local or .env.development is checked
-// too. Env files are gitignored and only ever present on a dev machine, so this half is a no-op in
-// CI rather than a false failure against whatever placeholder key CI's build step happens to use.
-const env = resolveViteEnv("development");
+// too — but only from env *files*. A production build injects the real hosts through the environment,
+// and dev.headers is never meant to name those, so the injected copies are withheld for this
+// resolution. Env files are gitignored, so this half no-ops in CI instead of failing there.
+const env = withoutInjectedViteVars(() => resolveViteEnv("development"));
 
 if (env.VITE_CLERK_PUBLISHABLE_KEY) {
   const fapi = fapiHostFromPublishableKey(env.VITE_CLERK_PUBLISHABLE_KEY);

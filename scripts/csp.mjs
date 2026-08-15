@@ -51,3 +51,18 @@ export const unresolvedTokens = (value) => TOKENS.filter((t) => value.includes(t
  * `.env.<mode>.local`), same dotenv parser, same `process.env` override.
  */
 export const resolveViteEnv = (mode = "production") => loadEnv(mode, process.cwd(), "VITE_");
+
+const INJECTABLE = ["VITE_CLERK_PUBLISHABLE_KEY", "VITE_SYNC_URL"];
+
+/** Runs `fn` with the build-time vars hidden, so a resolution sees only what env files provide. */
+export const withoutInjectedViteVars = (fn) => {
+  const saved = Object.fromEntries(
+    INJECTABLE.filter((k) => k in process.env).map((k) => [k, process.env[k]]),
+  );
+  for (const k of Object.keys(saved)) delete process.env[k];
+  try {
+    return fn();
+  } finally {
+    Object.assign(process.env, saved);
+  }
+};
