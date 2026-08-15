@@ -1,0 +1,218 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# One run per ref. Branch runs cancel their own predecessor (a push and its PR would otherwise run
+# every job twice); main never cancels, so a deploy is never killed mid-flight.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: yarn install --immutable
+      - run: yarn lint
+      - run: yarn format:check
+      - run: yarn typecheck
+      - run: yarn typecheck:worker
+      - run: yarn typecheck:e2e
+      - run: yarn typecheck:e2e:sync
+      - run: yarn test
+      - run: yarn test:worker
+      - name: Build
+        run: yarn build
+        env:
+          # Public, non-secret placeholder so the build's env check passes in CI.
+          VITE_CLERK_PUBLISHABLE_KEY: pk_test_Y2ktYnVpbGQtcGxhY2Vob2xkZXIkCg
+      - name: CSP gate
+        run: yarn check:csp
+      - name: Secret gate
+        run: yarn check:secrets
+
+  # Local-only e2e tier: hermetic (no Worker, Clerk network blocked), so it needs no secrets.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: yarn install --immutable
+      - run: yarn playwright install --with-deps chromium
+      - run: yarn test:e2e
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  # Sync e2e tier: real Clerk (@clerk/testing) + a local wrangler Worker. Secret-gated — skips
+  # cleanly on forks / when CLERK_SECRET_KEY isn't set as a repo secret. The publishable key is
+  # public and committed in .env.e2e-sync; only the matching sk_test lives in the secret.
+  e2e-sync:
+    runs-on: ubuntu-latest
+    env:
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+    steps:
+      - name: Gate on Clerk secret
+        id: gate
+        run: |
+          if [ -n "$CLERK_SECRET_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "CLERK_SECRET_KEY not set — skipping the sync e2e tier."
+          fi
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.enabled == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.enabled == 'true'
+        with:
+          node-version: 22
+      - if: steps.gate.outputs.enabled == 'true'
+        run: corepack enable
+      - if: steps.gate.outputs.enabled == 'true'
+        run: yarn install --immutable
+      - if: steps.gate.outputs.enabled == 'true'
+        run: yarn playwright install --with-deps chromium
+      - name: Write Worker dev-vars
+        if: steps.gate.outputs.enabled == 'true'
+        run: |
+          cat > .dev.vars <<EOF
+          CLERK_SECRET_KEY=$CLERK_SECRET_KEY
+          LIST_ID_SECRET=ci-list-id-secret
+          TICKET_SECRET=ci-ticket-secret
+          DEV=true
+          EOF
+      - if: steps.gate.outputs.enabled == 'true'
+        run: yarn test:e2e:sync
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && steps.gate.outputs.enabled == 'true' }}
+        with:
+          name: playwright-report-sync
+          path: playwright-report/
+          retention-days: 7
+
+  # Deploys both targets together and then proves they work as a pair, so a *green* main is evidence
+  # the live SPA and Worker agree. A red run can still leave the two out of step — the final step
+  # tells you which half. Secret-gated like e2e-sync, so forks and PRs no-op instead of failing.
+  deploy:
+    needs: [verify, e2e, e2e-sync]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # Public values, but held as secrets so Actions masks them in the logs of a public repo —
+      # wrangler echoes the deployed hosts otherwise (see docs/adr/0011-…).
+      VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+      VITE_SYNC_URL: ${{ secrets.VITE_SYNC_URL }}
+      APP_URL: ${{ secrets.APP_URL }}
+      # Never read; referenced only so the runner receives it and Actions masks the *.pages.dev URL
+      # that `wrangler pages deploy` prints on completion.
+      PAGES_DOMAIN: ${{ secrets.PAGES_DOMAIN }}
+    steps:
+      - name: Gate on Cloudflare token
+        id: gate
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "CLOUDFLARE_API_TOKEN not set — skipping deploy."
+            exit 0
+          fi
+          # This job also deploys the Worker, so a build without these would ship a local-only CSP
+          # (no sync hosts in connect-src) past every gate. Fail loudly instead.
+          if [ -z "$VITE_CLERK_PUBLISHABLE_KEY" ] || [ -z "$VITE_SYNC_URL" ] || [ -z "$APP_URL" ]; then
+            echo "Deploy is on but VITE_CLERK_PUBLISHABLE_KEY / VITE_SYNC_URL / APP_URL is unset." >&2
+            exit 1
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.enabled == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.enabled == 'true'
+        with:
+          node-version: 22
+      - if: steps.gate.outputs.enabled == 'true'
+        run: corepack enable
+      - if: steps.gate.outputs.enabled == 'true'
+        run: yarn install --immutable
+      # Build and gate before deploying anything: a failure here must not leave the Worker deployed
+      # against an SPA that never shipped.
+      - name: Build SPA
+        if: steps.gate.outputs.enabled == 'true'
+        run: yarn build
+      # Re-gate the real artifact: verify's build runs on a placeholder key, so this dist/ — the one
+      # that ships — is checked here for a resolved CSP and for leaked secrets.
+      - name: CSP gate
+        if: steps.gate.outputs.enabled == 'true'
+        run: yarn check:csp
+      - name: Secret gate
+        if: steps.gate.outputs.enabled == 'true'
+        run: yarn check:secrets
+      # An absent origin binding doesn't fail closed with a 403 — the origin check throws and every
+      # /ws-ticket answers 500 — and `wrangler deploy` won't warn. Check before shipping.
+      - name: Verify Worker origin secrets exist
+        if: steps.gate.outputs.enabled == 'true'
+        run: |
+          names=$(yarn wrangler secret list)
+          for required in ALLOWED_ORIGINS CLERK_AUTHORIZED_PARTIES CLERK_SECRET_KEY LIST_ID_SECRET TICKET_SECRET; do
+            case "$names" in
+              *"$required"*) ;;
+              *) echo "Worker secret $required is not set — refusing to deploy." >&2; exit 1 ;;
+            esac
+          done
+      # The Worker goes first: the SPA's CSP names the Worker's host, so the server side should never
+      # lag the client that expects it.
+      - name: Deploy Worker + Durable Object
+        if: steps.gate.outputs.enabled == 'true'
+        run: yarn sync:deploy
+      # --branch is explicit: wrangler otherwise infers it from git state, and anything but the
+      # project's production branch uploads a preview instead of the live site.
+      - name: Deploy SPA
+        if: steps.gate.outputs.enabled == 'true'
+        run: yarn wrangler pages deploy dist --project-name coche --branch main --force
+      # Both targets are live now, so prove the pair actually works together. A deploy that lands
+      # green but serves no policy, or a Worker that rejects the app's own origin, fails here rather
+      # than at a user's first sign-in.
+      - name: Verify the live deployment
+        if: steps.gate.outputs.enabled == 'true'
+        run: |
+          code=000
+          for attempt in 1 2 3 4 5 6; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$APP_URL/" || echo 000)
+            [ "$code" = "200" ] && break
+            sleep 5
+          done
+          if [ "$code" != "200" ]; then
+            echo "App domain answered $code, expected 200." >&2
+            exit 1
+          fi
+          if ! curl -sI "$APP_URL/" | grep -qi '^content-security-policy:'; then
+            echo "No enforcing Content-Security-Policy served on the app domain." >&2
+            exit 1
+          fi
+          allowed=$(curl -s -o /dev/null -w '%{http_code}' -X OPTIONS -H "Origin: $APP_URL" "$VITE_SYNC_URL/ws-ticket")
+          if [ "$allowed" != "204" ]; then
+            echo "Worker answered $allowed for the app origin, expected 204." >&2
+            exit 1
+          fi
+          bogus=$(curl -s -o /dev/null -w '%{http_code}' -X OPTIONS -H 'Origin: https://not-allowed.example' "$VITE_SYNC_URL/ws-ticket")
+          if [ "$bogus" != "403" ]; then
+            echo "Worker answered $bogus for a bogus origin, expected 403." >&2
+            exit 1
+          fi

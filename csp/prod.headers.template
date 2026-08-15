@@ -1,0 +1,2 @@
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://%FAPI_HOST% https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://img.clerk.com; font-src 'self' data:; connect-src 'self' https://%FAPI_HOST% https://%SYNC_HOST% wss://%SYNC_HOST%; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com; frame-ancestors 'self'; manifest-src 'self'; form-action 'self' https://%FAPI_HOST%; base-uri 'self'; object-src 'none'
