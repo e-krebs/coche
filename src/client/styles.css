@@ -1,0 +1,100 @@
+@import "tailwindcss";
+@import "@fontsource/roboto/400.css";
+@import "@fontsource/roboto/500.css";
+@import "@fontsource/roboto/700.css";
+
+/* Google Tasks / Material style, butter-yellow accent; light default with an OS-driven dark mode. */
+@theme {
+  --font-sans: "Roboto", "Helvetica Neue", Arial, system-ui, sans-serif;
+
+  --color-surface: #ffffff;
+  --color-surface-2: #f1f3f4;
+  /* header sits above the content: always the lighter/elevated surface, content the darker
+     canvas — the relationship must hold in both themes, so these aren't reused surfaces. */
+  --color-header: #ffffff;
+  --color-canvas: #f1f3f4;
+  --color-ink: #1f1f1f;
+  --color-muted: #5f6368;
+  --color-faint: #9aa0a6;
+  --color-hairline: #e3e6ea;
+
+  --color-accent: #fcd34d;
+  --color-on-accent: #1f1f1f;
+  --color-accent-text: #b7791f; /* muted ochre — text/links on white */
+  --color-accent-soft: #fefbe8;
+
+  --color-synced: #1e8e3e;
+  --color-syncing: #1a73e8;
+  --color-signin: #d93025;
+  --color-danger: #d93025; /* swipe past the delete threshold; -soft is the pre-threshold pink-red */
+  --color-danger-soft: #f28b82;
+}
+
+/* Dark mode follows the OS; keeps the butter accent, swaps neutrals + status hues. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-surface: #1f1f1f;
+    --color-surface-2: #2d2e31;
+    --color-header: #2d2e31;
+    --color-canvas: #1f1f1f;
+    --color-ink: #e3e3e3;
+    --color-muted: #9aa0a6;
+    --color-faint: #72767c;
+    --color-hairline: #3c4043;
+
+    --color-accent-text: #fcd34d; /* dark-amber is invisible on dark — use the butter itself */
+    --color-accent-soft: #38341f;
+
+    --color-synced: #81c995;
+    --color-syncing: #8ab4f8;
+    --color-signin: #f28b82;
+    --color-danger: #b3261e;
+    --color-danger-soft: #7a231d; /* dimmer than -danger so the pill brightens at threshold, not darkens */
+  }
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Never show a horizontal scrollbar (a transient one flashes on mobile refresh). `clip` rather
+   than `hidden` so no scroll container is created and the sticky header keeps sticking. */
+html {
+  overflow-x: clip;
+}
+
+/* syncing indicator — a single dot that bounces continuously with gravity-like easing (no floor dwell) */
+@keyframes bounce-sync {
+  0% { transform: translateY(0); animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1); }
+  50% { transform: translateY(-5px); animation-timing-function: cubic-bezier(0.32, 0, 0.67, 0); }
+  100% { transform: translateY(0); }
+}
+.animate-bounce-sync { animation: bounce-sync 0.6s infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-bounce-sync { animation: none; }
+}
+
+@keyframes snackbar-in {
+  from { transform: translateY(1rem); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-snackbar-in { animation: snackbar-in 0.2s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-snackbar-in { animation: none; }
+}
+
+/* delete-icon pulse as a swipe crosses the commit threshold — a one-shot scale bump can't be a
+   transition (it returns to its start), so it's a keyframe animation toggled by data-reached-bump
+   rather than an imperative element.animate() call. */
+@keyframes bump {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+[data-reached-bump] { animation: bump 0.3s cubic-bezier(0.34, 1.7, 0.64, 1); }
+@media (prefers-reduced-motion: reduce) {
+  [data-reached-bump] { animation: none; }
+}
