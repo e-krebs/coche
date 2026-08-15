@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Coche">
+  <!-- Coche icon — light theme. Same crab; butter check-claws with an ink keyline so they read on white. -->
+  <circle cx="256" cy="256" r="256" fill="#ffffff"/>
+  <g transform="translate(41 24) scale(0.84)">
+    <g stroke="#ea580c" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M150 300 L86 286 L54 250"/><path d="M146 330 L78 332 L44 334"/><path d="M155 360 L92 388 L66 428"/>
+      <path d="M362 300 L426 286 L458 250"/><path d="M366 330 L434 332 L468 334"/><path d="M357 360 L420 388 L446 428"/>
+      <path d="M176 272 L150 214 L130 184"/><path d="M336 272 L362 214 L382 184"/>
+    </g>
+    <ellipse cx="256" cy="320" rx="128" ry="84" fill="#ea580c"/>
+    <g stroke="#ea580c" stroke-width="16" stroke-linecap="round"><line x1="224" y1="262" x2="224" y2="216"/><line x1="288" y1="262" x2="288" y2="216"/></g>
+    <circle cx="224" cy="208" r="18" fill="#1f1f1f"/><circle cx="288" cy="208" r="18" fill="#1f1f1f"/>
+    <circle cx="229" cy="203" r="6" fill="#fff"/><circle cx="293" cy="203" r="6" fill="#fff"/>
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="#1f1f1f" stroke-width="60" d="M104 158 L132 188 L192 112"/><path stroke="#1f1f1f" stroke-width="60" d="M408 158 L380 188 L320 112"/>
+      <path stroke="#fcd34d" stroke-width="42" d="M104 158 L132 188 L192 112"/><path stroke="#fcd34d" stroke-width="42" d="M408 158 L380 188 L320 112"/>
+    </g>
+  </g>
+</svg>
