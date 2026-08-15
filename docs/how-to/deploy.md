@@ -153,6 +153,11 @@ CI runs it after the build ([../../.github/workflows/ci.yml](../../.github/workf
 
 ## CI
 
+`main` is protected: direct pushes are rejected, so changes land through a pull request whose
+`verify`, `e2e` and `e2e-sync` checks pass, on a branch up to date with `main`. Merging is what pushes
+`main` — and therefore what deploys. Force-pushes and deletions are refused, history stays linear, and
+the rules apply to admins too, so a hotfix also goes through a PR.
+
 [../../.github/workflows/ci.yml](../../.github/workflows/ci.yml) runs on push and PR:
 
 - **verify** — `lint` (oxlint, including type-aware rules via `oxlint-tsgolint`), `format:check`
