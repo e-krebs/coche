@@ -1,0 +1,89 @@
+import { test as base, expect, type Page } from "@playwright/test";
+
+export const TEST_USER = "user_e2e_local";
+
+const CSP_MARKER = "CSP_VIOLATION";
+
+/**
+ * Seeds a cached identity and blocks all non-localhost network so the app runs local-only (no
+ * Worker, no Clerk). Also fails any test where the enforced CSP (public/_headers) blocks
+ * something — a regression here is otherwise silent (the browser just drops the request/script).
+ */
+export const test = base.extend({
+  context: async ({ context }, use) => {
+    await context.addInitScript(
+      (args) => {
+        localStorage.setItem("shopping:userId", args.uid);
+        window.addEventListener("securitypolicyviolation", (e) => {
+          console.error(`${args.marker} ${e.violatedDirective} ${e.blockedURI}`);
+        });
+      },
+      { uid: TEST_USER, marker: CSP_MARKER },
+    );
+    await context.route("**/*", async (route) => {
+      const host = new URL(route.request().url()).hostname;
+      if (host === "localhost" || host === "127.0.0.1") await route.continue();
+      else await route.abort();
+    });
+    await use(context);
+  },
+  page: async ({ page }, use) => {
+    const violations: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.text().startsWith(CSP_MARKER)) violations.push(msg.text());
+    });
+    await use(page);
+    expect(violations, "unexpected CSP violation(s)").toEqual([]);
+  },
+});
+
+export { expect };
+
+export const field = (page: Page) => page.getByLabel("Add or find an item");
+
+/**
+ * Match the aria-label attribute (CSS), not the accessible name — the sortable <li> also contains
+ * "Check off <name>".
+ */
+export const checkbox = (page: Page, name: string) =>
+  page.locator(`button[aria-label="Check off ${name}"]`);
+
+export const gotoApp = async (page: Page): Promise<void> => {
+  await page.goto("/");
+  await expect(field(page)).toBeVisible();
+};
+
+export const addItem = async (page: Page, name: string): Promise<void> => {
+  await field(page).fill(name);
+  await field(page).press("Enter");
+  await expect(checkbox(page, name)).toBeVisible();
+};
+
+/** Unchecked item names, in display order. */
+export const uncheckedNames = async (page: Page): Promise<string[]> =>
+  page
+    .locator("ul")
+    .first()
+    .locator('button[aria-label^="Check off "]')
+    .evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")!.slice("Check off ".length)));
+
+/** The sortable <li> wrapping an item. */
+export const row = (page: Page, name: string) => page.locator("li", { has: checkbox(page, name) });
+
+export const waitForServiceWorker = async (page: Page): Promise<void> => {
+  await page.evaluate(async () => navigator.serviceWorker.ready.then(() => undefined));
+};
+
+/**
+ * Wait for a non-zero Y translate (move applied) before dropping — poll-based to avoid
+ * fixed-timeout flake.
+ */
+export const waitForDragShift = async (page: Page): Promise<unknown> =>
+  page.waitForFunction(() =>
+    [...document.querySelectorAll<HTMLElement>('li[aria-roledescription="sortable"]')].some(
+      (li) => {
+        const m = /translate3d\(\s*-?\d+px,\s*(-?\d+)px/.exec(li.style.transform || "");
+        return !!m && Number(m[1]) !== 0;
+      },
+    ),
+  );
