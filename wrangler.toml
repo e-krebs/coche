@@ -1,0 +1,17 @@
+name = "coche-sync"
+main = "src/server/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[durable_objects.bindings]]
+name = "SHOPPING_LIST"
+class_name = "ShoppingListDurableObject"
+
+# MUST be new_sqlite_classes: KV-backed DO namespaces break the SQL persister and the kind isn't convertible later.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ShoppingListDurableObject"]
+
+# ALLOWED_ORIGINS and CLERK_AUTHORIZED_PARTIES are deliberately absent: they name the deployment's
+# own origin, which stays out of the repo (ADR 0011), so production sets them with
+# `wrangler secret put`. `wrangler dev` reads .dev.vars and the sync e2e tier passes --var.
