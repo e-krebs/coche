@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "paths": {
+      "shared/*": ["./src/shared/*"],
+      "client/*": ["./src/client/*"],
+      "server/*": ["./src/server/*"]
+    }
+  },
+  "include": ["src/client", "src/shared"]
+}

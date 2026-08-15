@@ -71,11 +71,15 @@ web_modules/
 
 # Yarn Integrity file
 .yarn-integrity
+.yarn
 
 # dotenv environment variable files
 .env
+.dev.vars
 .env.development.local
 .env.test.local
+# vite reads .env.production on a default `yarn build`, so it would hold real deployment hosts (ADR 0011)
+.env.production
 .env.production.local
 .env.local
 
@@ -127,6 +131,18 @@ dist
 
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# wrangler local state (DO SQLite for `wrangler dev`)
+.wrangler/
+
+# local working notes, deliberately not published
+/BACKLOG.md
 
 # yarn v2
 .yarn/cache

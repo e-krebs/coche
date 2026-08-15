@@ -1,0 +1,79 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc"],
+  "jsPlugins": [
+    "eslint-plugin-react-you-might-not-need-an-effect",
+    "eslint-plugin-readable-tailwind"
+  ],
+  "options": { "typeAware": true },
+  "categories": { "correctness": "error" },
+  "overrides": [
+    {
+      "files": ["src/client/**/*.{ts,tsx}"],
+      "plugins": ["react"],
+      "rules": {
+        "react-hooks/rules-of-hooks": "error",
+        "react-hooks/exhaustive-deps": "error",
+        "react-you-might-not-need-an-effect/no-derived-state": "error",
+        "react-you-might-not-need-an-effect/no-chain-state-updates": "error",
+        "react-you-might-not-need-an-effect/no-event-handler": "error",
+        "react-you-might-not-need-an-effect/no-adjust-state-on-prop-change": "error",
+        "react-you-might-not-need-an-effect/no-reset-all-state-on-prop-change": "error",
+        "react-you-might-not-need-an-effect/no-pass-live-state-to-parent": "error",
+        "react-you-might-not-need-an-effect/no-pass-data-to-parent": "error",
+        "react-you-might-not-need-an-effect/no-external-store-subscription": "error",
+        "react-you-might-not-need-an-effect/no-initialize-state": "error",
+        "readable-tailwind/multiline": ["error", { "printWidth": 100 }],
+        "readable-tailwind/sort-classes": [
+          "error",
+          { "entryPoint": "src/client/styles.css", "order": "official" }
+        ]
+      }
+    },
+    {
+      "files": ["src/**/*.{ts,tsx}", "e2e/**/*.ts"],
+      "rules": {
+        "typescript/consistent-return": "error",
+        "typescript/consistent-type-exports": "error",
+        "typescript/dot-notation": "error",
+        "typescript/no-confusing-void-expression": "error",
+        "typescript/no-deprecated": "error",
+        "typescript/no-misused-promises": "error",
+        "typescript/no-mixed-enums": "error",
+        "typescript/no-unnecessary-boolean-literal-compare": "error",
+        "typescript/no-unnecessary-condition": "error",
+        "typescript/no-unnecessary-qualifier": "error",
+        "typescript/no-unnecessary-template-expression": "error",
+        "typescript/no-unnecessary-type-arguments": "error",
+        "typescript/no-unnecessary-type-assertion": "error",
+        "typescript/no-unnecessary-type-conversion": "error",
+        "typescript/no-unnecessary-type-parameters": "error",
+        "typescript/no-unsafe-argument": "error",
+        "typescript/no-unsafe-assignment": "error",
+        "typescript/no-unsafe-call": "error",
+        "typescript/no-unsafe-enum-comparison": "error",
+        "typescript/no-unsafe-member-access": "error",
+        "typescript/no-unsafe-return": "error",
+        "typescript/no-unsafe-type-assertion": "error",
+        "typescript/prefer-find": "error",
+        "typescript/prefer-includes": "error",
+        "typescript/prefer-nullish-coalescing": [
+          "error",
+          { "ignorePrimitives": { "boolean": true } }
+        ],
+        "typescript/prefer-optional-chain": "error",
+        "typescript/prefer-promise-reject-errors": "error",
+        "typescript/prefer-readonly": "error",
+        "typescript/prefer-reduce-type-parameter": "error",
+        "typescript/prefer-regexp-exec": "error",
+        "typescript/prefer-return-this-type": "error",
+        "typescript/prefer-string-starts-ends-with": "error",
+        "typescript/promise-function-async": "error",
+        "typescript/related-getter-setter-pairs": "error",
+        "typescript/require-await": "error",
+        "typescript/restrict-plus-operands": "error",
+        "typescript/return-await": "error"
+      }
+    }
+  ]
+}
