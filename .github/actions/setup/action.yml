@@ -5,6 +5,12 @@ inputs:
   playwright:
     description: Provision the Chromium build Playwright needs. Only the e2e tiers want this.
     default: "false"
+  needs-apt:
+    description: >
+      Reinstall Chromium's system libraries even on a browser-cache hit. The ubuntu-latest image
+      already carries them, so this stays off; flip it if a runner image drops one and Chromium
+      fails to launch.
+    default: "false"
 
 runs:
   using: composite
@@ -14,16 +20,19 @@ runs:
         node-version: 22
     - run: corepack enable
       shell: bash
-    # Yarn's global cache holds the downloaded package archives, so a hit turns `yarn install` into a
-    # local tree build with no registry traffic. Keyed on the lockfile, with a prefix fallback so a
-    # single dependency bump still starts from the previous run's archives instead of from nothing.
-    - name: Restore the Yarn cache
+    # Cache the built tree, not Yarn's archives. Caching the archives only skipped Yarn's fetch step
+    # (~5s) while its resolution (~13s) and link (~10s) ran anyway — a net loss against the 4s spent
+    # restoring 153 MB. A node_modules hit skips all three. Exact-match key, no restore-keys: a
+    # partial hit is a tree that disagrees with the lockfile, which is worse than installing cold.
+    # Safe to move between runs because every job pins ubuntu-latest x64 and the key pins the lockfile.
+    - name: Restore node_modules
+      id: modules
       uses: actions/cache@v4
       with:
-        path: ~/.yarn/berry/cache
-        key: yarn-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
-        restore-keys: yarn-${{ runner.os }}-
-    - run: yarn install --immutable
+        path: node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+    - if: steps.modules.outputs.cache-hit != 'true'
+      run: yarn install --immutable
       shell: bash
     # Read the version from the installed package rather than the lockfile: it keys the browser cache
     # below, and a browser build belongs to a Playwright version, not to the whole dependency set.
@@ -45,9 +54,9 @@ runs:
       if: inputs.playwright == 'true' && steps.browsers.outputs.cache-hit != 'true'
       shell: bash
       run: yarn playwright install --with-deps chromium
-    # The cache covers the browser under ~/.cache/ms-playwright but not the apt packages it links
-    # against, which live outside the runner's cacheable paths — so re-run just that half on a hit.
+    # Deliberately not run on a cache hit: `install-deps` is apt, and apt cost 38s here — more than
+    # the browser download the cache saved. The runner image already ships Chromium's libraries.
     - name: Install Chromium's system dependencies
-      if: inputs.playwright == 'true' && steps.browsers.outputs.cache-hit == 'true'
+      if: inputs.playwright == 'true' && steps.browsers.outputs.cache-hit == 'true' && inputs.needs-apt == 'true'
       shell: bash
       run: yarn playwright install-deps chromium

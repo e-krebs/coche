@@ -162,11 +162,18 @@ the rules apply to admins too, so a hotfix also goes through a PR.
 
 - Every job starts from the shared
   [../../.github/actions/setup/action.yml](../../.github/actions/setup/action.yml) composite action:
-  Node 22, corepack, `yarn install --immutable`, and Yarn's global cache keyed on `yarn.lock`. The
-  two e2e tiers pass `playwright: "true"`, which adds a `~/.cache/ms-playwright` cache keyed on the
-  installed `@playwright/test` version — an exact-match key, since a partial hit yields a browser
-  build Playwright refuses to launch. A hit re-runs `playwright install-deps` alone: the apt packages
-  Chromium links against sit outside the cached path.
+  Node 22, corepack, and a `node_modules` cache keyed on `yarn.lock` — a hit skips
+  `yarn install --immutable` outright. Both caches use exact-match keys with no `restore-keys`,
+  because a partial hit is a tree that disagrees with the lockfile.
+  - `node_modules` rather than Yarn's archive cache: caching the archives skips only Yarn's fetch
+    step, leaving its resolution and link steps to run anyway — which together cost more than the
+    fetch. Moving the tree between runs is sound here because every job pins `ubuntu-latest` x64 and
+    the key pins the lockfile.
+  - The two e2e tiers pass `playwright: "true"`, adding a `~/.cache/ms-playwright` cache keyed on the
+    installed `@playwright/test` version. A hit runs nothing further: `playwright install-deps` is
+    apt, and apt costs more than the browser download it would replace, while the runner image
+    already ships Chromium's libraries. The `needs-apt` input forces it back on if an image ever
+    drops one.
   - Actions scopes a cache to the branch that wrote it plus that branch's base, so the first run on a
     new branch installs cold and populates its own entry. Timings settle from the second run on.
 - **verify** — `lint` (oxlint, including type-aware rules via `oxlint-tsgolint`), `format:check`
