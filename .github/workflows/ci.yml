@@ -19,23 +19,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
-      - run: yarn lint
-      - run: yarn format:check
-      - run: yarn typecheck
-      - run: yarn typecheck:worker
-      - run: yarn typecheck:e2e
-      - run: yarn typecheck:e2e:sync
-      - run: yarn test
-      - run: yarn test:worker
+      - run: nub run lint
+      - run: nub run format:check
+      - run: nub run typecheck
+      - run: nub run typecheck:worker
+      - run: nub run typecheck:e2e
+      - run: nub run typecheck:e2e:sync
+      - run: nub run test
+      - run: nub run test:worker
       - name: Build
-        run: yarn build
+        run: nub run build
         env:
           # Public, non-secret placeholder so the build's env check passes in CI.
           VITE_CLERK_PUBLISHABLE_KEY: pk_test_Y2ktYnVpbGQtcGxhY2Vob2xkZXIkCg
       - name: CSP gate
-        run: yarn check:csp
+        run: nub run check:csp
       - name: Secret gate
-        run: yarn check:secrets
+        run: nub run check:secrets
 
   # Local-only e2e tier: hermetic (no Worker, Clerk network blocked), so it needs no secrets.
   e2e:
@@ -45,7 +45,7 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           playwright: "true"
-      - run: yarn test:e2e
+      - run: nub run test:e2e
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
@@ -86,7 +86,7 @@ jobs:
           DEV=true
           EOF
       - if: steps.gate.outputs.enabled == 'true'
-        run: yarn test:e2e:sync
+        run: nub run test:e2e:sync
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() && steps.gate.outputs.enabled == 'true' }}
         with:
@@ -139,21 +139,21 @@ jobs:
       # against an SPA that never shipped.
       - name: Build SPA
         if: steps.gate.outputs.enabled == 'true'
-        run: yarn build
+        run: nub run build
       # Re-gate the real artifact: verify's build runs on a placeholder key, so this dist/ — the one
       # that ships — is checked here for a resolved CSP and for leaked secrets.
       - name: CSP gate
         if: steps.gate.outputs.enabled == 'true'
-        run: yarn check:csp
+        run: nub run check:csp
       - name: Secret gate
         if: steps.gate.outputs.enabled == 'true'
-        run: yarn check:secrets
+        run: nub run check:secrets
       # An absent origin binding doesn't fail closed with a 403 — the origin check throws and every
       # /ws-ticket answers 500 — and `wrangler deploy` won't warn. Check before shipping.
       - name: Verify Worker origin secrets exist
         if: steps.gate.outputs.enabled == 'true'
         run: |
-          names=$(yarn wrangler secret list)
+          names=$(nubx wrangler secret list)
           for required in ALLOWED_ORIGINS CLERK_AUTHORIZED_PARTIES CLERK_SECRET_KEY LIST_ID_SECRET TICKET_SECRET; do
             case "$names" in
               *"$required"*) ;;
@@ -164,12 +164,12 @@ jobs:
       # lag the client that expects it.
       - name: Deploy Worker + Durable Object
         if: steps.gate.outputs.enabled == 'true'
-        run: yarn sync:deploy
+        run: nub run sync:deploy
       # --branch is explicit: wrangler otherwise infers it from git state, and anything but the
       # project's production branch uploads a preview instead of the live site.
       - name: Deploy SPA
         if: steps.gate.outputs.enabled == 'true'
-        run: yarn wrangler pages deploy dist --project-name coche --branch main --force
+        run: nubx wrangler pages deploy dist --project-name coche --branch main --force
       # Both targets are live now, so prove the pair actually works together. A deploy that lands
       # green but serves no policy, or a Worker that rejects the app's own origin, fails here rather
       # than at a user's first sign-in.

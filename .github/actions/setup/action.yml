@@ -1,5 +1,5 @@
 name: Setup
-description: Node 22, Yarn 4 via corepack, installed dependencies, and optionally Playwright's Chromium.
+description: nub (pinned), the Node it provisions, installed dependencies, and optionally Playwright's Chromium.
 
 inputs:
   playwright:
@@ -15,24 +15,31 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/setup-node@v4
-      with:
-        node-version: 22
-    - run: corepack enable
+    # Installed from nubjs.com's script pinned to an exact version, not nubjs/setup-nub: that action
+    # would run inside jobs holding CLERK_SECRET_KEY and the Cloudflare deploy credentials, and a SHA
+    # pin guards against a moved tag, not against the code at that SHA. The installer verifies the
+    # release archive against its published SHA-256 sidecar. NUB_NO_MODIFY_PATH keeps it out of the
+    # shell profile; the PATH entry below is explicit instead.
+    - name: Install nub
       shell: bash
-    # Cache the built tree, not Yarn's archives. Caching the archives only skipped Yarn's fetch step
-    # (~5s) while its resolution (~13s) and link (~10s) ran anyway — a net loss against the 4s spent
-    # restoring 153 MB. A node_modules hit skips all three. Exact-match key, no restore-keys: a
-    # partial hit is a tree that disagrees with the lockfile, which is worse than installing cold.
-    # Safe to move between runs because every job pins ubuntu-latest x64 and the key pins the lockfile.
-    - name: Restore node_modules
-      id: modules
+      env:
+        NUB_VERSION: 0.7.5
+        NUB_NO_MODIFY_PATH: "1"
+      run: |
+        curl -fsSL https://nubjs.com/install.sh | bash -s "$NUB_VERSION"
+        echo "$HOME/.nub/bin" >> "$GITHUB_PATH"
+    # nub provisions the Node named in .node-version, so no actions/setup-node: the pin is one file
+    # shared by CI and every developer rather than a node-version input that can drift from it.
+    # Cached together with the package store — both live under the same two directories.
+    - name: Restore the nub store and Node toolchain
       uses: actions/cache@v4
       with:
-        path: node_modules
-        key: node-modules-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
-    - if: steps.modules.outputs.cache-hit != 'true'
-      run: yarn install --immutable
+        path: |
+          ~/.local/share/nub/store
+          ~/.cache/nub
+        key: nub-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', '.node-version') }}
+        restore-keys: nub-${{ runner.os }}-
+    - run: nub ci
       shell: bash
     # Read the version from the installed package rather than the lockfile: it keys the browser cache
     # below, and a browser build belongs to a Playwright version, not to the whole dependency set.
@@ -53,10 +60,10 @@ runs:
     - name: Install Chromium
       if: inputs.playwright == 'true' && steps.browsers.outputs.cache-hit != 'true'
       shell: bash
-      run: yarn playwright install --with-deps chromium
+      run: nubx playwright install --with-deps chromium
     # Deliberately not run on a cache hit: `install-deps` is apt, and apt cost 38s here — more than
     # the browser download the cache saved. The runner image already ships Chromium's libraries.
     - name: Install Chromium's system dependencies
       if: inputs.playwright == 'true' && steps.browsers.outputs.cache-hit == 'true' && inputs.needs-apt == 'true'
       shell: bash
-      run: yarn playwright install-deps chromium
+      run: nubx playwright install-deps chromium

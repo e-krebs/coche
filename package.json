@@ -3,6 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22.22.2"
+  },
+  "allowBuilds": {
+    "workerd": true,
+    "esbuild": true,
+    "sharp": true
+  },
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && node scripts/gen-headers.mjs",
@@ -27,7 +35,7 @@
     "test:e2e:sync": "playwright test --config playwright.config.sync.ts",
     "sync:dev": "wrangler dev",
     "sync:deploy": "wrangler deploy",
-    "deploy:spa": "yarn check:csp && yarn check:secrets && wrangler pages deploy dist --project-name coche --branch main --force"
+    "deploy:spa": "nub run check:csp && nub run check:secrets && wrangler pages deploy dist --project-name coche --branch main --force"
   },
   "repository": {
     "type": "git",
@@ -74,6 +82,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
+    "dotenv": "17.2.2",
     "eslint-plugin-react-you-might-not-need-an-effect": "1.0.1",
     "eslint-plugin-readable-tailwind": "3.0.0",
     "fake-indexeddb": "^6.2.5",
@@ -89,6 +98,5 @@
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.10",
     "wrangler": "^4.112.0"
-  },
-  "packageManager": "yarn@4.17.1"
+  }
 }

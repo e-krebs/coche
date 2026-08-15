@@ -1,0 +1,7 @@
+{
+  // Plain Node, no runtime augmentation. nub's polyfill layer redefines globals inside vm contexts,
+  // which breaks jsdom's window construction (`SuppressedError is not defined`) and takes the whole
+  // client test project with it. Nothing here needs nub's TS/JSX execution — vite, vitest and tsc
+  // already own transpilation — so the augmentation is pure risk. Node provisioning is unaffected.
+  "nodeCompat": true,
+}

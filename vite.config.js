@@ -108,7 +108,7 @@ export default defineConfig(({ command }) => {
           background_color: "#f1f3f4",
           display: "standalone",
           start_url: "/",
-          // "any"-purpose circles + a full-bleed maskable the OS masks to its own shape. Dev server injects no manifest — test the real install on a production build (yarn preview).
+          // "any"-purpose circles + a full-bleed maskable the OS masks to its own shape. Dev server injects no manifest — test the real install on a production build (nub run preview).
           icons: [
             { src: "icon-192.png", sizes: "192x192", type: "image/png" },
             { src: "icon-512.png", sizes: "512x512", type: "image/png" },

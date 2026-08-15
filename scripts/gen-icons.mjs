@@ -1,4 +1,4 @@
-// Generates PWA/tab icons from the crab logos (design/logo-{dark,light}.svg). Run: `yarn icons`.
+// Generates PWA/tab icons from the crab logos (design/logo-{dark,light}.svg). Run: `nub run icons`.
 // favicon SVGs theme-switch: the disc CONTRASTS the tab chrome (dark-disc logo on a light tab, and vice-versa) so the badge pops.
 // Install/manifest icons can't theme-switch (one set served), so they use the light logo.
 import sharp from "sharp";

@@ -69,10 +69,6 @@ web_modules/
 # Output of 'npm pack'
 *.tgz
 
-# Yarn Integrity file
-.yarn-integrity
-.yarn
-
 # dotenv environment variable files
 .env
 .dev.vars
@@ -144,9 +140,5 @@ dist
 # local working notes, deliberately not published
 /BACKLOG.md
 
-# yarn v2
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
-.pnp.*
+# nub keeps its store and Node toolchains in ~/.cache/nub and ~/.nub, nothing in-tree.
+# .node-version and nub.jsonc are committed on purpose — they are the Node pin and the runtime config.

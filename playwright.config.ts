@@ -16,7 +16,7 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: `yarn build:e2e && yarn preview --port ${PORT} --strictPort`,
+    command: `nub run build:e2e && nub run preview --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !CI,
     timeout: 120_000,

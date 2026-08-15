@@ -123,7 +123,7 @@ if (!env.VITE_CLERK_PUBLISHABLE_KEY && !env.VITE_SYNC_URL) {
 // without a resolved _headers means the SPA would ship with no CSP.
 if (existsSync("dist")) {
   if (!existsSync(PROD_OUTPUT)) {
-    fail(`${PROD_OUTPUT} is missing — run \`yarn build\`, which resolves ${PROD_TEMPLATE}`);
+    fail(`${PROD_OUTPUT} is missing — run \`nub run build\`, which resolves ${PROD_TEMPLATE}`);
   } else {
     const built = readCspFile(PROD_OUTPUT);
     const leftover = unresolvedTokens(built.value);
