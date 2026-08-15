@@ -14,6 +14,11 @@ Catalog of the test infrastructure — what exists and where. Conventions for wr
 | `client` | jsdom                                                       | `src/client`  |
 | `server` | `@cloudflare/vitest-pool-workers` (miniflare, Worker bindings) | `src/server` |
 
+Vitest runs in mode `test`, so Vite loads [../../.env.test](../../.env.test). It is committed and
+holds a placeholder publishable key: [../../src/client/env.ts](../../src/client/env.ts) throws on a
+missing one, so without it the suite would pass only on a machine that happens to have a local
+`.env`, and fail on a fresh clone and in CI.
+
 ### `client` project
 
 Tests render with **@testing-library/react** and **user-event**. Global setup file:
