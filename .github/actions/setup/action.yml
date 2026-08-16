@@ -1,0 +1,68 @@
+name: Setup
+description: Node 22, Yarn 4 via corepack, installed dependencies, and optionally Playwright's Chromium.
+
+inputs:
+  playwright:
+    description: Provision the Chromium build Playwright needs. Only the e2e tiers want this.
+    default: "false"
+  needs-apt:
+    description: >
+      Reinstall Chromium's system libraries even on a browser-cache hit. The ubuntu-latest image
+      already carries them, so this stays off; flip it if a runner image drops one and Chromium
+      fails to launch.
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - run: corepack enable
+      shell: bash
+    # Cache the built tree, not Yarn's archives. Caching the archives only skipped Yarn's fetch step
+    # (~5s) while its resolution (~13s) and link (~10s) ran anyway — a net loss against the 4s spent
+    # restoring 153 MB. A node_modules hit skips all three. Exact-match key, no restore-keys: a
+    # partial hit is a tree that disagrees with the lockfile, which is worse than installing cold.
+    #
+    # The key covers package.json and .yarnrc.yml, not just the lockfile: skipping the install also
+    # skips `--immutable`'s drift guard, so a package.json-only change (a widened range, a dropped
+    # dep, a merge that keeps main's lockfile) would otherwise hit the cache and test the old
+    # dependency set green. runner.arch is in there because the tree holds prebuilt native binaries
+    # (workerd, sharp, @rollup/*, @oxlint/*) — on an arm runner an x64 hit looks like dependency
+    # corruption rather than a stale cache.
+    - name: Restore node_modules
+      id: modules
+      uses: actions/cache@v4
+      with:
+        path: node_modules
+        key: node-modules-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml') }}
+    - if: steps.modules.outputs.cache-hit != 'true'
+      run: yarn install --immutable
+      shell: bash
+    # Read the version from the installed package rather than the lockfile: it keys the browser cache
+    # below, and a browser build belongs to a Playwright version, not to the whole dependency set.
+    - name: Resolve the Playwright version
+      if: inputs.playwright == 'true'
+      id: playwright
+      shell: bash
+      run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+    # Exact-match only (no restore-keys): a partial hit would hand Playwright a browser build it
+    # refuses to launch, which is slower to debug than the download it saved.
+    - name: Restore the Playwright browser cache
+      if: inputs.playwright == 'true'
+      id: browsers
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}
+    - name: Install Chromium
+      if: inputs.playwright == 'true' && steps.browsers.outputs.cache-hit != 'true'
+      shell: bash
+      run: yarn playwright install --with-deps chromium
+    # Deliberately not run on a cache hit: `install-deps` is apt, and apt cost 38s here — more than
+    # the browser download the cache saved. The runner image already ships Chromium's libraries.
+    - name: Install Chromium's system dependencies
+      if: inputs.playwright == 'true' && steps.browsers.outputs.cache-hit == 'true' && inputs.needs-apt == 'true'
+      shell: bash
+      run: yarn playwright install-deps chromium

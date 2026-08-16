@@ -160,6 +160,24 @@ the rules apply to admins too, so a hotfix also goes through a PR.
 
 [../../.github/workflows/ci.yml](../../.github/workflows/ci.yml) runs on push and PR:
 
+- Every job starts from the shared
+  [../../.github/actions/setup/action.yml](../../.github/actions/setup/action.yml) composite action:
+  Node 22, corepack, and a `node_modules` cache keyed on `yarn.lock` — a hit skips
+  `yarn install --immutable` outright. Both caches use exact-match keys with no `restore-keys`,
+  because a partial hit is a tree that disagrees with the lockfile.
+  - `node_modules` rather than Yarn's archive cache: caching the archives skips only Yarn's fetch
+    step, leaving its resolution and link steps to run anyway — which together cost more than the
+    fetch. The key covers `package.json` and `.yarnrc.yml` alongside `yarn.lock`, since skipping the
+    install also skips `--immutable`'s drift guard, and `runner.arch` because the cached tree holds
+    prebuilt native binaries.
+  - The two e2e tiers pass `playwright: "true"`, adding a `~/.cache/ms-playwright` cache keyed on the
+    installed `@playwright/test` version. A hit runs nothing further: `playwright install-deps` is
+    apt, and apt costs more than the browser download it would replace, while the runner image
+    already ships Chromium's libraries. The `needs-apt` input forces it back on if an image ever
+    drops one.
+  - Actions scopes a cache to the branch that wrote it plus that branch's base, so the first run on a
+    new branch installs cold and populates its own entry — and only if that run is green, since the
+    save step is skipped on failure. Timings settle from the second passing run on.
 - **verify** — `lint` (oxlint, including type-aware rules via `oxlint-tsgolint`), `format:check`
   (oxfmt), `typecheck` (client, Worker, both e2e tiers), `test` (client + Worker), the build, the CSP
   gate, and the secret gate.
