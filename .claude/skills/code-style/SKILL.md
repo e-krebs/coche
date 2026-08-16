@@ -51,7 +51,7 @@ Don't hand-format Tailwind classes — run **`yarn fix`** (`oxlint --fix . && ox
 
 **Type-aware rules** run in the same `yarn lint` pass via **`oxlint-tsgolint`** — nearly all
 typescript-eslint type-aware rules are errors (`correctness` repo-wide, the rest scoped to `src/**`
-+ `e2e/**`). oxlint's `typeCheck` stays **off**: the four `tsc --noEmit` scripts are the
++ `e2e/**`). oxlint's `typeCheck` stays **off**: the five `tsc --noEmit` scripts are the
 authoritative type gate. Two frictions have set patterns: **browser feature detection** uses
 `typeof x === "function"` or `"prop" in obj`, never `?.`/`&&` guards (`lib.dom` types those APIs as
 always-present, so guards trip `no-unnecessary-condition`); **unavoidable casts** (TinyBase's

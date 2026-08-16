@@ -2,13 +2,17 @@
 // PreToolUse hook (Edit|Write): nudges toward the convention skill(s) for the edited file's path.
 // Hooks can't invoke a skill directly, so this only injects a reminder for the model to act on.
 
+interface HookInput {
+  tool_input?: { file_path?: string };
+}
+
 let input = "";
 process.stdin.on("data", (chunk) => (input += chunk));
 process.stdin.on("end", () => {
   // file_path is absolute, so directory checks match anywhere in the path, not just at its start.
-  let tool_input;
+  let tool_input: HookInput["tool_input"];
   try {
-    tool_input = JSON.parse(input).tool_input;
+    tool_input = (JSON.parse(input) as HookInput).tool_input;
   } catch {
     return done();
   }
@@ -30,7 +34,7 @@ process.stdin.on("end", () => {
   done(`Editing ${path} — follow the ${list} skill(s) for this repo's conventions.`);
 });
 
-function done(additionalContext) {
+function done(additionalContext?: string) {
   const output = {
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
