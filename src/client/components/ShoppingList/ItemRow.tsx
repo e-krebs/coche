@@ -3,7 +3,8 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS, useCombinedRefs } from "@dnd-kit/utilities";
 import { AddIcon, CheckIcon, DeleteIcon, MinusIcon } from "client/components/icons";
 import { useTranslation } from "client/i18n/useTranslation";
-import { focusDropped, prefersReducedMotion } from "./helpers";
+import { focusDropped } from "client/components/focus";
+import { prefersReducedMotion } from "./helpers";
 import { useSwipeToDelete } from "./useSwipeToDelete";
 import type { ItemView, RowProps } from "./types";
 

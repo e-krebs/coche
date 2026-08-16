@@ -1,14 +1,5 @@
 import { flushSync } from "react-dom";
 
-/**
- * Focus dropped (body/nothing/detached) rather than moved to a live control — safe to reclaim
- * without stealing.
- */
-export const focusDropped = () => {
-  const el = document.activeElement;
-  return !el || el === document.body || !el.isConnected;
-};
-
 export const prefersReducedMotion = () =>
   typeof window !== "undefined" &&
   typeof window.matchMedia === "function" &&

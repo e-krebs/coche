@@ -1,6 +1,6 @@
 import { useEffect, useRef, type KeyboardEvent } from "react";
 import { useTranslation } from "client/i18n/useTranslation";
-import { useOpenerFocus } from "client/components/useOpenerFocus";
+import { useOpenerFocus } from "client/components/focus";
 
 /**
  * Destructive confirmation. z-50 puts it above the list picker that opens it (z-40) and the Undo

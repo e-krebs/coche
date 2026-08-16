@@ -140,10 +140,14 @@ Decisions that aren't obvious from the markup:
   soft keyboard. The same rule holds through the picker's two nested layers: opening the sheet moves
   focus into it and closing returns it to the title trigger, and the delete confirmation — a dialog
   inside a dialog — returns focus to the row that opened it, not to whatever the DOM happened to
-  leave focused. Both dialogs restore on the frame *after* they unmount, not during cleanup: a switch
-  remounts the header in the same commit that closes them, so the captured opener is still connected
-  while cleanup runs and only dies afterwards — focusing it there would drop focus to `<body>`.
-  [useOpenerFocus.ts](../../src/client/components/useOpenerFocus.ts).
+  leave focused. All three dialogs share one hook for this, and restore on the frame *after* they
+  unmount rather than during cleanup: a switch remounts the header in the same commit that closes
+  them, so the captured opener is still connected while cleanup runs and only dies afterwards —
+  focusing it there would drop focus to `<body>`. The language chooser leans hardest on the fallback,
+  because its opener is a Clerk menu item that unmounts along with the menu, so the captured node is
+  normally detached by the time focus is handed back; the header title is the selector it falls back
+  to, being the one control present and visible at any scroll offset.
+  [focus.ts](../../src/client/components/focus.ts).
   [../../src/client/components/ShoppingList/useListActions.ts](../../src/client/components/ShoppingList/useListActions.ts),
   [ItemRow.tsx](../../src/client/components/ShoppingList/ItemRow.tsx).
 - **Internationalisation** — FR/EN via a typed dictionary

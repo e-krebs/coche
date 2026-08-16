@@ -1,5 +1,13 @@
 import { useEffect, useRef } from "react";
-import { focusDropped } from "./ShoppingList/helpers";
+
+/**
+ * Focus dropped (body/nothing/detached) rather than moved to a live control — safe to reclaim
+ * without stealing.
+ */
+export const focusDropped = () => {
+  const el = document.activeElement;
+  return !el || el === document.body || !el.isConnected;
+};
 
 /**
  * Returns focus to whatever opened a dialog, on the frame *after* it unmounts. Deferred because a

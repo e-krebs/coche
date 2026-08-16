@@ -1,5 +1,6 @@
 import { useEffect, useRef, type KeyboardEvent } from "react";
 import { LOCALES, type Locale } from "client/i18n";
+import { useOpenerFocus } from "client/components/focus";
 import { useTranslation } from "client/i18n/useTranslation";
 
 /**
@@ -17,18 +18,18 @@ export const LanguageDialog = ({
 }) => {
   const t = useTranslation();
   const radiosRef = useRef<(HTMLButtonElement | null)[]>([]);
+  const groupRef = useRef<HTMLDivElement>(null);
 
+  // The opener is a Clerk menu item that unmounts with its popover, so the captured node is normally
+  // detached by restore time — the header title is the fallback because it is the one control present
+  // and visible at any scroll offset.
+  useOpenerFocus({ fallbackSelector: "[data-list-trigger]" });
+  // Queried from the DOM rather than indexed off `locale`, so picking a language can't re-run this and
+  // fight the restore. https://react.dev/learn/synchronizing-with-effects
+  // oxlint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- post-render focus
   useEffect(() => {
-    const opener = document.activeElement;
-    const active = Math.max(
-      0,
-      LOCALES.findIndex((l) => l.code === locale),
-    );
-    radiosRef.current[active]?.focus();
-    return () => {
-      if (opener instanceof HTMLElement) opener.focus();
-    }; // restore focus to the opener
-  }, [locale]);
+    groupRef.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
+  }, []);
 
   const moveFocus = (delta: number) => {
     const els = radiosRef.current.filter((el): el is HTMLButtonElement => el != null);
@@ -84,7 +85,7 @@ export const LanguageDialog = ({
         >
           {t("language")}
         </h2>
-        <div role="radiogroup" aria-label={t("language")} className="p-1.5">
+        <div ref={groupRef} role="radiogroup" aria-label={t("language")} className="p-1.5">
           {LOCALES.map((l, i) => {
             const active = l.code === locale;
             return (

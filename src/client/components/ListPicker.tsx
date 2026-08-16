@@ -19,7 +19,7 @@ import { useListRoster, type ListSummary } from "client/store/lists";
 import { useTranslation } from "client/i18n/useTranslation";
 import { AddIcon, CheckIcon, DeleteIcon, DragIcon } from "client/components/icons";
 import { ConfirmDialog } from "client/components/ConfirmDialog";
-import { useOpenerFocus } from "client/components/useOpenerFocus";
+import { useOpenerFocus } from "client/components/focus";
 import { prefersReducedMotion } from "./ShoppingList/helpers";
 
 const rowBase = `flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[15px]

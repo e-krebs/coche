@@ -17,7 +17,8 @@ import {
 import { sortedByPosition } from "client/store/reorder";
 import { useTable } from "client/store/store";
 import { useTranslation } from "client/i18n/useTranslation";
-import { focusDropped, prefersReducedMotion } from "./helpers";
+import { focusDropped } from "client/components/focus";
+import { prefersReducedMotion } from "./helpers";
 import { ItemRow, SortableRow } from "./ItemRow";
 import { ItemPreview } from "./ItemPreview";
 import { ListHeader } from "./ListHeader";
