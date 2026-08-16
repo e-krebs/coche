@@ -3,19 +3,23 @@ import { describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { Provider, createShoppingStore } from "client/store/store";
 import { sortedByPosition } from "client/store/reorder";
+import { DEFAULT_LIST_ID } from "client/store/schema";
 import { useListActions } from "client/components/ShoppingList/useListActions";
 import type { ItemView } from "client/components/ShoppingList/types";
 
 type Store = ReturnType<typeof createShoppingStore>;
 
-const setup = (items: ItemView[] = []) => {
+const setup = ({
+  items = [],
+  listId = DEFAULT_LIST_ID,
+}: { items?: ItemView[]; listId?: string } = {}) => {
   const store = createShoppingStore();
   const setEditing = vi.fn();
   const restoreFocus = vi.fn();
   const wrapper = ({ children }: { children: ReactNode }) => (
     <Provider store={store}>{children}</Provider>
   );
-  const { result } = renderHook(() => useListActions({ items, setEditing, restoreFocus }), {
+  const { result } = renderHook(() => useListActions({ listId, items, setEditing, restoreFocus }), {
     wrapper,
   });
   return { store, result, setEditing, restoreFocus };
@@ -29,6 +33,26 @@ const orderedNames = (store: Store) =>
 
 const idByName = (store: Store, name: string) =>
   store.getRowIds("items").find((id) => store.getCell("items", id, "name") === name)!;
+
+/** A row belonging to a list other than the one under test. */
+const seedForeign = ({
+  store,
+  name,
+  position,
+  checked = false,
+}: {
+  store: Store;
+  name: string;
+  position: string;
+  checked?: boolean;
+}) =>
+  store.setRow("items", `other-${name}`, {
+    listId: "other",
+    name,
+    checked,
+    position,
+    createdAt: 0,
+  });
 
 describe("useListActions", () => {
   describe("add", () => {
@@ -77,7 +101,12 @@ describe("useListActions", () => {
 
     it("returns false without a store (renders with no Provider)", () => {
       const { result } = renderHook(() =>
-        useListActions({ items: [], setEditing: vi.fn(), restoreFocus: vi.fn() }),
+        useListActions({
+          listId: DEFAULT_LIST_ID,
+          items: [],
+          setEditing: vi.fn(),
+          restoreFocus: vi.fn(),
+        }),
       );
       expect(result.current.add("Milk")).toBe(false);
     });
@@ -128,7 +157,7 @@ describe("useListActions", () => {
         createdAt: 42,
       };
       const items: ItemView[] = [{ id: "r1", name: "Eggs", checked: true, quantity: 3 }];
-      const { store, result, setEditing } = setup(items);
+      const { store, result, setEditing } = setup({ items });
       store.setRow("items", "r1", row);
 
       act(() => {
@@ -210,6 +239,75 @@ describe("useListActions", () => {
         result.current.reorder({ activeId: a, overId: a });
       });
       expect(store.getCell("items", a, "position")).toBe(before);
+    });
+  });
+
+  // Every mutation carries a listId predicate: one store holds every list, so an unscoped scan
+  // reaches rows the user can't even see.
+  describe("when another list holds items", () => {
+    it("stamps the active list and appends against its own positions", () => {
+      const { store, result } = setup();
+      seedForeign({ store, name: "Nails", position: "z9" });
+      act(() => {
+        result.current.add("Milk");
+      });
+      const id = idByName(store, "Milk");
+      expect(store.getCell("items", id, "listId")).toBe(DEFAULT_LIST_ID);
+      expect(store.getCell("items", id, "position")).toBe("a0"); // not after the foreign "z9"
+    });
+
+    it("clears only the active list's checked items", () => {
+      const { store, result } = setup();
+      seedForeign({ store, name: "Nails", position: "a0", checked: true });
+      act(() => {
+        result.current.add("Milk");
+      });
+      store.setCell("items", idByName(store, "Milk"), "checked", true);
+      act(() => {
+        result.current.clearChecked();
+      });
+      expect(orderedNames(store)).toEqual(["Nails"]);
+    });
+
+    it("leaves foreign positions untouched on reorder", () => {
+      const { store, result } = setup();
+      seedForeign({ store, name: "Nails", position: "a0V" });
+      act(() => {
+        result.current.add("A");
+        result.current.add("B");
+      });
+      act(() => {
+        result.current.reorder({ activeId: idByName(store, "A"), overId: idByName(store, "B") });
+      });
+      expect(store.getCell("items", "other-Nails", "position")).toBe("a0V");
+      expect(orderedNames(store).filter((n) => n !== "Nails")).toEqual(["B", "A"]);
+    });
+  });
+
+  // hasList counts the still-virtual default list, so Undo keeps working before the first sync.
+  describe("when the item's list was deleted inside the Undo window", () => {
+    it("drops the Undo instead of resurrecting a phantom list", () => {
+      const row = {
+        listId: "gone",
+        name: "Nails",
+        checked: false,
+        position: "a0",
+        createdAt: 0,
+      };
+      const items: ItemView[] = [{ id: "r1", name: "Nails", checked: false, quantity: undefined }];
+      const { store, result } = setup({ items, listId: "gone" });
+      store.setRow("lists", "gone", { name: "Hardware", createdAt: 0 });
+      store.setRow("items", "r1", row);
+
+      act(() => {
+        result.current.remove("r1");
+      });
+      store.delRow("lists", "gone");
+      act(() => {
+        result.current.undoDelete();
+      });
+      expect(store.hasRow("items", "r1")).toBe(false);
+      expect(result.current.undo).toBeNull();
     });
   });
 });

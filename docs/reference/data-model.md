@@ -52,10 +52,12 @@ One derived `listId` per user, holding every one of that user's `items.listId` v
   [../adr/0007-fractional-index-reorder.md](../adr/0007-fractional-index-reorder.md).
 - **`position` is comparable only within one list, in both tables.** Item positions are meaningful
   against the other items of the same `listId`, list positions against the same user's other lists.
-  A comparison across lists picks foreign neighbours and lands a dragged row at an arbitrary index.
-- **The roster is never empty.** An empty `lists` table renders a virtual default list, and re-runs
-  the default-list migration once the device has synced. `/` always resolves, and an unknown list id
-  redirects to the first list.
+  Every mutation therefore carries a `listId` predicate: a key minted from a foreign neighbour lands
+  inside another list's range, where that list's next drag can collide with it.
+- **The roster is never empty.** A virtual default list stands in whenever `lists` has no row for it
+  and either the table is empty or items still reference it. Repair — the default-list migration and
+  the orphan sweep — waits for the first sync, so the virtual row is what the user sees until then.
+  `/` always resolves, and an unknown list id redirects to the first list.
 - **The last remaining list can't be deleted.** The rule is client-side, so concurrent deletes on
   two devices can still empty the roster; the invariant above is what heals it. See
   [auth-and-sync.md](../explanation/auth-and-sync.md#limitations).
@@ -64,11 +66,13 @@ One derived `listId` per user, holding every one of that user's `items.listId` v
   settled state and resurrects the list.
 - **An absent `lists.name` renders the app title, and the default-list migration never writes that
   cell.** Per-cell LWW means a name written on a fresh device would outrank an older rename made
-  elsewhere. Same for `position` against an older reorder — the migration writes `createdAt` only.
-  See [../adr/0013-multi-list-single-store.md](../adr/0013-multi-list-single-store.md).
+  elsewhere. Same for `position` against an older reorder — the migration writes `createdAt` only. A
+  *user's* rename is the exception and may create the row: it is intent, and should win LWW. See
+  [../adr/0013-multi-list-single-store.md](../adr/0013-multi-list-single-store.md).
 - **An `items.listId` naming no `lists` row resurrects that row, nameless.** Otherwise the item
-  survives the merge and is invisible forever. Only complete `lists` rows count when looking for
-  orphans; a row missing cells is a partial resurrection, not a list.
+  survives the merge and is invisible forever. Only complete `items` rows count as orphans — a
+  partial resurrection has no `listId`, and `setRow("lists", undefined, …)` would mint a real list
+  keyed `"undefined"`.
 - **The model is list-centric** (`items` reference `listId`), so shared lists remain addable without
   a rewrite: the sync unit is per user today, and nothing about the row shape assumes that.
 

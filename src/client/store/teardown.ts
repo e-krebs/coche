@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import { z } from "zod";
 import { clearCachedUserId, readCachedUserId } from "./identity";
+import { clearLastList } from "./lists";
 import { dbNameForUser } from "./store";
 
 const AUTH_CHANNEL = "shopping-auth";
@@ -49,6 +50,7 @@ export const useSignOutTeardown = (): void => {
       return;
     }
     clearCachedUserId();
+    clearLastList(); // else the next user on this device lands on a list id that isn't theirs
     postSignOut();
     const gone = lastUserId.current;
     lastUserId.current = null;

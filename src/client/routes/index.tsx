@@ -4,6 +4,7 @@ import { UserButton } from "@clerk/clerk-react";
 import { useIdentity } from "client/store/identity";
 import { StoreProvider } from "client/store/StoreProvider";
 import { useStore } from "client/store/store";
+import { readLastList, useLists, useRosterRepair } from "client/store/lists";
 import { useSync } from "client/store/sync";
 import { ShoppingList } from "client/components/ShoppingList";
 import { SyncStatus } from "client/components/SyncStatus";
@@ -41,9 +42,18 @@ const ListView = () => {
     if (status === "synced") setEverSynced(true);
   }, [status]);
 
+  // Local-only has no replica to race, so it never waits for a sync that won't come.
+  useRosterRepair({ synced: everSynced || status === "disabled" });
+  const lists = useLists();
+  const [hint] = useState(readLastList);
+  // The roster is never empty — a virtual default list stands in until repair runs.
+  const listId = lists.find((l) => l.id === hint)?.id ?? lists[0].id;
+
   return (
     <div className="mx-auto min-h-dvh max-w-md">
       <ShoppingList
+        key={listId}
+        listId={listId}
         syncing={status === "connecting" && !everSynced}
         headerRight={
           <>

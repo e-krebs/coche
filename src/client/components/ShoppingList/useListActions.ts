@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { generateKeyBetween } from "fractional-indexing";
 import { arrayMove } from "@dnd-kit/sortable";
-import { DEFAULT_LIST_ID } from "client/store/schema";
 import { keyForPosition, sortedByPosition } from "client/store/reorder";
+import { hasList } from "client/store/lists";
 import { newItemId, useStore } from "client/store/store";
 import { animate } from "./helpers";
 import type { Editing, ItemView } from "./types";
@@ -26,10 +26,12 @@ type Undo = { id: string; row: StoredItem } | null;
  * between render and action can't resurrect a row. Owns the Undo buffer for deletes.
  */
 export const useListActions = ({
+  listId,
   items,
   setEditing,
   restoreFocus,
 }: {
+  listId: string;
   items: ItemView[];
   setEditing: (e: Editing) => void;
   restoreFocus: (id: string | undefined) => void;
@@ -52,12 +54,13 @@ export const useListActions = ({
     // so it would surface only as an unhandled rejection and this list would silently stop adding.
     const positions = store
       .getRowIds("items")
+      .filter((id) => store.getCell("items", id, "listId") === listId)
       .map((id) => store.getCell("items", id, "position"))
       .filter((p): p is string => !!p);
     const lastPos = positions.length ? positions.reduce((m, p) => (p > m ? p : m)) : null;
     animate(() =>
       store.setRow("items", newItemId(), {
-        listId: DEFAULT_LIST_ID,
+        listId,
         name,
         checked: false,
         position: generateKeyBetween(lastPos, null),
@@ -97,7 +100,9 @@ export const useListActions = ({
   };
   const undoDelete = () => {
     window.clearTimeout(undoTimer.current);
-    if (store && undo) {
+    // Its list can be deleted inside the 5s window; restoring the row would mint a phantom list the
+    // orphan sweep then resurrects nameless.
+    if (store && undo && hasList({ store, id: undo.row.listId })) {
       animate(() => store.setRow("items", undo.id, undo.row));
       restoreFocus(undo.id);
     }
@@ -112,6 +117,7 @@ export const useListActions = ({
     animate(() =>
       store?.transaction(() => {
         store.getRowIds("items").forEach((id) => {
+          if (store.getCell("items", id, "listId") !== listId) return;
           if (store.getCell("items", id, "checked")) store.delRow("items", id);
         });
       }),
@@ -119,8 +125,10 @@ export const useListActions = ({
   };
   const reorder = ({ activeId, overId }: { activeId: string; overId: string }) => {
     if (!store || activeId === overId) return;
+    // Scoped to this list so a foreign row can't become a drop neighbour: the key minted from it
+    // sits inside another list's range, where the next drag there can collide with it.
     const ids = sortedByPosition(
-      store.getRowIds("items"),
+      store.getRowIds("items").filter((id) => store.getCell("items", id, "listId") === listId),
       (id) => store.getCell("items", id, "position") ?? "",
     ).filter((id) => !store.getCell("items", id, "checked"));
     const from = ids.indexOf(activeId);

@@ -27,10 +27,13 @@ import { useHeaderCollapse } from "./useHeaderCollapse";
 import { useListActions } from "./useListActions";
 import type { Editing, ItemView, RowProps } from "./types";
 
+/** Mount with `key={listId}`: a switch resets query, edit mode, the checked fold and the Undo buffer. */
 export const ShoppingList = ({
+  listId,
   headerRight,
   syncing = false,
 }: {
+  listId: string;
   headerRight?: ReactNode;
   syncing?: boolean;
 }) => {
@@ -38,8 +41,8 @@ export const ShoppingList = ({
   const table = useTable("items");
   // A nameless row is a partial resurrected by a concurrent edit to a deleted item, not data: add
   // rejects an empty name and rename keeps the old one, so absent can only mean ghost.
-  const named = Object.keys(table).filter((id) => table[id]?.name);
-  const orderedIds = sortedByPosition(named, (id) => table[id]?.position ?? "");
+  const mine = Object.keys(table).filter((id) => table[id]?.listId === listId && table[id]?.name);
+  const orderedIds = sortedByPosition(mine, (id) => table[id]?.position ?? "");
 
   const items: ItemView[] = orderedIds.map((id) => {
     const row = table[id];
@@ -72,7 +75,7 @@ export const ShoppingList = ({
     });
   };
 
-  const actions = useListActions({ items, setEditing, restoreFocus });
+  const actions = useListActions({ listId, items, setEditing, restoreFocus });
 
   // Reorder only when the field is idle (its soft keyboard dismissing would kill dnd-kit's touch
   // drag).

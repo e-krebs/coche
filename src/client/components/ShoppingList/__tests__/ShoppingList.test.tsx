@@ -2,13 +2,14 @@ import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider, createShoppingStore } from "client/store/store";
+import { DEFAULT_LIST_ID } from "client/store/schema";
 import { ShoppingList } from "client/components/ShoppingList";
 
 const setup = () => {
   const store = createShoppingStore();
   render(
     <Provider store={store}>
-      <ShoppingList />
+      <ShoppingList listId={DEFAULT_LIST_ID} />
     </Provider>,
   );
   return { store, user: userEvent.setup() };
