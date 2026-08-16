@@ -6,9 +6,13 @@ deploying are separate topics, linked at the end.
 
 ## Prerequisites
 
-- **Node 22+** and **Yarn 4** via Corepack. The exact version is pinned in
-  [package.json](../../package.json)'s `packageManager` field
-  (`yarn@4.17.1`); Corepack reads that field and fetches the matching Yarn for you.
+- **Node 24** and **Yarn 4** via Corepack. Node 24 is pinned in [.nvmrc](../../.nvmrc) and is a hard
+  requirement, not a suggestion: the build scripts are TypeScript that `node` executes directly, and
+  an older Node refuses them (see
+  [../adr/0012-typescript-build-scripts.md](../adr/0012-typescript-build-scripts.md)). With `nvm`,
+  `nvm use` in the clone picks it up. Yarn's version is pinned in
+  [package.json](../../package.json)'s `packageManager` field (`yarn@4.17.1`); Corepack reads that
+  field and fetches the matching Yarn for you.
 - **A free [Clerk](https://clerk.com) account.** Coche uses Clerk for sign-in even when you never
   turn on sync — see [Sign in](#sign-in) below for why.
 

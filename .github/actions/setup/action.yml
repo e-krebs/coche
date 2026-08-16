@@ -1,5 +1,5 @@
 name: Setup
-description: Node 22, Yarn 4 via corepack, installed dependencies, and optionally Playwright's Chromium.
+description: Node (per .nvmrc), Yarn 4 via corepack, installed dependencies, and optionally Playwright's Chromium.
 
 inputs:
   playwright:
@@ -15,9 +15,11 @@ inputs:
 runs:
   using: composite
   steps:
+    # Node 24 is a floor, not a preference: the build scripts are TypeScript executed by bare `node`,
+    # which needs unflagged type stripping. .nvmrc is the single source of truth for local + CI.
     - uses: actions/setup-node@v4
       with:
-        node-version: 22
+        node-version-file: .nvmrc
     - run: corepack enable
       shell: bash
     # Cache the built tree, not Yarn's archives. Caching the archives only skipped Yarn's fetch step
@@ -28,15 +30,16 @@ runs:
     # The key covers package.json and .yarnrc.yml, not just the lockfile: skipping the install also
     # skips `--immutable`'s drift guard, so a package.json-only change (a widened range, a dropped
     # dep, a merge that keeps main's lockfile) would otherwise hit the cache and test the old
-    # dependency set green. runner.arch is in there because the tree holds prebuilt native binaries
-    # (workerd, sharp, @rollup/*, @oxlint/*) — on an arm runner an x64 hit looks like dependency
-    # corruption rather than a stale cache.
+    # dependency set green. runner.arch and .nvmrc are in there because the tree holds prebuilt native
+    # binaries (workerd, sharp, @rollup/*, @oxlint/*) — both the architecture and the Node major decide
+    # which build is correct, and a mismatched hit looks like dependency corruption rather than a
+    # stale cache.
     - name: Restore node_modules
       id: modules
       uses: actions/cache@v4
       with:
         path: node_modules
-        key: node-modules-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml') }}
+        key: node-modules-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', '.nvmrc') }}
     - if: steps.modules.outputs.cache-hit != 'true'
       run: yarn install --immutable
       shell: bash

@@ -26,7 +26,10 @@ may suffix, so it need not match the project name.
   which picks up this repo's [../../wrangler.toml](../../wrangler.toml) (`main = src/server/index.ts`)
   and deploys the *sync server* under the Pages project's name instead of `dist/`.
 - Git integration is an alternative: point the Pages project at the repo and let it run `yarn build`,
-  which outputs to `dist/` (config in [../../vite.config.js](../../vite.config.js)).
+  which outputs to `dist/` (config in [../../vite.config.ts](../../vite.config.ts)). Confirm the Pages
+  build image provides the Node in [../../.nvmrc](../../.nvmrc) first: `yarn build` ends in `node
+  scripts/gen-headers.ts`, so on too old a Node the bundle is written and the policy is not — and this
+  path never runs `check:csp`, the gate that would catch it.
 - Keep the SPA fallback in place: `public/_redirects` contains `/* /index.html 200`, so client-side
   routing keeps working under Pages.
 - clerk-js is served same-origin: `yarn build` bundles `@clerk/clerk-js` into `dist/clerk-js/` (no
@@ -162,7 +165,10 @@ the rules apply to admins too, so a hotfix also goes through a PR.
 
 - Every job starts from the shared
   [../../.github/actions/setup/action.yml](../../.github/actions/setup/action.yml) composite action:
-  Node 22, corepack, and a `node_modules` cache keyed on `yarn.lock` — a hit skips
+  Node from [../../.nvmrc](../../.nvmrc) (24 — the build scripts are TypeScript run by bare `node`,
+  which needs unflagged type stripping; see
+  [../adr/0012-typescript-build-scripts.md](../adr/0012-typescript-build-scripts.md)), corepack, and a
+  `node_modules` cache keyed on `yarn.lock` — a hit skips
   `yarn install --immutable` outright. Both caches use exact-match keys with no `restore-keys`,
   because a partial hit is a tree that disagrees with the lockfile.
   - `node_modules` rather than Yarn's archive cache: caching the archives skips only Yarn's fetch
@@ -179,8 +185,8 @@ the rules apply to admins too, so a hotfix also goes through a PR.
     new branch installs cold and populates its own entry — and only if that run is green, since the
     save step is skipped on failure. Timings settle from the second passing run on.
 - **verify** — `lint` (oxlint, including type-aware rules via `oxlint-tsgolint`), `format:check`
-  (oxfmt), `typecheck` (client, Worker, both e2e tiers), `test` (client + Worker), the build, the CSP
-  gate, and the secret gate.
+  (oxfmt), `typecheck` (client, Worker, both e2e tiers, and the build scripts), `test`
+  (client + Worker), the build, the CSP gate, and the secret gate.
 - **e2e** — the hermetic local-only Playwright tier (no secrets needed).
 - **e2e-sync** — the sync Playwright tier; skips unless `CLERK_SECRET_KEY` is set as a repo secret
   (so it no-ops cleanly on forks). The publishable key is public and committed in `.env.e2e-sync`.

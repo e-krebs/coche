@@ -15,7 +15,7 @@ if (leakyEnv.length) {
   process.exit(1);
 }
 
-const walk = (dir) =>
+const walk = (dir: string): string[] =>
   readdirSync(dir).flatMap((name) => {
     const p = join(dir, name);
     return statSync(p).isDirectory() ? walk(p) : [p];

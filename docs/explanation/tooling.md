@@ -78,10 +78,12 @@ actual bug rather than a style preference — so there's no cost to running them
 build scripts. The remaining tiers (`pedantic`, `suspicious`, `style`, `restriction`, `nursery`) are
 opinionated enough that they only pay off on code the project actually owns and type-checks as a
 first-class citizen, so they're confined to an `overrides` entry matching `src/**` and `e2e/**`.
-Root-level config files and `scripts/*.mjs` fall outside that glob for the same reason: they call
-into untyped or loosely-typed dependencies (`sharp`, Node's `fs`) where the type-aware
-`no-unsafe-*` rules would just flag the untyped boundary itself, noise rather than signal, on files
-that aren't part of the shipped application anyway.
+Root-level config files and `scripts/**` fall outside that glob for the same reason: they call into
+untyped or loosely-typed dependencies (`sharp`, Node's `fs`) where the type-aware `no-unsafe-*` rules
+would just flag the untyped boundary itself, noise rather than signal, on files that aren't part of
+the shipped application anyway. They are TypeScript — see
+[../adr/0012-typescript-build-scripts.md](../adr/0012-typescript-build-scripts.md) — so the
+distinction is the rule tier, not the language.
 
 Two rules are deliberately tuned rather than left at their default:
 
@@ -100,17 +102,22 @@ Two rules are deliberately tuned rather than left at their default:
 ## Why oxlint doesn't own the type gate
 
 `typeCheck` — the option that would have oxlint surface raw `tsc`-style diagnostics itself — stays
-off, and four separate `tsc --noEmit` scripts in [`../../package.json`](../../package.json)
-(`typecheck`, `typecheck:worker`, `typecheck:e2e`, `typecheck:e2e:sync`) remain the actual type
-gate. oxlint resolves a single tsconfig per file, but this repo needs more than one view of some
-files: `src/shared` is included both by the root [`../../tsconfig.json`](../../tsconfig.json)
+off, and five separate `tsc --noEmit` scripts in [`../../package.json`](../../package.json)
+(`typecheck`, `typecheck:worker`, `typecheck:e2e`, `typecheck:e2e:sync`, `typecheck:node`) remain the
+actual type gate. oxlint resolves a single tsconfig per file, but this repo needs more than one view
+of some files: `src/shared` is included both by the root [`../../tsconfig.json`](../../tsconfig.json)
 (browser `lib`, `DOM` types included) and by
 [`../../src/server/tsconfig.json`](../../src/server/tsconfig.json) (Worker `lib`, no DOM at all),
 and a shared module has to type-check under both. A linter that picks one tsconfig per file
 structurally can't reproduce that dual check — it would pick a side and silently miss whichever
-errors only show up under the lib it didn't choose. The four `tsc` scripts each point at the right
+errors only show up under the lib it didn't choose. The five `tsc` scripts each point at the right
 tsconfig and stay authoritative for that reason; oxlint-tsgolint's type-aware rules are a
 complement caught while editing, not a replacement for the split type-check.
+
+`typecheck:node` is the same split applied to the build tooling: `scripts/**`, `vite.config.ts` and
+the Claude Code hook run on Node rather than in a browser or a Worker, so
+[`../../scripts/tsconfig.json`](../../scripts/tsconfig.json) checks them under `module: nodenext` with
+`types: ["node"]` — the only view in which their `.ts` import specifiers and Node globals are correct.
 
 ## Pinned, not ranged
 

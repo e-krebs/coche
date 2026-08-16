@@ -8,7 +8,7 @@ import {
   resolveViteEnv,
   unresolvedTokens,
   withoutInjectedViteVars,
-} from "./csp.mjs";
+} from "./csp.ts";
 
 const REQUIRED_DIRECTIVES = [
   "default-src",
@@ -27,12 +27,12 @@ const REQUIRED_DIRECTIVES = [
 ];
 
 let ok = true;
-const fail = (message) => {
+const fail = (message: string) => {
   console.error(message);
   ok = false;
 };
 
-const directiveNames = (value) =>
+const directiveNames = (value: string): Set<string> =>
   new Set(
     value
       .split(";")
@@ -40,7 +40,7 @@ const directiveNames = (value) =>
       .filter(Boolean),
   );
 
-const onlyIn = (a, b) => [...a].filter((d) => !b.has(d));
+const onlyIn = (a: Set<string>, b: Set<string>): string[] => [...a].filter((d) => !b.has(d));
 
 const dev = readCspFile(DEV_FILE);
 const prod = readCspFile(PROD_TEMPLATE);
@@ -119,7 +119,7 @@ if (!env.VITE_CLERK_PUBLISHABLE_KEY && !env.VITE_SYNC_URL) {
   console.log("check:csp — no local env values; skipping the drift check (structural check only)");
 }
 
-// A bare `vite build` no longer produces a policy at all (gen-headers.mjs does), so a built dist/
+// A bare `vite build` no longer produces a policy at all (gen-headers.ts does), so a built dist/
 // without a resolved _headers means the SPA would ship with no CSP.
 if (existsSync("dist")) {
   if (!existsSync(PROD_OUTPUT)) {

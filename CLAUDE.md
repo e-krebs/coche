@@ -10,8 +10,14 @@ Code style (comments, oxfmt/oxlint, path aliases), client styling (data-attr Tai
 motion tiers), and testing (Vitest, no-mocking policy, `ui` query objects) each have a dedicated
 skill: [`code-style`](.claude/skills/code-style/SKILL.md),
 [`styling`](.claude/skills/styling/SKILL.md), or [`testing`](.claude/skills/testing/SKILL.md). A
-PreToolUse hook (`.claude/hooks/skill-nudge.mjs`) nudges toward the right one when editing a
-matching file. Load the skill for the full rules before writing or reviewing that kind of change.
+PreToolUse hook ([.claude/hooks/skill-nudge.ts](.claude/hooks/skill-nudge.ts)) nudges toward the
+right one when editing a matching file. Load the skill for the full rules before writing or
+reviewing that kind of change.
+
+Build tooling is TypeScript too — [vite.config.ts](vite.config.ts), [scripts/](scripts/) and the hook
+run on **Node 24** via native type stripping, so relative imports inside `scripts/` carry the `.ts`
+extension and `yarn typecheck:node` is the gate. See
+[docs/adr/0012-typescript-build-scripts.md](docs/adr/0012-typescript-build-scripts.md).
 
 ## Keep docs in sync with the code
 
@@ -34,7 +40,7 @@ Code touched → doc to check (update if the change is user- or reader-visible):
 | `src/shared/**` (client↔server contract: `/ws-ticket` shape, WS URL) | explanation | [docs/explanation/auth-and-sync.md](docs/explanation/auth-and-sync.md) |
 | `wrangler.toml`, env vars, `.github/workflows/**`, deploy scripts | how-to | [docs/how-to/deploy.md](docs/how-to/deploy.md) |
 | Routing / SPA shell / Clerk wiring (`src/client/routes/**`, `src/client/router.tsx`) | explanation | [docs/explanation/architecture.md](docs/explanation/architecture.md) (components) |
-| Lint/format/typecheck config (`.oxlintrc.json`, `.oxfmtrc.json`, pinned tool versions) | explanation | [docs/explanation/tooling.md](docs/explanation/tooling.md) |
+| Lint/format/typecheck config (`.oxlintrc.json`, `.oxfmtrc.json`, `tsconfig*.json`, `.nvmrc`, pinned tool versions) | explanation | [docs/explanation/tooling.md](docs/explanation/tooling.md) |
 | Test infrastructure (`vitest.config.ts`, `setup.ts`/`msw.ts`, Playwright configs, `e2e/**`) | reference | [docs/reference/testing.md](docs/reference/testing.md) |
 | README's Status / Documentation sections | — | keep in step with `docs/` (don't let them contradict) |
 

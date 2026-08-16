@@ -7,7 +7,7 @@ import {
   resolveTemplate,
   resolveViteEnv,
   unresolvedTokens,
-} from "./csp.mjs";
+} from "./csp.ts";
 
 // `vite build` defaults to mode=production, so an unflagged run must resolve env the same way.
 const modeIndex = process.argv.indexOf("--mode");

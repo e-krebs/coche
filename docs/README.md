@@ -60,3 +60,5 @@ Architecture decision records sit outside the four quadrants as their own recogn
   on the Durable Object
 - [adr/0011-deployment-identifiers-out-of-repo.md](adr/0011-deployment-identifiers-out-of-repo.md) —
   Deployment identifiers stay out of the repo; the production CSP is generated at build time
+- [adr/0012-typescript-build-scripts.md](adr/0012-typescript-build-scripts.md) — TypeScript build
+  scripts on a Node 24 baseline, executed by native type stripping

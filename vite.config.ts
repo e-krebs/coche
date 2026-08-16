@@ -1,24 +1,24 @@
-import { createReadStream } from "node:fs";
+import { createReadStream, type ReadStream } from "node:fs";
 import { cp, mkdir, readdir } from "node:fs/promises";
 import { basename, join, sep } from "node:path";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 import tsconfigPaths from "vite-tsconfig-paths";
-import { DEV_FILE, readCspFile } from "./scripts/csp.mjs";
+import { DEV_FILE, readCspFile } from "./scripts/csp.ts";
 
 const CLERK_JS_DIST = join(import.meta.dirname, "node_modules/@clerk/clerk-js/dist");
 // The loader + its code-split browser chunks — skip source maps and the legacy/headless variants.
-const isClerkBrowserFile = (name) => name.endsWith(".js") && name.includes("clerk.browser");
+const isClerkBrowserFile = (name: string) => name.endsWith(".js") && name.includes("clerk.browser");
 
 /**
  * Serves @clerk/clerk-js's browser dist same-origin under /clerk-js/ — dev via middleware, build by
  * copying the files into the output. The loader resolves its chunks relative to its own URL, so the
  * whole set must sit together at this one fixed path.
  */
-const clerkJsSameOrigin = () => ({
+const clerkJsSameOrigin = (): Plugin => ({
   name: "clerk-js-same-origin",
   configureServer(server) {
     server.middlewares.use("/clerk-js", (req, res) => {
@@ -35,7 +35,7 @@ const clerkJsSameOrigin = () => ({
         res.end();
         return;
       }
-      let stream;
+      let stream: ReadStream;
       try {
         stream = createReadStream(file);
       } catch {
@@ -64,8 +64,8 @@ const clerkJsSameOrigin = () => ({
 export default defineConfig(({ command }) => {
   // `command` is "serve" for both `vite dev` and `vite preview`, "build" for `vite build` — so
   // this applies the same dev CSP to both local servers and skips it for the prod build (whose
-  // policy scripts/gen-headers.mjs resolves into dist/_headers after the bundle is written).
-  const cspHeaders = {};
+  // policy scripts/gen-headers.ts resolves into dist/_headers after the bundle is written).
+  const cspHeaders: Record<string, string> = {};
   if (command === "serve") {
     const { name, value } = readCspFile(DEV_FILE);
     cspHeaders[name] = value;

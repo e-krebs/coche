@@ -18,11 +18,12 @@ const LIGHT_DISC = "#ffffff"; // must match logo-light.svg's disc so it merges i
 writeFileSync(join(pub, "favicon-dark.svg"), darkSvg);
 writeFileSync(join(pub, "favicon-light.svg"), lightSvg);
 
-const disc = (svg, size, out) => sharp(svg).resize(size, size).png().toFile(join(pub, out));
+const disc = (svg: Buffer, size: number, out: string) =>
+  sharp(svg).resize(size, size).png().toFile(join(pub, out));
 
 // Disc merges into the matching square fill, leaving only the crab inside the ~80% maskable safe zone.
 const SAFE = 0.8;
-const masked = async (svg, bg, size, out) => {
+const masked = async (svg: Buffer, bg: string, size: number, out: string) => {
   const inner = Math.round(size * SAFE);
   const crab = await sharp(svg).resize(inner, inner).png().toBuffer();
   return sharp({ create: { width: size, height: size, channels: 4, background: bg } })

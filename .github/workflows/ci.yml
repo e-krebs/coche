@@ -25,6 +25,7 @@ jobs:
       - run: yarn typecheck:worker
       - run: yarn typecheck:e2e
       - run: yarn typecheck:e2e:sync
+      - run: yarn typecheck:node
       - run: yarn test
       - run: yarn test:worker
       - name: Build

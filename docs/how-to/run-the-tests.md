@@ -38,9 +38,10 @@ yarn typecheck          # src/client + src/shared, under the browser lib
 yarn typecheck:worker   # src/server, under the Worker's no-DOM lib (its own tsconfig)
 yarn typecheck:e2e      # e2e/local
 yarn typecheck:e2e:sync # e2e/sync (also picks up e2e/local/fixtures.ts, which it imports)
+yarn typecheck:node     # scripts/, vite.config.ts and the Claude Code hook, under Node's lib
 ```
 
-Run all four before pushing — each checks a different tsconfig, so passing one doesn't imply the
+Run all five before pushing — each checks a different tsconfig, so passing one doesn't imply the
 others pass.
 
 ## Lint and format
