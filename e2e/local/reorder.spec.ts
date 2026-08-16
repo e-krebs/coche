@@ -16,7 +16,7 @@ const seed = async (page: Parameters<typeof gotoApp>[0]) => {
   await addItem(page, "Cream");
   // Adding leaves focus in the add field, which disables dnd — blur it and confirm dnd re-enables.
   await field(page).blur();
-  await expect(row(page, "Apples")).not.toHaveAttribute("aria-disabled", "true");
+  await expect(row(page, "Apples")).toHaveAttribute("data-draggable", "true");
 };
 
 test.describe("reorder", () => {

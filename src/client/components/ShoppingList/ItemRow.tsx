@@ -9,7 +9,9 @@ import type { ItemView, RowProps } from "./types";
 
 type SortableBag = {
   setNodeRef: (node: HTMLElement | null) => void;
-  attributes: ReturnType<typeof useSortable>["attributes"];
+  // Partial: a disabled row is handed back the full attribute set anyway (only `listeners` are
+  // dropped), so it has to be narrowed to keep the <li> a plain listitem rather than a dead tab stop.
+  attributes: Partial<ReturnType<typeof useSortable>["attributes"]>;
   listeners: ReturnType<typeof useSortable>["listeners"];
   style: CSSProperties;
   isDragging: boolean;
@@ -80,7 +82,11 @@ export const SortableRow = ({
 
   const sortable: SortableBag = {
     setNodeRef: setRowRef,
-    attributes,
+    // Drop the whole set: role="button" and tabIndex={0} would otherwise survive on a row that can no
+    // longer be dragged, leaving a tab stop that does nothing while the add/search field is focused or
+    // the row is being renamed. aria-disabled goes too — it only carries meaning on a widget, and the
+    // row is a plain listitem again. `data-draggable` remains the signal for styling and tests.
+    attributes: disabled ? {} : attributes,
     listeners,
     style: {
       transform: CSS.Translate.toString(transform),

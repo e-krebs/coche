@@ -116,10 +116,8 @@ export const waitForServiceWorker = async (page: Page): Promise<void> => {
  */
 export const waitForDragShift = async (page: Page): Promise<unknown> =>
   page.waitForFunction(() =>
-    [...document.querySelectorAll<HTMLElement>('li[aria-roledescription="sortable"]')].some(
-      (li) => {
-        const m = /translate3d\(\s*-?\d+px,\s*(-?\d+)px/.exec(li.style.transform || "");
-        return !!m && Number(m[1]) !== 0;
-      },
-    ),
+    [...document.querySelectorAll<HTMLElement>("li[data-draggable]")].some((li) => {
+      const m = /translate3d\(\s*-?\d+px,\s*(-?\d+)px/.exec(li.style.transform || "");
+      return !!m && Number(m[1]) !== 0;
+    }),
   );

@@ -1,8 +1,11 @@
 import type { ItemView } from "./types";
 
+/** The drag overlay's contents: a visual copy of the row being dragged, so it duplicates the source
+ * row's text and is hidden from assistive tech. */
 export const ItemPreview = ({ item }: { item: ItemView }) => {
   return (
     <div
+      aria-hidden
       className={`
         flex items-center gap-3.5 rounded-[10px] bg-header px-2 py-2.5 shadow-lg ring-1
         ring-hairline

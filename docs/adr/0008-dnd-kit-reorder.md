@@ -58,5 +58,12 @@ Implemented in [../../src/client/components/ShoppingList/index.tsx](../../src/cl
   [0014-jsx-a11y-lint-rules.md](0014-jsx-a11y-lint-rules.md).
 - Drag applies to the **unchecked list only**; checked items and search results render as plain,
   non-sortable rows.
+- **The tradeoff is scoped to rows that are actually draggable.** dnd-kit returns its full attribute
+  set even for a disabled sortable — only the listeners are withheld — so the row's ARIA is narrowed
+  explicitly rather than passed through: a row that cannot be dragged right now (the add/search field
+  has focus, or the row is being renamed) drops the role, the `tabIndex` and `aria-disabled` together
+  and is a plain `listitem`. `aria-disabled` goes with them deliberately: it carries meaning only on a
+  widget, and it makes Playwright treat every control inside the row as unactionable, since
+  actionability inherits that state from ancestors.
 - Verified on-device: touch press-and-hold lift + reorder, and keyboard reorder. `MouseSensor`
   covers desktop pointer drag.

@@ -241,5 +241,35 @@ describe("ItemRow", () => {
       expect(ui.rowOf("Milk")).toHaveAttribute("aria-pressed", "true");
       expect(onToggle).not.toHaveBeenCalled();
     });
+
+    it("is a focusable drag target while dragging is enabled", () => {
+      renderSortableRow();
+      expect(ui.rowOf("Milk")).toHaveAttribute("role", "button");
+      expect(ui.rowOf("Milk")).toHaveAttribute("tabindex", "0");
+    });
+  });
+
+  describe("when dragging is disabled", () => {
+    it("leaves the row a plain list item rather than a dead tab stop", () => {
+      renderSortableRow({ dndDisabled: true });
+      const row = ui.rowOf("Milk");
+      expect(row).not.toHaveAttribute("role");
+      expect(row).not.toHaveAttribute("tabindex");
+      expect(row).not.toHaveAttribute("aria-disabled");
+      expect(row).not.toHaveAttribute("data-draggable");
+    });
+  });
+
+  describe("when the row is not sortable at all", () => {
+    it("renders as a plain list item", () => {
+      render(
+        <ul>
+          <ItemRow item={baseItem} q="" editing={null} {...makeHandlers()} />
+        </ul>,
+      );
+      const row = ui.rowOf("Milk");
+      expect(row).not.toHaveAttribute("role");
+      expect(row).not.toHaveAttribute("tabindex");
+    });
   });
 });
