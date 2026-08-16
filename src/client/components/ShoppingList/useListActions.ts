@@ -5,6 +5,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { keyForPosition, sortedByPosition } from "client/store/reorder";
 import { ensureList, hasList } from "client/store/lists";
 import { newItemId, useStore } from "client/store/store";
+import { useTranslation } from "client/i18n/useTranslation";
 import { animate } from "./helpers";
 import type { Editing, ItemView } from "./types";
 
@@ -30,13 +31,16 @@ export const useListActions = ({
   items,
   setEditing,
   restoreFocus,
+  announce,
 }: {
   listId: string;
   items: ItemView[];
   setEditing: (e: Editing) => void;
   restoreFocus: (id?: string) => void;
+  announce: (message: string) => void;
 }) => {
   const store = useStore();
+  const t = useTranslation();
   const [undo, setUndo] = useState<Undo>(null);
   const undoTimer = useRef<number | undefined>(undefined);
 
@@ -109,6 +113,7 @@ export const useListActions = ({
       setUndo(null);
     }, 5000);
     restoreFocus(neighbor);
+    announce(t("deletedUndo", { name: row.name }));
   };
   const undoDelete = () => {
     window.clearTimeout(undoTimer.current);
@@ -126,17 +131,26 @@ export const useListActions = ({
     else store.setCell("items", id, "quantity", Math.max(1, quantity));
   };
   const clearChecked = () => {
+    if (!store) return;
+    // Resolved before the mutation, not counted during it: animate() may defer the callback to a view
+    // transition, so anything tallied inside would still read zero by the time we announce.
+    const clearing = store
+      .getRowIds("items")
+      .filter(
+        (id) =>
+          store.getCell("items", id, "listId") === listId && store.getCell("items", id, "checked"),
+      );
     // The section unmounts with its last checked row, taking the focused Clear button with it.
-    animate(() =>
-      store?.transaction(() => {
+    animate(() => {
+      store.transaction(() => {
         ensureList({ store, id: listId }); // clearing everything must not drop a virtual list
-        store.getRowIds("items").forEach((id) => {
-          if (store.getCell("items", id, "listId") !== listId) return;
-          if (store.getCell("items", id, "checked")) store.delRow("items", id);
+        clearing.forEach((id) => {
+          store.delRow("items", id);
         });
-      }),
-    );
+      });
+    });
     restoreFocus();
+    announce(t("clearedChecked", { count: clearing.length }));
   };
   const reorder = ({ activeId, overId }: { activeId: string; overId: string }) => {
     if (!store || activeId === overId) return;

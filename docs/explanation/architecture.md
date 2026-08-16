@@ -126,13 +126,27 @@ Decisions that aren't obvious from the markup:
 - **Swipe-to-delete & undo** — on touch, a left-swipe reveals a growing red action pill that
   brightens past a one-third-width commit threshold. Only a finger-lift past the threshold commits;
   any `touchcancel` (edge back-swipe, shade pull, app-switch) springs back, so a destructive action
-  never fires on an interrupted gesture. A commit slides the row off and shows a 5s Undo snackbar
-  (`role="status"`) that restores the item via `store.setRow` under the same rowId, preserving its
+  never fires on an interrupted gesture. A commit slides the row off and shows an Undo snackbar
+  that restores the item via `store.setRow` under the same rowId, preserving its
   `(position, id)` order. The gesture tracks a single `Touch.identifier`, is suppressed during a
   drag, and is blocked from starting (but never torn down) while syncing. Delete is also reachable
-  without touch via the row's edit mode.
+  without touch via the row's edit mode — the same path in every row variant, checked and search rows
+  included: activate the name to open the inline editor, then Tab to the Delete it reveals, which an
+  `onBlur` guard keeps alive precisely so that Tab works.
   [../../src/client/components/ShoppingList/useSwipeToDelete.ts](../../src/client/components/ShoppingList/useSwipeToDelete.ts),
   [UndoSnackbar.tsx](../../src/client/components/ShoppingList/UndoSnackbar.tsx).
+- **Announcements** — one polite `role="status"` region, mounted from the start and only ever swapping
+  its text. A region that appears in the same commit as its content is the case VoiceOver and NVDA
+  routinely miss, which is why it isn't rendered alongside the Undo snackbar it describes; the snackbar
+  is the visual half only. It carries exactly two messages, both cases where the app moves focus
+  somewhere that doesn't explain what happened: a **delete**, because focus lands on the *neighbouring*
+  row and nothing else says the item went or that Undo exists, and **clearing checked items**, because
+  the section vanishes and focus jumps to the header. Everything else is deliberately silent —
+  check/uncheck and quantity are announced by the focused control's own `aria-pressed` and text, Undo's
+  restore is announced by the focus move onto the restored row, and adding leaves focus in the field
+  that just cleared. The search result count is the accessible **name of the results list** rather than
+  an announcement: the field adds as well as finds, so someone typing a new item shouldn't hear match
+  counts read at them. Over-announcing is its own accessibility bug.
 - **Colour contrast** — the neutral ramp has a contract: `--color-faint` is for **decoration and
   disabled state only** (a radio outline, the offline dot, a `disabled:` colour, all of which the
   contrast minimums exempt), and `--color-muted` is the floor for anything a user has to read or

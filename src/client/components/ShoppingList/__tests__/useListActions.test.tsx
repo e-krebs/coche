@@ -17,13 +17,15 @@ const setup = ({
   const store = createShoppingStore();
   const setEditing = vi.fn();
   const restoreFocus = vi.fn();
+  const announce = vi.fn();
   const wrapper = ({ children }: { children: ReactNode }) => (
     <Provider store={store}>{children}</Provider>
   );
-  const { result } = renderHook(() => useListActions({ listId, items, setEditing, restoreFocus }), {
-    wrapper,
-  });
-  return { store, result, setEditing, restoreFocus };
+  const { result } = renderHook(
+    () => useListActions({ listId, items, setEditing, restoreFocus, announce }),
+    { wrapper },
+  );
+  return { store, result, setEditing, restoreFocus, announce };
 };
 
 const orderedNames = (store: Store) =>
@@ -107,6 +109,7 @@ describe("useListActions", () => {
           items: [],
           setEditing: vi.fn(),
           restoreFocus: vi.fn(),
+          announce: vi.fn(),
         }),
       );
       expect(result.current.add("Milk")).toBe(false);
@@ -223,6 +226,20 @@ describe("useListActions", () => {
         result.current.clearChecked();
       });
       expect(restoreFocus).toHaveBeenCalledWith();
+    });
+
+    // The section vanishes and focus jumps to the header, so the count explains both.
+    it("announces how many went", () => {
+      const { store, result, announce } = setup();
+      act(() => {
+        result.current.add("Apples");
+        result.current.add("Bread");
+      });
+      store.setCell("items", idByName(store, "Apples"), "checked", true);
+      act(() => {
+        result.current.clearChecked();
+      });
+      expect(announce).toHaveBeenCalledWith("1 checked item removed.");
     });
   });
 

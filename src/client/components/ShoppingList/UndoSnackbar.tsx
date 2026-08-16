@@ -4,8 +4,8 @@ export const UndoSnackbar = ({ name, onUndo }: { name: string; onUndo: () => voi
   const t = useTranslation();
   return (
     <div className="fixed inset-x-0 bottom-4 z-30 flex justify-center px-4">
+      {/* The shared status region carries the announcement; this is the visual toast only */}
       <div
-        role="status"
         className={`
           animate-snackbar-in flex items-center gap-3 rounded-xl bg-[#323232] py-2.5 pr-2 pl-4
           text-white shadow-lg

@@ -45,6 +45,14 @@ const ui = {
   get main() {
     return screen.getByRole("main");
   },
+  // Matched by attribute, not role: dnd-kit renders its own role="status" region alongside the
+  // sortable list, so a role lookup is ambiguous whenever there are unchecked items.
+  get status() {
+    const el = document.querySelector<HTMLElement>("[data-announcer]");
+    if (!el) throw new Error("No announcer region");
+    return el;
+  },
+  results: (name: string) => screen.getByRole("list", { name }),
   get checkedHeading() {
     return screen.getByRole("heading", { level: 2, name: /Checked \(\d+\)/ });
   },
@@ -188,6 +196,44 @@ describe("ShoppingList", () => {
         .getRowIds("items")
         .find((i) => store.getCell("items", i, "name") === "Butter")!;
       expect(store.getCell("items", id, "checked")).toBe(true);
+    });
+  });
+
+  // One region, mounted from the start and only ever swapping text: a region that arrives with its
+  // content in the same commit is the case screen readers routinely miss.
+  describe("the status region", () => {
+    it("exists and is empty before anything happens", () => {
+      setup();
+      expect(ui.status).toHaveTextContent("");
+    });
+
+    it("keeps the same node while its text changes", async () => {
+      const { user } = setup();
+      const before = ui.status;
+      await user.type(ui.field, "Milk{Enter}");
+      await user.click(ui.name("Milk"));
+      await user.click(ui.del("Milk"));
+      expect(ui.status).toBe(before);
+      expect(ui.status).toHaveTextContent("Deleted “Milk”. Undo is available.");
+    });
+
+    // Focus lands on the neighbour, so nothing else says the row went or that Undo exists.
+    it("announces a delete and the undo window", async () => {
+      const { user } = setup();
+      await user.type(ui.field, "Milk{Enter}");
+      await user.type(ui.field, "Bread{Enter}");
+      await user.click(ui.name("Milk"));
+      await user.click(ui.del("Milk"));
+      expect(ui.status).toHaveTextContent("Deleted “Milk”. Undo is available.");
+    });
+
+    it("names the results list with its match count instead of announcing every keystroke", async () => {
+      const { user } = setup();
+      await user.type(ui.field, "Milk{Enter}");
+      await user.type(ui.field, "Mango{Enter}");
+      await user.type(ui.field, "m");
+      expect(ui.results("2 matches")).toBeInTheDocument();
+      expect(ui.status).toHaveTextContent("");
     });
   });
 

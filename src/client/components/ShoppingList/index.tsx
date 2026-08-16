@@ -83,7 +83,14 @@ export const ShoppingList = ({
     });
   };
 
-  const actions = useListActions({ listId, items, setEditing, restoreFocus });
+  // One permanently-mounted region, whose text is all that changes: a region and its content arriving
+  // in the same commit is the case VoiceOver and NVDA routinely miss.
+  const [announcement, setAnnouncement] = useState("");
+  const announce = (message: string) => {
+    setAnnouncement(message);
+  };
+
+  const actions = useListActions({ listId, items, setEditing, restoreFocus, announce });
 
   // Reorder only when the field is idle (its soft keyboard dismissing would kill dnd-kit's touch
   // drag).
@@ -137,6 +144,10 @@ export const ShoppingList = ({
 
   return (
     <div>
+      {/* marked so a test can tell it from dnd-kit's own role="status" region */}
+      <p data-announcer role="status" aria-live="polite" aria-atomic className="sr-only">
+        {announcement}
+      </p>
       <ListHeader
         listName={listName}
         onPickList={onPickList}
@@ -155,7 +166,10 @@ export const ShoppingList = ({
           matches.length === 0 ? (
             <p className={emptyClass}>{t("noMatches")}</p>
           ) : (
-            <ul className="flex flex-col">
+            <ul
+              aria-label={t("searchResults", { count: matches.length })}
+              className="flex flex-col"
+            >
               {matches.map((item) => (
                 <ItemRow
                   key={item.id}

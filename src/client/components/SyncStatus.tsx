@@ -13,7 +13,9 @@ const LABEL: Record<Status, MessageKey> = {
 export const SyncStatus = ({ status }: { status: Status }) => {
   const t = useTranslation();
   return (
-    <span className="flex items-center gap-1.5 text-xs text-muted" aria-live="polite">
+    // No aria-live: the status flips on every socket reconnect, so a polite region here is a chatter
+    // source rather than an affordance. The visible text and accessible name carry it instead.
+    <span className="flex items-center gap-1.5 text-xs text-muted">
       <span
         data-status={status}
         className={`
