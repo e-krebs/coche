@@ -81,7 +81,13 @@ runtime half of the pair is the axe pass on the Playwright tier; the two are lay
 [../adr/0014-jsx-a11y-lint-rules.md](../adr/0014-jsx-a11y-lint-rules.md) and
 [../adr/0015-axe-e2e-gate.md](../adr/0015-axe-e2e-gate.md) record what each one owns.
 
-Three of the plugin's rules are off, and the reasoning matters more than the list: in each case the
+`react/button-has-type` rides alongside it, in the same override and for a related reason. A `<button>`
+without an explicit `type` defaults to `submit`, which is inert outside a form and destructive inside
+one — so the failure mode is that moving a working button into a `<form>` silently turns it into a
+submit. That is exactly the kind of latent trap a linter should hold rather than a convention, and it
+costs one attribute per button.
+
+Three of the jsx-a11y plugin's rules are off, and the reasoning matters more than the list: in each case the
 rule's advice is wrong for this code rather than the code being wrong for the rule.
 `prefer-tag-over-role` wants native `<dialog>`, which jsdom does not implement at all, so adopting it
 would move dialog containment and Escape behavior out of unit-test reach; `no-autofocus` objects to a

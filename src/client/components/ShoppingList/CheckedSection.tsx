@@ -28,6 +28,7 @@ export const CheckedSection = ({
       {/* Heading so the two item groups are distinguishable to heading navigation */}
       <h2>
         <button
+          type="button"
           onClick={onToggleShow}
           aria-expanded={showChecked}
           aria-controls={panelId}
@@ -74,6 +75,7 @@ export const CheckedSection = ({
             ))}
           </ul>
           <button
+            type="button"
             onClick={onClearChecked}
             className={`self-start rounded-full px-3 py-2 text-[14px] font-medium text-accent-text`}
           >

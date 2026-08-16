@@ -263,6 +263,7 @@ export const ItemRow = ({
         {nameEditing ? null : qtyEditing && quantity !== undefined ? (
           <div className="flex flex-none items-center gap-2 text-[14px] tabular-nums" {...stopDrag}>
             <button
+              type="button"
               aria-label={t("decreaseQuantity", { name: item.name })}
               onClick={() => {
                 if (quantity <= 1) {
@@ -277,6 +278,7 @@ export const ItemRow = ({
               <MinusIcon className="size-4" />
             </button>
             <button
+              type="button"
               aria-label={t("closeQuantity", { name: item.name })}
               onClick={() => {
                 onEdit(null);
@@ -286,6 +288,7 @@ export const ItemRow = ({
               {quantity}
             </button>
             <button
+              type="button"
               aria-label={t("increaseQuantity", { name: item.name })}
               onClick={() => {
                 onSetQuantity(item.id, quantity + 1);
@@ -299,6 +302,7 @@ export const ItemRow = ({
           </div>
         ) : quantity !== undefined ? (
           <button
+            type="button"
             aria-label={t("editQuantity", { name: item.name })}
             ref={qtyBtnRef}
             {...stopDrag}
@@ -314,6 +318,7 @@ export const ItemRow = ({
           </button>
         ) : (
           <button
+            type="button"
             aria-label={t("addQuantity", { name: item.name })}
             ref={qtyBtnRef}
             {...stopDrag}
