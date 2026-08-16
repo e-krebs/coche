@@ -141,9 +141,12 @@ remount the gate or reopen the store — which would flash an empty list on ever
 ## CRDT merge semantics
 
 `MergeableStore` merges per-cell by HLC (hybrid logical clock) timestamp: conflict-free, latest
-write wins **per cell**. Expected behaviors, each backed by a test in
-[../../src/client/store/__tests__/merge.test.ts](../../src/client/store/__tests__/merge.test.ts) or
-its neighbours:
+write wins **per cell**. An HLC advances with the wall clock as well as with observed writes, so a
+device can out-stamp a peer's edit it has never seen — which is why the rules below are about what
+each write *touches*, not about who saw whom. The first three are asserted by
+[merge.test.ts](../../src/client/store/__tests__/merge.test.ts); the list rules are asserted
+indirectly, by [lists.test.tsx](../../src/client/store/__tests__/lists.test.tsx) pinning exactly
+which cells each operation writes:
 
 - **Delete-vs-concurrent-edit resurrection.** If one device deletes a row while another edits a cell
   on that row, the merge can partially resurrect it. Modelling delete as an explicit tombstone cell
@@ -157,6 +160,14 @@ its neighbours:
   `name` cell, so it contributes nothing to compete with — and the rename stands. Had it written a
   name, its fresher HLC would win per-cell and the rename would silently vanish; that is precisely
   why the row is nameless, and why the migration leaves `position` absent too, against a reorder.
+  The same rule shapes the first list drag: it stamps a position on the dragged row and on the rows
+  that have none, and on **nothing else** — rewriting a settled position would revert a peer's
+  reorder without ever having observed it.
+- **"Synced" is not evidence of having received anything.** TinyBase resolves `startSync()` even when
+  the initial content exchange times out, so a device can reach `synced` holding an empty replica.
+  The migration therefore also requires items to exist: without them there is nothing to orphan, the
+  virtual default row already stands in, and writing would resurrect a list a peer deleted on
+  purpose — on every device, permanently.
 - **Deleting a list vs. a concurrent add resurrects the list, nameless.** One device deletes a list
   while another, offline, adds an item to it. The item survives the merge carrying a `listId` that
   names no row, which would leave it invisible forever, so the client resurrects the missing `lists`
@@ -221,3 +232,9 @@ resurrect a deleted item. Two unit tests assert an HLC and a tombstone survive s
   cell, so both render as the app title. The alternative — writing a name when resurrecting — is the
   LWW hazard the nameless row exists to avoid, so this is an accepted quirk rather than a bug: a
   user who deleted a list and gets it back sees a second "Coche" and renames it.
+- **A `/lists/<id>` link opened before the first sync is rewritten, not held.** `StoreProvider` gates
+  on the local IndexedDB load only, so on a device with nothing cached the roster is just the virtual
+  default list and an unknown id falls back to it — replacing the URL, so the link is gone from
+  history. Narrow by construction (lists are per-user, so a link is only ever for the same user's
+  other device, and a warm device resolves it), and the fix would mean holding the route in a pending
+  state until sync lands — a loading state an offline-first app shouldn't have.

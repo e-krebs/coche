@@ -31,7 +31,10 @@ export const useHeaderCollapse = ({
   itemsLength: number;
 }): boolean => {
   // Read at mount, not module load: the key is per-list, and nothing writes it before this hook runs.
-  const [savedScroll] = useState(() => restoreTargetFor({ listId }));
+  // Zero once the latch is spent, because a later mount is a list switch: the page is deliberately at
+  // the top, so seeding `scrolled` from a stored offset would paint the band collapsed and then
+  // visibly animate it open.
+  const [savedScroll] = useState(() => (scrollRestored ? 0 : restoreTargetFor({ listId })));
   // Seed from the saved offset so a restore paints with the header already collapsed (else it
   // shifts content up).
   const [scrolled, setScrolled] = useState(savedScroll > COLLAPSE_AT);

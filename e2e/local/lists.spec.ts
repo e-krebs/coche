@@ -6,6 +6,7 @@ import {
   createList,
   field,
   pickList,
+  sheet,
   switchList,
   uncheckedNames,
 } from "./fixtures";
@@ -60,7 +61,7 @@ test.describe("lists", () => {
 
     await switchList(page).click();
     await page.getByRole("button", { name: "Edit lists" }).click();
-    await page.getByRole("button", { name: "Garden", exact: true }).click();
+    await sheet(page).getByRole("button", { name: "Garden", exact: true }).click();
     await page.getByLabel("Rename Garden").fill("Shed");
     await page.getByLabel("Rename Garden").press("Enter");
     await page.getByRole("button", { name: "Done" }).click();
@@ -91,7 +92,7 @@ test.describe("lists", () => {
 
     // Gone for good, and the last remaining list can't follow it.
     await switchList(page).click();
-    await expect(page.getByRole("radio", { name: /^Hardware,/ })).toHaveCount(0);
+    await expect(page.getByRole("menuitemradio", { name: /^Hardware,/ })).toHaveCount(0);
     await page.getByRole("button", { name: "Edit lists" }).click();
     await expect(page.getByRole("button", { name: "Delete Coche" })).toBeDisabled();
   });

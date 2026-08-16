@@ -105,9 +105,10 @@ vs. real-Clerk trade-off), see
   can't reach the FAPI — Clerk never initializes and the seeded cached identity drives the app.
 - The fixtures module also exports the DOM helpers shared across local specs: `field`, `checkbox`,
   `row`, `gotoApp`, `addItem`, `uncheckedNames`, `waitForServiceWorker`, `waitForDragShift`, plus
-  the list-picker helpers — `switchList` (the header title), `pickList`, and `createList`.
-  `uncheckedNames` still takes the page's first `ul`: the picker's own list renders after the item
-  list, so the anchor holds even with the sheet open.
+  the list-picker helpers — `switchList` (the header title, matched by `[data-list-trigger]` because
+  its accessible name is the active list's name), `sheet`, `pickList`, and `createList`.
+  `uncheckedNames` takes the first `ul` that isn't `[data-checked-list]`: the unchecked section
+  renders no `ul` at all when empty, so a bare `.first()` would silently return the *checked* names.
 - Type-checked independently via [../../e2e/local/tsconfig.json](../../e2e/local/tsconfig.json).
 
 ### Sync tier — `e2e/sync/`

@@ -34,15 +34,26 @@ const postSignOut = (): void => {
   } catch {}
 };
 
+/** The Clerk auth snapshot the teardown depends on — a parameter so the logic is testable without it. */
+type TeardownAuth = {
+  isLoaded: boolean;
+  isSignedIn: boolean | undefined;
+  userId: string | null | undefined;
+};
+
 /**
  * Deletes the local replica when Clerk resolves signed-out. lastUserId is seeded from the cache
  * (not just an observed sign-in) so a boot straight into an expired session still wipes a shared
- * device, and held in a ref so the delete survives a concurrent cache clear.
+ * device, and held in a ref so the delete survives a concurrent cache clear. Auth is injected so the
+ * transition is testable without standing up Clerk (which can't be driven to arbitrary states).
  */
-export const useSignOutTeardown = (): void => {
-  const { isLoaded, isSignedIn, userId } = useAuth();
+export const useSignOutTeardownFrom = ({ isLoaded, isSignedIn, userId }: TeardownAuth): void => {
   const lastUserId = useRef<string | null>(readCachedUserId());
 
+  // Synchronizing external systems (localStorage, IndexedDB, a BroadcastChannel) with a resolved
+  // auth state, not hoisting an event: the caller has nowhere above it to put a database delete.
+  // https://react.dev/learn/synchronizing-with-effects
+  // oxlint-disable react-you-might-not-need-an-effect/no-event-handler
   useEffect(() => {
     if (!isLoaded) return; // offline / still resolving: keep the optimistic replica
     if (isSignedIn && userId) {
@@ -56,6 +67,7 @@ export const useSignOutTeardown = (): void => {
     lastUserId.current = null;
     if (gone) void deleteUserDatabase(gone);
   }, [isLoaded, isSignedIn, userId]);
+  // oxlint-enable react-you-might-not-need-an-effect/no-event-handler
 
   useEffect(() => {
     let ch: BroadcastChannel | undefined;
@@ -67,4 +79,8 @@ export const useSignOutTeardown = (): void => {
     } catch {}
     return () => ch?.close();
   }, []);
+};
+
+export const useSignOutTeardown = (): void => {
+  useSignOutTeardownFrom(useAuth());
 };

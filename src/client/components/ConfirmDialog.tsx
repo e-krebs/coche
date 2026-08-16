@@ -1,5 +1,6 @@
 import { useEffect, useRef, type KeyboardEvent } from "react";
 import { useTranslation } from "client/i18n/useTranslation";
+import { useOpenerFocus } from "client/components/useOpenerFocus";
 
 /**
  * Destructive confirmation. z-50 puts it above the list picker that opens it (z-40) and the Undo
@@ -21,14 +22,12 @@ export const ConfirmDialog = ({
   const t = useTranslation();
   const buttonsRef = useRef<(HTMLButtonElement | null)[]>([]);
 
+  // No fallback selector: confirming can tear down the sheet the opener lived in, and then the sheet's
+  // own restore has the better claim on focus.
+  useOpenerFocus();
+  // oxlint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- post-render focus
   useEffect(() => {
-    const opener = document.activeElement;
     buttonsRef.current[0]?.focus(); // Cancel: the safe default under a stray Enter
-    // Only when the opener survived: confirming can tear down the sheet it lived in, and whatever
-    // replaced that sheet has the better claim on focus.
-    return () => {
-      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
-    };
   }, []);
 
   const moveFocus = (delta: number) => {

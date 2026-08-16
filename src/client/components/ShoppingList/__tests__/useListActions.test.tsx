@@ -4,6 +4,7 @@ import { act, renderHook } from "@testing-library/react";
 import { Provider, createShoppingStore } from "client/store/store";
 import { sortedByPosition } from "client/store/reorder";
 import { DEFAULT_LIST_ID } from "client/store/schema";
+import { hasList } from "client/store/lists";
 import { useListActions } from "client/components/ShoppingList/useListActions";
 import type { ItemView } from "client/components/ShoppingList/types";
 
@@ -284,6 +285,57 @@ describe("useListActions", () => {
     });
   });
 
+  // Before the migration runs, the default list has no `lists` row and the roster only shows it while
+  // items point at it — so emptying it would drop the list the user is standing on, taking the Undo
+  // target with it. Acting on a list is evidence it exists, so every write materializes it first.
+  describe("when the list has no row yet", () => {
+    it("makes it real on add", () => {
+      const { store, result } = setup();
+      expect(store.hasRow("lists", DEFAULT_LIST_ID)).toBe(false);
+      act(() => {
+        result.current.add("Milk");
+      });
+      // createdAt only — a name or position cell here would out-clock a peer's rename or reorder.
+      expect(Object.keys(store.getRow("lists", DEFAULT_LIST_ID))).toEqual(["createdAt"]);
+    });
+
+    it("keeps it in the roster after its last item is cleared", () => {
+      const { store, result } = setup();
+      act(() => {
+        result.current.add("Milk");
+      });
+      store.delRow("lists", DEFAULT_LIST_ID); // back to virtual, as a pre-upgrade replica would be
+      store.setCell("items", idByName(store, "Milk"), "checked", true);
+      act(() => {
+        result.current.clearChecked();
+      });
+      expect(store.getRowIds("items")).toEqual([]);
+      expect(hasList({ store, id: DEFAULT_LIST_ID })).toBe(true);
+    });
+
+    it("keeps it in the roster after its last item is deleted, so Undo still works", () => {
+      const row = {
+        listId: DEFAULT_LIST_ID,
+        name: "Eggs",
+        checked: false,
+        position: "a0",
+        createdAt: 0,
+      };
+      const items: ItemView[] = [{ id: "r1", name: "Eggs", checked: false, quantity: undefined }];
+      const { store, result } = setup({ items });
+      store.setRow("items", "r1", row);
+
+      act(() => {
+        result.current.remove("r1");
+      });
+      expect(hasList({ store, id: DEFAULT_LIST_ID })).toBe(true);
+      act(() => {
+        result.current.undoDelete();
+      });
+      expect(store.getRow("items", "r1")).toEqual(row);
+    });
+  });
+
   // hasList counts the still-virtual default list, so Undo keeps working before the first sync.
   describe("when the item's list was deleted inside the Undo window", () => {
     it("drops the Undo instead of resurrecting a phantom list", () => {
@@ -307,6 +359,7 @@ describe("useListActions", () => {
         result.current.undoDelete();
       });
       expect(store.hasRow("items", "r1")).toBe(false);
+      expect(store.hasRow("lists", "gone")).toBe(false); // no phantom list minted either
       expect(result.current.undo).toBeNull();
     });
   });

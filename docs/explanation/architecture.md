@@ -83,11 +83,14 @@ Decisions that aren't obvious from the markup:
 
 - **Lists & the picker** — the header title is the active list's name *and* the button that opens
   the list picker: a bottom sheet forked from the language chooser (scrim, `role="dialog"` +
-  `aria-modal`, a radiogroup with arrow-roving and a trapped Tab). Because the trigger lives in the
-  title band, that band **shrinks** on scroll — roughly 49 px down to 31 px, dropping the sync dot
-  and the avatar — instead of collapsing to nothing, so the picker stays reachable at any offset.
-  The cost is a taller scrolled header. Each list shows its **unchecked** count only: the number
-  you'd act on, so `0` reads as "nothing to do here". List management lives in the sheet's edit
+  `aria-modal`, a trapped Tab). Its rows are a **menu** of `menuitemradio`s, not a radiogroup:
+  arrows rove without selecting, because selecting switches list and closes the sheet, so the first
+  arrow press would end the interaction. The trigger carries **no `aria-label`** — the list name has
+  to be the `<h1>`'s accessible name, or heading navigation and voice control both lose it. Because
+  the trigger lives in the title band, that band **shrinks** on scroll — a shorter band, dropping the
+  sync dot and the avatar — instead of collapsing to nothing, so the picker stays reachable at any
+  offset. The cost is a taller scrolled header. Each list shows its **unchecked** count only: the
+  number you'd act on, so `0` reads as "nothing to do here". List management lives in the sheet's edit
   mode: an inline new-list field, tap-to-rename reusing the row's input, a drag handle for ordering,
   and delete behind a confirmation nested inside the sheet, naming every item the delete destroys —
   checked included, which is why the roster carries both counts. Deleting the list you're standing on
@@ -95,8 +98,9 @@ Decisions that aren't obvious from the markup:
   (`/lists/$listId`, replacing rather than pushing so Back doesn't walk a switch history) plus a
   device-local last-used hint for `/` — deliberately not a synced value, same seam as the locale
   mirror. An id that no longer resolves redirects to the first list rather than a not-found screen.
-  Switching resets the view: query cleared, any open editor closed, the checked section collapsed,
-  scrolled to top — all of it from remounting the list on a `key`, not from a reset routine.
+  Switching resets the view: query cleared, any open editor closed, the checked section collapsed —
+  all of it from remounting the list on a `key` rather than a reset routine. Scrolling to the top is
+  the one explicit step, in the switch handler, because the page keeps its offset across a remount.
   Everything else about a switch is a client-side filter — one store per user holds every list, so
   there is no request and no loading state
   ([../adr/0013-multi-list-single-store.md](../adr/0013-multi-list-single-store.md)).
@@ -122,7 +126,10 @@ Decisions that aren't obvious from the markup:
   soft keyboard. The same rule holds through the picker's two nested layers: opening the sheet moves
   focus into it and closing returns it to the title trigger, and the delete confirmation — a dialog
   inside a dialog — returns focus to the row that opened it, not to whatever the DOM happened to
-  leave focused.
+  leave focused. Both dialogs restore on the frame *after* they unmount, not during cleanup: a switch
+  remounts the header in the same commit that closes them, so the captured opener is still connected
+  while cleanup runs and only dies afterwards — focusing it there would drop focus to `<body>`.
+  [useOpenerFocus.ts](../../src/client/components/useOpenerFocus.ts).
   [../../src/client/components/ShoppingList/useListActions.ts](../../src/client/components/ShoppingList/useListActions.ts),
   [ItemRow.tsx](../../src/client/components/ShoppingList/ItemRow.tsx).
 - **Internationalisation** — FR/EN via a typed dictionary

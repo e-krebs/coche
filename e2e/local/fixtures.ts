@@ -59,7 +59,17 @@ export const addItem = async (page: Page, name: string): Promise<void> => {
   await expect(checkbox(page, name)).toBeVisible();
 };
 
-export const switchList = (page: Page) => page.getByRole("button", { name: "Switch list" });
+/**
+ * The header title, which is also the picker trigger. Matched by attribute: its accessible name is
+ * deliberately the list name, so a role+name lookup would collide with an item of the same name.
+ */
+export const switchList = (page: Page) => page.locator("[data-list-trigger]");
+
+/**
+ * The open picker. Scope list-row lookups to it: the header trigger's accessible name is the active
+ * list's name, so an unscoped `{ name: "Garden" }` matches it too.
+ */
+export const sheet = (page: Page) => page.getByRole("dialog", { name: "Lists" });
 
 /** Creates a list from the picker's Edit mode and lands on it (creating switches and closes). */
 export const createList = async (page: Page, name: string): Promise<void> => {
@@ -72,17 +82,18 @@ export const createList = async (page: Page, name: string): Promise<void> => {
 
 export const pickList = async (page: Page, name: string): Promise<void> => {
   await switchList(page).click();
-  await page.getByRole("radio", { name: new RegExp(`^${name},`) }).click();
+  await page.getByRole("menuitemradio", { name: new RegExp(`^${name},`) }).click();
   await expect(switchList(page)).toHaveText(name);
 };
 
 /**
- * Unchecked item names, in display order. Anchored to the items list, which precedes the picker's
- * own <ul> in the DOM.
+ * Unchecked item names (or the search results), in display order. Excludes the checked section's
+ * list: the unchecked one renders no `ul` at all when empty, so a bare `.first()` silently falls
+ * through to the checked names. The picker's own list comes later in the DOM, so it can't win.
  */
 export const uncheckedNames = async (page: Page): Promise<string[]> =>
   page
-    .locator("ul")
+    .locator("ul:not([data-checked-list])")
     .first()
     .locator('button[aria-label^="Check off "]')
     .evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")!.slice("Check off ".length)));

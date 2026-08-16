@@ -52,7 +52,8 @@ export const CheckedSection = ({
           inert={!showChecked}
           aria-hidden={!showChecked}
         >
-          <ul className="flex flex-col">
+          {/* marked so a test can tell the two item lists apart — the unchecked one renders no ul at all when empty */}
+          <ul data-checked-list className="flex flex-col">
             {checked.map((item) => (
               <ItemRow
                 key={item.id}

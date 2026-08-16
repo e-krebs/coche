@@ -3,7 +3,7 @@ import { z } from "zod";
 import { generateKeyBetween } from "fractional-indexing";
 import { arrayMove } from "@dnd-kit/sortable";
 import { keyForPosition, sortedByPosition } from "client/store/reorder";
-import { hasList } from "client/store/lists";
+import { ensureList, hasList } from "client/store/lists";
 import { newItemId, useStore } from "client/store/store";
 import { animate } from "./helpers";
 import type { Editing, ItemView } from "./types";
@@ -58,15 +58,20 @@ export const useListActions = ({
       .map((id) => store.getCell("items", id, "position"))
       .filter((p): p is string => !!p);
     const lastPos = positions.length ? positions.reduce((m, p) => (p > m ? p : m)) : null;
-    animate(() =>
-      store.setRow("items", newItemId(), {
-        listId,
-        name,
-        checked: false,
-        position: generateKeyBetween(lastPos, null),
-        createdAt: Date.now(),
-      }),
-    );
+    animate(() => {
+      store.transaction(() => {
+        // The list may be virtual, or deleted by a peer between render and submit. Either way the
+        // item needs somewhere to live — dropping what the user typed is the worse outcome.
+        ensureList({ store, id: listId });
+        store.setRow("items", newItemId(), {
+          listId,
+          name,
+          checked: false,
+          position: generateKeyBetween(lastPos, null),
+          createdAt: Date.now(),
+        });
+      });
+    });
     return true;
   };
 
@@ -89,7 +94,14 @@ export const useListActions = ({
     const row = parsed.data;
     const idx = items.findIndex((i) => i.id === id);
     const neighbor = items[idx + 1]?.id ?? items[idx - 1]?.id;
-    animate(() => store.delRow("items", id));
+    animate(() => {
+      store.transaction(() => {
+        // Removing the last item would otherwise drop a still-virtual list out of the roster, taking
+        // the Undo target with it.
+        ensureList({ store, id: row.listId });
+        store.delRow("items", id);
+      });
+    });
     setEditing(null);
     setUndo({ id, row });
     window.clearTimeout(undoTimer.current);
@@ -116,6 +128,7 @@ export const useListActions = ({
   const clearChecked = () => {
     animate(() =>
       store?.transaction(() => {
+        ensureList({ store, id: listId }); // clearing everything must not drop a virtual list
         store.getRowIds("items").forEach((id) => {
           if (store.getCell("items", id, "listId") !== listId) return;
           if (store.getCell("items", id, "checked")) store.delRow("items", id);

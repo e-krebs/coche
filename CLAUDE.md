@@ -32,8 +32,9 @@ Code touched → doc to check (update if the change is user- or reader-visible):
 | Code area | Type | Doc to check |
 |---|---|---|
 | `src/client/store/schema.ts`, `store.ts`, `lists.ts`, `persister.ts`, `reorder.ts` | reference; explanation | [docs/reference/data-model.md](docs/reference/data-model.md); [docs/explanation/auth-and-sync.md](docs/explanation/auth-and-sync.md) (merge semantics / durability) |
-| `src/client/store/sync.ts`, `identity.ts`, `teardown.ts`, `StoreProvider.tsx`, `components/SyncStatus.tsx` | explanation | [docs/explanation/auth-and-sync.md](docs/explanation/auth-and-sync.md) (reconnect, sync status, offline identity, teardown) |
+| `src/client/store/sync.ts`, `syncStatus.ts`, `identity.ts`, `teardown.ts`, `StoreProvider.tsx`, `components/SyncStatus.tsx` | explanation | [docs/explanation/auth-and-sync.md](docs/explanation/auth-and-sync.md) (reconnect, sync status, offline identity, teardown) |
 | `src/client/components/ShoppingList/**` (list UI, reorder, swipe/undo, focus) | explanation | [docs/explanation/architecture.md](docs/explanation/architecture.md) (Design & UX) |
+| `src/client/components/*.tsx` (`ListView`, `ListPicker`, `ConfirmDialog`, `useOpenerFocus`) — roster UI, dialog focus contract | explanation | [docs/explanation/architecture.md](docs/explanation/architecture.md) (Design & UX, components) |
 | Cross-cutting UX: theme (`styles.css`), motion, a11y | explanation | [docs/explanation/architecture.md](docs/explanation/architecture.md) (Design & UX) |
 | `src/client/i18n/**`, `components/LanguageDialog.tsx` (incl. the `localeStore.ts` localStorage seam) | explanation | [docs/explanation/architecture.md](docs/explanation/architecture.md) (Design & UX) |
 | `src/server/**` (Worker, Durable Object, ticket/clerk auth, EU forward) | explanation | [docs/explanation/auth-and-sync.md](docs/explanation/auth-and-sync.md); [docs/explanation/architecture.md](docs/explanation/architecture.md) (diagram, components) |

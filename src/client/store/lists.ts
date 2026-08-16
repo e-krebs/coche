@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { generateKeyBetween } from "fractional-indexing";
 import { arrayMove } from "@dnd-kit/sortable";
 import type { Store } from "tinybase/with-schemas";
-import { keyForPosition } from "./reorder";
 import { DEFAULT_LIST_ID, type Schemas } from "./schema";
 import { newItemId, useStore, useTable } from "./store";
 
@@ -104,6 +103,15 @@ export const useListRoster = () => {
 export const hasList = ({ store, id }: { store: ShoppingStore; id: string }): boolean =>
   rosterOf(store).some((l) => l.id === id);
 
+/**
+ * Makes a still-virtual list real. Acting on a list is evidence it exists, unlike the migration's
+ * guess from a replica that may have received nothing — and without a row the roster loses the list
+ * the moment its last item goes, bouncing the user off it mid-undo.
+ */
+export const ensureList = ({ store, id }: { store: ShoppingStore; id: string }): void => {
+  if (!store.hasRow("lists", id)) store.setRow("lists", id, { createdAt: Date.now() });
+};
+
 /** Highest position in the roster, skipping the rows that have none (see byRosterOrder). */
 const lastPosition = (store: ShoppingStore): string | null => {
   const positions = store
@@ -174,24 +182,35 @@ export const reorderLists = ({
   const to = roster.findIndex((l) => l.id === overId);
   if (from < 0 || to < 0) return;
   const order = arrayMove(roster, from, to);
-  // Migrated and resurrected rows have no position, and generateKeyBetween("", …) throws — caught,
-  // so the drop would silently no-op. The first drag stamps the whole roster instead.
-  if (order.some((l) => !l.position)) {
-    store.transaction(() => {
-      let prev: string | null = null;
-      order.forEach((l) => {
-        prev = generateKeyBetween(prev, null);
-        store.setCell("lists", l.id, "position", prev);
-      });
+
+  // Two kinds of row need a key: the dragged one, and any the migration or the orphan sweep left
+  // without a position. Every other row keeps its own — stamping those would put a new HLC on a cell
+  // the user never touched and revert a peer's reorder. arrayMove preserves their relative order, so
+  // the ones we skip are still ascending and can serve as neighbours.
+  const needsKey = (list: ListSummary) => !list.position || list.id === activeId;
+  const resolved = order.map((l) => l.position);
+  const keys = new Map<string, string>();
+  try {
+    order.forEach((list, i) => {
+      if (!needsKey(list)) return;
+      const prev = resolved.slice(0, i).reverse().find(Boolean) ?? null;
+      const next = order.slice(i + 1).find((l) => !needsKey(l))?.position ?? null;
+      const key = generateKeyBetween(prev, next);
+      resolved[i] = key;
+      keys.set(list.id, key);
     });
-    return;
+  } catch {
+    return; // duplicate positions can leave no room between neighbours; the drop is a no-op
   }
-  const key = keyForPosition({
-    order: order.map((l) => l.id),
-    id: activeId,
-    getPosition: (id) => store.getCell("lists", id, "position") ?? "",
+
+  store.transaction(() => {
+    keys.forEach((key, id) => {
+      // A still-virtual list becomes real here, so give it a createdAt too — otherwise it is a
+      // partial by construction and sorts as the oldest list forever.
+      if (store.hasRow("lists", id)) store.setCell("lists", id, "position", key);
+      else store.setRow("lists", id, { position: key, createdAt: Date.now() });
+    });
   });
-  if (key) store.setCell("lists", activeId, "position", key);
 };
 
 /**
@@ -201,6 +220,12 @@ export const reorderLists = ({
  */
 const migrateDefaultList = (store: ShoppingStore): void => {
   if (store.getRowCount("lists") > 0) return;
+  // Items are the evidence that this device holds real state. "Synced" isn't: TinyBase resolves
+  // startSync() even when the initial content exchange times out, so an empty replica can reach this
+  // point having received nothing — and writing then resurrects a default list a peer deleted on
+  // purpose, on every device, forever. With no items there is nothing to orphan and the virtual row
+  // already stands in, so waiting costs nothing.
+  if (store.getRowCount("items") === 0) return;
   store.setRow("lists", DEFAULT_LIST_ID, { createdAt: Date.now() });
 };
 

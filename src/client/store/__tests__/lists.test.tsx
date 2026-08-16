@@ -210,6 +210,36 @@ describe("reorderLists", () => {
     );
   });
 
+  // Only the dragged row and the position-less ones get a key. Stamping the rest puts a new HLC on a
+  // cell the user never touched — and an HLC advances with the wall clock, so a later local drag
+  // reverts a peer's reorder without ever having observed it.
+  it("leaves the rows it didn't move alone", () => {
+    const store = seed({
+      lists: {
+        x: { name: "X", position: "a1", createdAt: 0 },
+        y: { name: "Y", position: "a3", createdAt: 0 },
+        z: { name: "Z", createdAt: 5 },
+      },
+    });
+    expect(ids(store)).toEqual(["z", "x", "y"]); // no position sorts first
+    reorderLists({ store, activeId: "z", overId: "y" });
+    expect(ids(store)).toEqual(["x", "y", "z"]);
+    expect(store.getCell("lists", "x", "position")).toBe("a1");
+    expect(store.getCell("lists", "y", "position")).toBe("a3");
+  });
+
+  it("gives a still-virtual list a createdAt when a drag makes it real", () => {
+    const store = seed({
+      lists: { garden: { name: "Garden", position: "a0", createdAt: 2 } },
+      items: { x: item() },
+    });
+    reorderLists({ store, activeId: DEFAULT_LIST_ID, overId: "garden" });
+    const row = store.getRow("lists", DEFAULT_LIST_ID);
+    expect(row.position).toBeDefined();
+    expect(row.createdAt).toBeDefined(); // else it is a partial, sorting oldest forever
+    expect(store.getCell("lists", "garden", "position")).toBe("a0");
+  });
+
   it("moves one row once every position exists", () => {
     const store = seed({
       lists: {
@@ -247,6 +277,17 @@ describe("useRosterRepair", () => {
     });
   });
 
+  // "Synced" is not evidence of having received anything: TinyBase resolves startSync() even when the
+  // initial content exchange times out, so the gate can open over a replica that holds nothing. Items
+  // are the evidence — and with none there is nothing to orphan anyway.
+  describe("once synced but with an empty replica", () => {
+    it("still writes nothing, so a peer's delete survives", () => {
+      const store = seed();
+      repair({ store, synced: true });
+      expect(store.getRowCount("lists")).toBe(0);
+    });
+  });
+
   describe("once synced", () => {
     it("makes the default list real, with createdAt only", () => {
       const store = seed({ items: { x: item() } });
@@ -278,7 +319,10 @@ describe("useRosterRepair", () => {
     });
 
     it("re-seeds a roster a peer emptied", () => {
-      const store = seed({ lists: { garden: { name: "Garden", position: "a0", createdAt: 0 } } });
+      const store = seed({
+        lists: { garden: { name: "Garden", position: "a0", createdAt: 0 } },
+        items: { x: item({ listId: "garden" }) },
+      });
       repair({ store, synced: true });
       store.delRow("lists", "garden");
       expect(store.hasRow("lists", DEFAULT_LIST_ID)).toBe(true);

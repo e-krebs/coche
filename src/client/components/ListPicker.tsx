@@ -19,6 +19,7 @@ import { useListRoster, type ListSummary } from "client/store/lists";
 import { useTranslation } from "client/i18n/useTranslation";
 import { AddIcon, CheckIcon, DeleteIcon, DragIcon } from "client/components/icons";
 import { ConfirmDialog } from "client/components/ConfirmDialog";
+import { useOpenerFocus } from "client/components/useOpenerFocus";
 import { prefersReducedMotion } from "./ShoppingList/helpers";
 
 const rowBase = `flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[15px]
@@ -44,7 +45,9 @@ const PickRow = ({
   return (
     <button
       type="button"
-      role="radio"
+      // A menu, not a radiogroup: arrows rove without selecting, because selecting switches list and
+      // closes the sheet — so the first arrow press would end the interaction.
+      role="menuitemradio"
       aria-checked={active}
       aria-label={t("listWithCount", { name: label, count: list.count })}
       tabIndex={active ? 0 : -1}
@@ -184,6 +187,7 @@ export const ListPicker = ({
   const [editing, setEditing] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<ListSummary | null>(null);
+  const [dragging, setDragging] = useState(false);
   const [newName, setNewName] = useState("");
   const sheetRef = useRef<HTMLDivElement>(null);
 
@@ -191,18 +195,10 @@ export const ListPicker = ({
   // The roster is never empty, and there is no zero-lists state to fall into.
   const canDelete = lists.length > 1;
 
+  useOpenerFocus({ fallbackSelector: "[data-list-trigger]" });
+  // oxlint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- post-render focus
   useEffect(() => {
-    const opener = document.activeElement;
-    sheetRef.current?.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]')?.focus();
-    // Restore focus to the opener — or, when a switch remounted the header and took the opener node
-    // with it, to the trigger that replaced it, rather than dropping focus to <body>.
-    return () => {
-      const back =
-        opener instanceof HTMLElement && opener.isConnected
-          ? opener
-          : document.querySelector<HTMLElement>("[data-list-trigger]");
-      back?.focus();
-    };
+    sheetRef.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
   }, []);
 
   const moveFocus = ({ delta, within }: { delta: number; within: string }) => {
@@ -216,7 +212,9 @@ export const ListPicker = ({
   // grows and drops controls.
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Escape") {
-      onClose();
+      // dnd-kit cancels a keyboard drag on Escape; closing the sheet as well would take the whole
+      // edit session with it.
+      if (!dragging) onClose();
       return;
     }
     if (e.key === "Tab") {
@@ -227,10 +225,10 @@ export const ListPicker = ({
     if (editing) return;
     if (e.key === "ArrowDown" || e.key === "ArrowRight") {
       e.preventDefault();
-      moveFocus({ delta: 1, within: '[role="radio"]' });
+      moveFocus({ delta: 1, within: '[role="menuitemradio"]' });
     } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
       e.preventDefault();
-      moveFocus({ delta: -1, within: '[role="radio"]' });
+      moveFocus({ delta: -1, within: '[role="menuitemradio"]' });
     }
   };
 
@@ -316,7 +314,14 @@ export const ListPicker = ({
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
+                onDragStart={() => {
+                  setDragging(true);
+                }}
+                onDragCancel={() => {
+                  setDragging(false);
+                }}
                 onDragEnd={(e) => {
+                  setDragging(false);
                   if (e.over) {
                     reorder({ activeId: String(e.active.id), overId: String(e.over.id) });
                   }
@@ -383,7 +388,7 @@ export const ListPicker = ({
               </form>
             </>
           ) : (
-            <div role="radiogroup" aria-label={t("lists")} className="p-1.5">
+            <div role="menu" aria-label={t("lists")} className="p-1.5">
               {lists.map((list) => (
                 <PickRow
                   key={list.id}

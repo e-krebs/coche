@@ -36,8 +36,11 @@ const ui = {
   get checkedToggle() {
     return screen.getByRole("button", { name: /Checked \(\d+\)/ });
   },
+  get listTitle() {
+    return screen.getByRole("heading", { level: 1 });
+  },
   get switchList() {
-    return screen.getByRole("button", { name: "Switch list" });
+    return screen.getByRole("button", { name: "Coche" });
   },
   checkoff: (name: string) => screen.getByRole("button", { name: `Check off ${name}` }),
   queryCheckoff: (name: string) => screen.queryByRole("button", { name: `Check off ${name}` }),
@@ -50,11 +53,12 @@ const ui = {
 
 describe("ShoppingList", () => {
   // The trigger is the title, in the band that shrinks on scroll rather than vanishing — so it stays
-  // reachable at any scroll position.
+  // reachable at any scroll position. It carries no aria-label: the list name has to *be* the
+  // heading's accessible name, or heading navigation and voice control both lose it.
   describe("when the list name is tapped", () => {
     it("names the list and asks the parent to open the picker", async () => {
       const { onPickList, user } = setup();
-      expect(ui.switchList).toHaveTextContent("Coche");
+      expect(ui.listTitle).toHaveAccessibleName("Coche");
       await user.click(ui.switchList);
       expect(onPickList).toHaveBeenCalledOnce();
     });

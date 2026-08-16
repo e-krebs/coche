@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider, createShoppingStore } from "client/store/store";
 import { DEFAULT_LIST_ID } from "client/store/schema";
@@ -56,7 +56,7 @@ const twoLists: Tables["lists"] = {
 
 // Query handles grouped so tests never call `screen.*` inline; parametrized by list name.
 const ui = {
-  radio: (name: string) => screen.getByRole("radio", { name: new RegExp(`^${name},`) }),
+  radio: (name: string) => screen.getByRole("menuitemradio", { name: new RegExp(`^${name},`) }),
   get edit() {
     return screen.getByRole("button", { name: "Edit lists" });
   },
@@ -67,6 +67,7 @@ const ui = {
     return screen.getByRole("button", { name: "Create list" });
   },
   rename: (name: string) => screen.getByLabelText(`Rename ${name}`),
+  reorder: (name: string) => screen.getByRole("button", { name: `Reorder ${name}` }),
   name: (name: string) => screen.getByRole("button", { name }),
   del: (name: string) => screen.getByRole("button", { name: `Delete ${name}` }),
   get confirm() {
@@ -233,24 +234,29 @@ describe("ListPicker", () => {
   });
 
   describe("when it closes", () => {
-    it("returns focus to the opener", () => {
+    it("returns focus to the opener", async () => {
       const opener = trigger();
       opener.focus();
       const { unmount } = setup({ lists: twoLists });
       unmount();
-      expect(opener).toHaveFocus();
+      await waitFor(() => {
+        expect(opener).toHaveFocus();
+      });
     });
 
-    // A switch remounts the header, so the opener node is gone by the time focus returns — without
-    // the fallback, focus drops to <body> and a keyboard user has to Tab in from the top.
-    it("falls back to the trigger that replaced a detached opener", () => {
+    // A switch remounts the header in the same commit that closes the sheet, so the opener is still
+    // connected during cleanup and dies right after — hence the deferred restore. Without the
+    // fallback, focus lands on <body> and a keyboard user has to Tab in from the top.
+    it("falls back to the trigger that replaced the opener the switch destroyed", async () => {
       const opener = trigger();
       opener.focus();
       const { unmount } = setup({ lists: twoLists });
+      unmount();
       opener.remove();
       const replacement = trigger();
-      unmount();
-      expect(replacement).toHaveFocus();
+      await waitFor(() => {
+        expect(replacement).toHaveFocus();
+      });
     });
   });
 
@@ -259,6 +265,27 @@ describe("ListPicker", () => {
       const { onClose, user } = setup({ lists: twoLists });
       await user.keyboard("{Escape}");
       expect(onClose).toHaveBeenCalledOnce();
+    });
+
+    // The nested dialog stops its own keys — otherwise cancelling the confirmation would close the
+    // whole picker with it.
+    it("cancels a confirmation without closing the sheet", async () => {
+      const { store, onClose, user } = setup({ lists: twoLists });
+      await user.click(ui.edit);
+      await user.click(ui.del("Garden"));
+      await user.keyboard("{Escape}");
+      expect(ui.queryDialog(/^Delete/)).toBeNull();
+      expect(onClose).not.toHaveBeenCalled();
+      expect(store.hasRow("lists", "garden")).toBe(true);
+    });
+
+    // dnd-kit cancels a keyboard drag on Escape; the sheet must not take that as its own cue.
+    it("cancels a keyboard reorder without closing the sheet", async () => {
+      const { onClose, user } = setup({ lists: twoLists });
+      await user.click(ui.edit);
+      ui.reorder("Garden").focus();
+      await user.keyboard("{ }{ArrowUp}{Escape}");
+      expect(onClose).not.toHaveBeenCalled();
     });
   });
 });

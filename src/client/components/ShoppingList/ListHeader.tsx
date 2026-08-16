@@ -50,7 +50,6 @@ export const ListHeader = ({
             type="button"
             onClick={onPickList}
             aria-haspopup="dialog"
-            aria-label={t("switchList")}
             data-list-trigger
             className={`
               flex max-w-full items-center gap-1 rounded-lg px-1 text-[22px] font-medium
