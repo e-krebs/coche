@@ -49,6 +49,23 @@ export const en = {
     other: "{count} checked items removed.",
   },
   searchResults: { one: "{count} match", other: "{count} matches" },
+  // Two sets rather than one with a {thing} slot: French genders the article ("l'élément" vs "la
+  // liste") and the interpolator has no grammar.
+  sortableRow: "reorderable item",
+  dragInstructions:
+    "Press Space to pick up an item, then the arrow keys to move it. Space drops it, Escape cancels.",
+  dragStart: "Picked up {name}.",
+  dragOver: "{name}, position {position} of {total}.",
+  dragEnd: "{name} dropped at position {position} of {total}.",
+  dragCancel: "Reorder cancelled. {name} returned to its position.",
+  sortableList: "reorderable list",
+  dragListInstructions:
+    "Press Space to pick up a list, then the arrow keys to move it. Space drops it, Escape cancels.",
+  dragListStart: "Picked up the list {name}.",
+  dragListOver: "{name}, list {position} of {total}.",
+  dragListEnd: "{name} dropped at list {position} of {total}.",
+  dragListCancel: "Reorder cancelled. The list {name} returned to its position.",
+  renameHint: "Press Enter to save, Tab to reach Delete, Escape to cancel.",
   syncLocalOnly: "Local only",
   syncOffline: "Offline",
   syncConnecting: "Syncing…",
@@ -111,6 +128,22 @@ export const fr: Record<MessageKey, Message> = {
     other: "{count} éléments cochés supprimés.",
   },
   searchResults: { one: "{count} résultat", other: "{count} résultats" },
+  sortableRow: "élément réordonnable",
+  dragInstructions:
+    "Appuyez sur Espace pour saisir un élément, puis sur les flèches pour le déplacer. Espace le dépose, Échap annule.",
+  dragStart: "{name} saisi.",
+  dragOver: "{name}, position {position} sur {total}.",
+  dragEnd: "{name} déposé en position {position} sur {total}.",
+  dragCancel: "Déplacement annulé. {name} a retrouvé sa position.",
+  sortableList: "liste réordonnable",
+  dragListInstructions:
+    "Appuyez sur Espace pour saisir une liste, puis sur les flèches pour la déplacer. Espace la dépose, Échap annule.",
+  dragListStart: "Liste {name} saisie.",
+  dragListOver: "{name}, liste {position} sur {total}.",
+  dragListEnd: "{name} déposée en position {position} sur {total}.",
+  dragListCancel: "Déplacement annulé. La liste {name} a retrouvé sa position.",
+  renameHint:
+    "Appuyez sur Entrée pour enregistrer, Tab pour atteindre Supprimer, Échap pour annuler.",
   syncLocalOnly: "Local uniquement",
   syncOffline: "Hors ligne",
   syncConnecting: "Synchronisation…",

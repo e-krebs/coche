@@ -122,7 +122,12 @@ Decisions that aren't obvious from the markup:
   click. A row that cannot currently be dragged carries none of the drag attributes at all and reverts
   to a plain list item, so it is neither a tab stop that does nothing nor an element claiming a widget
   state it has no role to hold; `data-draggable` is the signal that survives, for both styling and
-  tests. See [../adr/0008-dnd-kit-reorder.md](../adr/0008-dnd-kit-reorder.md).
+  tests. Both drag surfaces also replace dnd-kit's built-in screen-reader copy, which is hardcoded
+  English and interpolates the raw row id: the app supplies its own instructions, role description and
+  start/move/drop/cancel announcements from the same typed dictionary as everything else, naming the
+  **item or list** and its position. Items and lists get separate key sets rather than one with a noun
+  slot, because French genders the article and the interpolator has no grammar.
+  See [../adr/0008-dnd-kit-reorder.md](../adr/0008-dnd-kit-reorder.md).
 - **Swipe-to-delete & undo** — on touch, a left-swipe reveals a growing red action pill that
   brightens past a one-third-width commit threshold. Only a finger-lift past the threshold commits;
   any `touchcancel` (edge back-swipe, shade pull, app-switch) springs back, so a destructive action

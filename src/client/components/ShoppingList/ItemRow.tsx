@@ -1,4 +1,4 @@
-import { type CSSProperties, useCallback, useEffect, useRef } from "react";
+import { type CSSProperties, useCallback, useEffect, useId, useRef } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS, useCombinedRefs } from "@dnd-kit/utilities";
 import { AddIcon, CheckIcon, DeleteIcon, MinusIcon } from "client/components/icons";
@@ -66,6 +66,7 @@ export const SortableRow = ({
   dndDisabled,
   ...props
 }: Omit<ItemRowProps, "sortable"> & { dndDisabled: boolean }) => {
+  const t = useTranslation();
   // Also lock the row being renamed so a long-press on its input doesn't lift it.
   const disabled = dndDisabled || props.editing?.id === props.item.id;
   const {
@@ -76,7 +77,12 @@ export const SortableRow = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: props.item.id, disabled });
+  } = useSortable({
+    id: props.item.id,
+    disabled,
+    // dnd-kit's default here is the English literal "sortable".
+    attributes: { roleDescription: t("sortableRow") },
+  });
 
   // The row itself is the drag activator (ADR 0008), but the KeyboardSensor only enforces that when
   // it has an activator node to compare the event target against. With none, its
@@ -129,6 +135,7 @@ export const ItemRow = ({
     syncing,
   });
 
+  const hintId = useId();
   const nameBtnRef = useRef<HTMLButtonElement | null>(null);
   const qtyBtnRef = useRef<HTMLButtonElement | null>(null);
   const wasNameEditing = useRef(false);
@@ -168,6 +175,7 @@ export const ItemRow = ({
       className={`
         ${focusRing}
         relative overflow-hidden rounded-[10px]
+        focus-visible:ring-inset
         data-collapsed:opacity-0
         data-draggable:cursor-grab data-draggable:active:cursor-grabbing
         data-dragging:opacity-30
@@ -221,34 +229,40 @@ export const ItemRow = ({
         </button>
 
         {nameEditing ? (
-          <input
-            autoFocus
-            defaultValue={item.name}
-            aria-label={t("rename", { name: item.name })}
-            onBlur={(e) => {
-              // Keep editing when focus moves to the row's Delete button, so keyboard users can Tab
-              // to it (else delete is touch/mouse only).
-              if (
-                e.relatedTarget instanceof Node &&
-                e.currentTarget.closest("li")?.contains(e.relatedTarget)
-              )
-                return;
-              onRename(item.id, e.target.value);
-              onEdit(null);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                onRename(item.id, e.currentTarget.value);
+          <>
+            <span id={hintId} className="sr-only">
+              {t("renameHint")}
+            </span>
+            <input
+              autoFocus
+              defaultValue={item.name}
+              aria-label={t("rename", { name: item.name })}
+              aria-describedby={hintId}
+              onBlur={(e) => {
+                // Keep editing when focus moves to the row's Delete button, so keyboard users can Tab
+                // to it (else delete is touch/mouse only).
+                if (
+                  e.relatedTarget instanceof Node &&
+                  e.currentTarget.closest("li")?.contains(e.relatedTarget)
+                )
+                  return;
+                onRename(item.id, e.target.value);
                 onEdit(null);
-              }
-              if (e.key === "Escape") onEdit(null);
-            }}
-            className={`
-              flex-1 rounded-lg border border-accent-text bg-accent-soft px-2.5 py-1.5 text-[15px]
-              outline-hidden
-              focus:ring-2 focus:ring-accent-text focus:ring-inset
-            `}
-          />
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  onRename(item.id, e.currentTarget.value);
+                  onEdit(null);
+                }
+                if (e.key === "Escape") onEdit(null);
+              }}
+              className={`
+                flex-1 rounded-lg border border-accent-text bg-accent-soft px-2.5 py-1.5 text-[15px]
+                outline-hidden
+                focus:ring-2 focus:ring-accent-text focus:ring-inset
+              `}
+            />
+          </>
         ) : (
           <button
             type="button"

@@ -53,6 +53,17 @@ const ui = {
     return el;
   },
   results: (name: string) => screen.getByRole("list", { name }),
+  /** dnd-kit's own live region, which it mounts inside the DndContext and names by id. */
+  get dndLiveRegion() {
+    const el = document.querySelector<HTMLElement>('[id^="DndLiveRegion"]');
+    if (!el) throw new Error("No dnd-kit live region");
+    return el;
+  },
+  row: (name: string) => {
+    const el = ui.checkoff(name).closest("li");
+    if (!el) throw new Error(`No row element for "${name}"`);
+    return el;
+  },
   get checkedHeading() {
     return screen.getByRole("heading", { level: 2, name: /Checked \(\d+\)/ });
   },
@@ -234,6 +245,30 @@ describe("ShoppingList", () => {
       await user.type(ui.field, "m");
       expect(ui.results("2 matches")).toBeInTheDocument();
       expect(ui.status).toHaveTextContent("");
+    });
+  });
+
+  // dnd-kit's defaults are hardcoded English and interpolate the opaque TinyBase row id.
+  describe("keyboard reorder announcements", () => {
+    it("names the item and its position rather than its row id", async () => {
+      const { user } = setup();
+      await user.type(ui.field, "Milk{Enter}");
+      await user.type(ui.field, "Bread{Enter}");
+      ui.field.blur();
+      // A focused add field disables dnd, and re-enabling is a state update — the row is only a
+      // focusable drag target once that has landed.
+      await waitFor(() => {
+        expect(ui.row("Milk")).toHaveAttribute("tabindex", "0");
+      });
+      ui.row("Milk").focus();
+      await user.keyboard(" ");
+      await waitFor(() => {
+        expect(ui.dndLiveRegion).toHaveTextContent(/Milk/);
+      });
+      expect(ui.dndLiveRegion).not.toHaveTextContent(/draggable item/);
+      // Release the lift: an abandoned drag leaves dnd-kit holding document-level listeners, which
+      // breaks whichever test runs next.
+      await user.keyboard("{Escape}");
     });
   });
 

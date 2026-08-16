@@ -257,6 +257,12 @@ describe("ItemRow", () => {
       expect(ui.rowOf("Milk")).toHaveAttribute("role", "button");
       expect(ui.rowOf("Milk")).toHaveAttribute("tabindex", "0");
     });
+
+    // dnd-kit's own default is the English literal "sortable", regardless of locale.
+    it("describes its role in the app's own words", () => {
+      renderSortableRow();
+      expect(ui.rowOf("Milk")).toHaveAttribute("aria-roledescription", "reorderable item");
+    });
   });
 
   describe("when dragging is disabled", () => {

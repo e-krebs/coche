@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -7,6 +7,8 @@ import {
   closestCenter,
   useSensor,
   useSensors,
+  type Announcements,
+  type UniqueIdentifier,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -94,6 +96,7 @@ const EditRow = ({
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: list.id,
     disabled: renaming,
+    attributes: { roleDescription: t("sortableList") },
   });
 
   return (
@@ -206,6 +209,26 @@ export const ListPicker = ({
   useEffect(() => {
     sheetRef.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
   }, []);
+
+  const accessibility = useMemo(() => {
+    const nameOf = (id: UniqueIdentifier) =>
+      lists.find((l) => l.id === String(id))?.name ?? t("appTitle");
+    const posOf = (id: UniqueIdentifier) => lists.findIndex((l) => l.id === String(id)) + 1;
+    const total = lists.length;
+    const announcements: Announcements = {
+      onDragStart: ({ active }) => t("dragListStart", { name: nameOf(active.id) }),
+      onDragOver: ({ active, over }) =>
+        over
+          ? t("dragListOver", { name: nameOf(active.id), position: posOf(over.id), total })
+          : undefined,
+      onDragEnd: ({ active, over }) =>
+        over
+          ? t("dragListEnd", { name: nameOf(active.id), position: posOf(over.id), total })
+          : t("dragListCancel", { name: nameOf(active.id) }),
+      onDragCancel: ({ active }) => t("dragListCancel", { name: nameOf(active.id) }),
+    };
+    return { announcements, screenReaderInstructions: { draggable: t("dragListInstructions") } };
+  }, [t, lists]);
 
   const moveFocus = ({ delta, within }: { delta: number; within: string }) => {
     const els = [...(sheetRef.current?.querySelectorAll<HTMLElement>(within) ?? [])];
@@ -330,6 +353,7 @@ export const ListPicker = ({
             <>
               <DndContext
                 sensors={sensors}
+                accessibility={accessibility}
                 collisionDetection={closestCenter}
                 onDragStart={() => {
                   setDragging(true);
