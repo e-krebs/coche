@@ -72,11 +72,14 @@ export const ShoppingList = ({
     else nameBtnRefs.current.delete(id);
   }, []);
   // Reclaim focus to a row only when it dropped to <body>, so we don't steal focus moved on purpose
-  // (button target = no soft keyboard).
-  const restoreFocus = (id: string | undefined) => {
-    if (!id) return;
+  // (button target = no soft keyboard). With no row to return to — the last item deleted, or a whole
+  // section cleared out from under the button that cleared it — the header trigger is the only button
+  // that always exists and stays visible at any scroll offset.
+  const restoreFocus = (id?: string) => {
     requestAnimationFrame(() => {
-      if (focusDropped()) nameBtnRefs.current.get(id)?.focus();
+      if (!focusDropped()) return;
+      const row = id === undefined ? undefined : nameBtnRefs.current.get(id);
+      (row ?? document.querySelector<HTMLElement>("[data-list-trigger]"))?.focus();
     });
   };
 

@@ -135,7 +135,9 @@ Decisions that aren't obvious from the markup:
   [UndoSnackbar.tsx](../../src/client/components/ShoppingList/UndoSnackbar.tsx).
 - **Focus & keyboard** — mutations that unmount the focused control return focus to a button rather
   than dropping it to `<body>`: rename/quantity commits refocus the row, delete moves to a
-  neighbour, Undo returns to the restored item. Each only reclaims focus that was genuinely lost, so
+  neighbour, Undo returns to the restored item. When there is no row left to return to — the last
+  item deleted, or the checked section cleared out from under the button that cleared it — focus falls
+  back to the header title, the one button that always exists and stays visible at any scroll offset. Each only reclaims focus that was genuinely lost, so
   it never steals focus the user moved on purpose, and always targets a button so it can't pop the
   soft keyboard. The same rule holds through the picker's two nested layers: opening the sheet moves
   focus into it and closing returns it to the title trigger, and the delete confirmation — a dialog

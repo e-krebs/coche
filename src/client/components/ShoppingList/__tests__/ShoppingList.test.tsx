@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider, createShoppingStore } from "client/store/store";
 import { DEFAULT_LIST_ID } from "client/store/schema";
@@ -206,6 +206,32 @@ describe("ShoppingList", () => {
       await user.click(ui.checkedToggle);
       await user.click(ui.clearChecked);
       expect(names(store)).toEqual(["Bread"]);
+    });
+
+    // The section unmounts with its last checked row, taking the button that was just clicked, so
+    // there is no row to fall back to — focus would otherwise land on <body>.
+    it("returns focus to the header trigger", async () => {
+      const { user } = setup();
+      await user.type(ui.field, "Apples{Enter}");
+      await user.click(ui.checkoff("Apples"));
+      await user.click(ui.checkedToggle);
+      await user.click(ui.clearChecked);
+      await waitFor(() => {
+        expect(ui.switchList).toHaveFocus();
+      });
+    });
+  });
+
+  describe("when the only item is deleted", () => {
+    // There is no neighbour to move to, so the same fallback carries focus.
+    it("returns focus to the header trigger", async () => {
+      const { user } = setup();
+      await user.type(ui.field, "Milk{Enter}");
+      await user.click(ui.name("Milk"));
+      await user.click(ui.del("Milk"));
+      await waitFor(() => {
+        expect(ui.switchList).toHaveFocus();
+      });
     });
   });
 

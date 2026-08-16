@@ -212,6 +212,18 @@ describe("useListActions", () => {
       });
       expect(orderedNames(store)).toEqual(["Bread"]);
     });
+
+    // The whole section goes with its last checked row, so there is no row to hand focus back to.
+    it("hands focus back with no row to return to", () => {
+      const { result, restoreFocus } = setup();
+      act(() => {
+        result.current.add("Apples");
+      });
+      act(() => {
+        result.current.clearChecked();
+      });
+      expect(restoreFocus).toHaveBeenCalledWith();
+    });
   });
 
   describe("reorder", () => {

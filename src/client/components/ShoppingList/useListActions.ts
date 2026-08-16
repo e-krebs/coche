@@ -34,7 +34,7 @@ export const useListActions = ({
   listId: string;
   items: ItemView[];
   setEditing: (e: Editing) => void;
-  restoreFocus: (id: string | undefined) => void;
+  restoreFocus: (id?: string) => void;
 }) => {
   const store = useStore();
   const [undo, setUndo] = useState<Undo>(null);
@@ -126,6 +126,7 @@ export const useListActions = ({
     else store.setCell("items", id, "quantity", Math.max(1, quantity));
   };
   const clearChecked = () => {
+    // The section unmounts with its last checked row, taking the focused Clear button with it.
     animate(() =>
       store?.transaction(() => {
         ensureList({ store, id: listId }); // clearing everything must not drop a virtual list
@@ -135,6 +136,7 @@ export const useListActions = ({
         });
       }),
     );
+    restoreFocus();
   };
   const reorder = ({ activeId, overId }: { activeId: string; overId: string }) => {
     if (!store || activeId === overId) return;
