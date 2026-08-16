@@ -10,8 +10,9 @@ user's devices, data-at-rest in the EU. Personal project.
 
 ## Status
 
-Built and tested: SPA shell, local store, shopping-list UI (two lists, search, rename, quantity,
-dnd-kit drag-reorder, light/dark theme, motion, scroll restoration), sync server + WS ticket auth,
+Built and tested: SPA shell, local store, list UI (multiple lists behind a bottom-sheet picker —
+create, rename, reorder, delete — unchecked/checked sections, search, rename, quantity, dnd-kit
+drag-reorder, light/dark theme, motion, scroll restoration), sync server + WS ticket auth,
 sign-out teardown, PWA/offline shell. Covered by client tests (Vitest/jsdom) and Worker tests
 (`@cloudflare/vitest-pool-workers`/miniflare), plus two Playwright e2e tiers. Deployed: the SPA on
 Cloudflare Pages behind a custom domain, the sync Worker on `*.workers.dev` with its Durable Object

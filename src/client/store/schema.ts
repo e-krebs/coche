@@ -1,9 +1,13 @@
-/** v1 is single-list; items still carry listId so multi-list slots in later without a re-key. */
+/**
+ * The list every pre-multi-list item points at. Its `lists` row only appears once the migration
+ * writes one, so reads must fall back to the app title rather than assume the row exists.
+ */
 export const DEFAULT_LIST_ID = "list";
 
 export const TABLES_SCHEMA = {
   lists: {
-    name: { type: "string" },
+    name: { type: "string" }, // no default => absent means the default list (or a resurrected one)
+    position: { type: "string" }, // fractional index; absent on migrated and resurrected rows
     createdAt: { type: "number" },
   },
   items: {

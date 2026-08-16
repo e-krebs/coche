@@ -69,11 +69,14 @@ type-checking, not a test suite itself.
 
 - [../../src/client/__tests__/](../../src/client/__tests__/) — the global setup and shared MSW
   server above; not a suite itself.
+- [../../src/client/components/__tests__/](../../src/client/components/__tests__/) — the list picker:
+  pick, create, rename, delete-behind-confirmation, and the dialog's focus contract.
 - [../../src/client/components/ShoppingList/__tests__/](../../src/client/components/ShoppingList/__tests__/)
   — shopping-list components and hooks.
 - [../../src/client/i18n/__tests__/](../../src/client/i18n/__tests__/) — i18n resources/lookup.
 - [../../src/client/store/__tests__/](../../src/client/store/__tests__/) — store, sync, CRDT merge,
-  reorder, teardown, and identity.
+  reorder, teardown, identity, and the lists roster (virtual default row, the gated default-list
+  migration, orphan resurrection).
 - [../../src/server/__tests__/](../../src/server/__tests__/) — Worker/DO auth, Clerk verification,
   and request handling.
 
@@ -88,7 +91,9 @@ vs. real-Clerk trade-off), see
 - Config: [../../playwright.config.ts](../../playwright.config.ts) — `testDir: "./e2e/local"`,
   `fullyParallel: true`, 2 retries in CI. `webServer` runs a production build + preview
   (`yarn build:e2e && yarn preview`) rather than the dev server, so the PWA service worker the
-  offline spec depends on is active. The mode-specific build scripts exist because `yarn build`
+  offline spec depends on is active. Run `offline.spec.ts` **first** after any routing change: it
+  reloads a deep `/lists/<id>` URL the service worker never precached, which only works because
+  `navigateFallback` has no denylist. The mode-specific build scripts exist because `yarn build`
   chains the CSP generator after `vite build`, so a trailing `--mode` would reach the generator
   instead of Vite.
 - Hermetic by design: [../../e2e/local/fixtures.ts](../../e2e/local/fixtures.ts) extends `context`
@@ -99,7 +104,11 @@ vs. real-Clerk trade-off), see
   Clerk publishable key whose Frontend API host is unreachable, so `clerk-js` loads same-origin but
   can't reach the FAPI — Clerk never initializes and the seeded cached identity drives the app.
 - The fixtures module also exports the DOM helpers shared across local specs: `field`, `checkbox`,
-  `row`, `gotoApp`, `addItem`, `uncheckedNames`, `waitForServiceWorker`, `waitForDragShift`.
+  `row`, `gotoApp`, `addItem`, `uncheckedNames`, `waitForServiceWorker`, `waitForDragShift`, plus
+  the list-picker helpers — `switchList` (the header title, matched by `[data-list-trigger]` because
+  its accessible name is the active list's name), `sheet`, `pickList`, and `createList`.
+  `uncheckedNames` takes the first `ul` that isn't `[data-checked-list]`: the unchecked section
+  renders no `ul` at all when empty, so a bare `.first()` would silently return the *checked* names.
 - Type-checked independently via [../../e2e/local/tsconfig.json](../../e2e/local/tsconfig.json).
 
 ### Sync tier — `e2e/sync/`

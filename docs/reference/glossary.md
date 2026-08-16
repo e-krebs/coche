@@ -22,7 +22,16 @@ Acronyms and terms used across the code and docs, grouped by area.
   [auth-and-sync.md](../explanation/auth-and-sync.md#crdt-merge-semantics).
 - **HLC** — Hybrid Logical Clock. The per-cell timestamp TinyBase uses to decide which write wins.
 - **LWW** — Last-Write-Wins. The merge rule: the write with the later HLC wins, per cell.
-- **IndexedDB** — The browser's local database; holds the offline replica of the list.
+- **`listId`** — Two unrelated things share this name. **`items.listId`** is a row id in the local
+  `lists` table: client-side only, one value per list the user owns, and what the UI filters on. The
+  **derived `listId`** is `HMAC(serverSecret, userId)` and names the *sync unit* — one Durable
+  Object and one local replica per user, carrying all of that user's lists. See
+  [data-model.md](data-model.md) and
+  [../adr/0013-multi-list-single-store.md](../adr/0013-multi-list-single-store.md).
+- **Sync unit** — The scope one Durable Object and one IndexedDB replica cover: one per user, named
+  by the derived `listId`, holding every list that user owns.
+- **IndexedDB** — The browser's local database; holds the offline replica of every list the user
+  owns.
 - **SQL / SQLite** — The Durable Object's on-disk store (the server source of truth).
 
 ## Auth & tokens
@@ -31,8 +40,9 @@ Acronyms and terms used across the code and docs, grouped by area.
 - **sub** — The JWT "subject" claim: the authenticated user's id (input to the `listId` HMAC).
 - **jti** — JWT ID: the ticket's unique id, burned after one use to prevent replay.
 - **azp** — "Authorized party" JWT claim, checked against the Worker's `authorizedParties`.
-- **HMAC** — Hash-based Message Authentication Code. A keyed hash; derives `listId` from the user id
-  with a server secret. See [auth-and-sync.md](../explanation/auth-and-sync.md#listid-derivation).
+- **HMAC** — Hash-based Message Authentication Code. A keyed hash; derives the sync unit's `listId`
+  from the user id with a server secret. See
+  [auth-and-sync.md](../explanation/auth-and-sync.md#listid-derivation).
 - **TTL** — Time To Live. The WS ticket's short (~30s) validity window.
 - **CORS** — Cross-Origin Resource Sharing. The browser's cross-origin request rules; the Worker
   uses an exact-match allowlist.
@@ -43,8 +53,9 @@ Acronyms and terms used across the code and docs, grouped by area.
 
 ## Cloudflare & infra
 
-- **DO** — Durable Object. A single-instance, stateful Cloudflare compute unit; one per `listId`,
-  pinned to the `eu` jurisdiction. See [architecture.md](../explanation/architecture.md#diagram).
+- **DO** — Durable Object. A single-instance, stateful Cloudflare compute unit; one per derived
+  `listId`, i.e. one sync unit per user, pinned to the `eu` jurisdiction. See
+  [architecture.md](../explanation/architecture.md#diagram).
 - **KV** — Key-Value (Cloudflare KV). The non-SQLite DO storage class this project avoids
   (`new_sqlite_classes`, not `new_classes` — see [deploy.md](../how-to/deploy.md)).
 - **EU** — European Union. The Cloudflare `jurisdiction('eu')` where list content rests.
