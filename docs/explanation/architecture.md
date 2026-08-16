@@ -208,7 +208,12 @@ Decisions that aren't obvious from the markup:
   than dropping it to `<body>`: rename/quantity commits refocus the row, delete moves to a
   neighbour, Undo returns to the restored item. When there is no row left to return to — the last
   item deleted, or the checked section cleared out from under the button that cleared it — focus falls
-  back to the header title, the one button that always exists and stays visible at any scroll offset. Each only reclaims focus that was genuinely lost, so
+  back to the header title, the one button that always exists and stays visible at any scroll offset.
+  Each reclaim waits for the mutation to actually land rather than for the next frame: a view
+  transition defers the DOM change to a later frame, so a restore scheduled immediately still sees the
+  old tree, decides nothing was lost, and does nothing — the control then disappears with no second
+  attempt. jsdom has no View Transitions API, so this is a browser-only failure mode and the reason the
+  animation helper takes an after-callback instead of the caller guessing a delay. Each only reclaims focus that was genuinely lost, so
   it never steals focus the user moved on purpose, and always targets a button so it can't pop the
   soft keyboard. The same rule holds through the picker's two nested layers: opening the sheet moves
   focus into it and closing returns it to the title trigger, and the delete confirmation — a dialog

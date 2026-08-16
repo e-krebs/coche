@@ -118,18 +118,22 @@ export const useListActions = ({
     const row = parsed.data;
     const idx = items.findIndex((i) => i.id === id);
     const neighbor = items[idx + 1]?.id ?? items[idx - 1]?.id;
-    animate(() => {
-      store.transaction(() => {
-        // Removing the last item would otherwise drop a still-virtual list out of the roster, taking
-        // the Undo target with it.
-        ensureList({ store, id: row.listId });
-        store.delRow("items", id);
-      });
-    });
+    animate(
+      () => {
+        store.transaction(() => {
+          // Removing the last item would otherwise drop a still-virtual list out of the roster, taking
+          // the Undo target with it.
+          ensureList({ store, id: row.listId });
+          store.delRow("items", id);
+        });
+      },
+      () => {
+        restoreFocus(neighbor);
+      },
+    );
     setEditing(null);
     setUndo({ id, row });
     startUndoTimer();
-    restoreFocus(neighbor);
     announce(t("deletedUndo", { name: row.name }));
   };
   const undoDelete = () => {
@@ -137,8 +141,12 @@ export const useListActions = ({
     // Its list can be deleted inside the 5s window; restoring the row would mint a phantom list the
     // orphan sweep then resurrects nameless.
     if (store && undo && hasList({ store, id: undo.row.listId })) {
-      animate(() => store.setRow("items", undo.id, undo.row));
-      restoreFocus(undo.id);
+      animate(
+        () => store.setRow("items", undo.id, undo.row),
+        () => {
+          restoreFocus(undo.id);
+        },
+      );
     }
     setUndo(null);
   };
@@ -158,15 +166,19 @@ export const useListActions = ({
           store.getCell("items", id, "listId") === listId && store.getCell("items", id, "checked"),
       );
     // The section unmounts with its last checked row, taking the focused Clear button with it.
-    animate(() => {
-      store.transaction(() => {
-        ensureList({ store, id: listId }); // clearing everything must not drop a virtual list
-        clearing.forEach((id) => {
-          store.delRow("items", id);
+    animate(
+      () => {
+        store.transaction(() => {
+          ensureList({ store, id: listId }); // clearing everything must not drop a virtual list
+          clearing.forEach((id) => {
+            store.delRow("items", id);
+          });
         });
-      });
-    });
-    restoreFocus();
+      },
+      () => {
+        restoreFocus();
+      },
+    );
     announce(t("clearedChecked", { count: clearing.length }));
   };
   const reorder = ({ activeId, overId }: { activeId: string; overId: string }) => {

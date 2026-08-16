@@ -9,15 +9,19 @@ export const prefersReducedMotion = () =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
- * flushSync so React commits the change synchronously and the View Transitions API snapshots the
- * new DOM.
+ * flushSync so React commits the change synchronously and the View Transitions API snapshots the new
+ * DOM. `after` runs once that commit has landed — a view transition defers `mutate` to a later frame,
+ * so anything that has to observe the resulting DOM (reclaiming focus the mutation just dropped)
+ * cannot simply run on the next frame.
  */
-export const animate = (mutate: () => void) => {
+export const animate = (mutate: () => void, after?: () => void) => {
   if (typeof document.startViewTransition === "function" && !prefersReducedMotion()) {
-    document.startViewTransition(() => {
+    const transition = document.startViewTransition(() => {
       flushSync(mutate);
     });
+    if (after) void transition.updateCallbackDone.then(after, after);
   } else {
     mutate();
+    after?.();
   }
 };
