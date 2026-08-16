@@ -105,7 +105,7 @@ export const LanguageDialog = ({
                 }}
                 className={`
                   flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[15px]
-                  outline-none
+                  outline-hidden
                   hover:bg-canvas
                   focus-visible:bg-canvas focus-visible:ring-2 focus-visible:ring-accent-text
                   focus-visible:ring-inset

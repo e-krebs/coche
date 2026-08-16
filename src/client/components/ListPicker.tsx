@@ -23,11 +23,11 @@ import { useOpenerFocus } from "client/components/focus";
 import { prefersReducedMotion } from "./ShoppingList/helpers";
 
 const rowBase = `flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[15px]
-  outline-none
+  outline-hidden
   focus-visible:bg-canvas focus-visible:ring-2 focus-visible:ring-accent-text
   focus-visible:ring-inset`;
 
-const iconBtn = `grid size-8 flex-none place-items-center rounded-full text-faint outline-none
+const iconBtn = `grid size-8 flex-none place-items-center rounded-full text-faint outline-hidden
   focus-visible:ring-2 focus-visible:ring-accent-text`;
 
 const PickRow = ({
@@ -140,8 +140,9 @@ const EditRow = ({
             else onRename(null);
           }}
           className={`
-            flex-1 rounded-lg bg-accent-soft px-2.5 py-1.5 text-[15px] ring-2 ring-accent-text
-            outline-none ring-inset
+            flex-1 rounded-lg border border-accent-text bg-accent-soft px-2.5 py-1.5 text-[15px]
+            outline-hidden
+            focus:ring-2 focus:ring-accent-text focus:ring-inset
           `}
         />
       ) : (
@@ -317,7 +318,7 @@ export const ListPicker = ({
                 setRenaming(null);
               }}
               className={`
-                rounded-full px-2 py-1 text-[14px] font-medium text-accent-text outline-none
+                rounded-full px-2 py-1 text-[14px] font-medium text-accent-text outline-hidden
                 focus-visible:ring-2 focus-visible:ring-accent-text
               `}
             >
@@ -387,7 +388,7 @@ export const ListPicker = ({
                   aria-label={t("newList")}
                   autoComplete="off"
                   className={`
-                    flex-1 rounded-full bg-canvas px-4 py-2 text-[15px] outline-none
+                    flex-1 rounded-full bg-canvas px-4 py-2 text-[15px] outline-hidden
                     focus:ring-2 focus:ring-accent-text focus:ring-inset
                   `}
                 />
@@ -397,6 +398,8 @@ export const ListPicker = ({
                   aria-label={t("createList")}
                   className={`
                     grid size-9 flex-none place-items-center rounded-full bg-accent text-on-accent
+                    outline-hidden
+                    focus-visible:ring-2 focus-visible:ring-accent-text
                     disabled:bg-canvas disabled:text-faint
                   `}
                 >

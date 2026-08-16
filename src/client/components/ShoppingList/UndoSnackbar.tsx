@@ -15,7 +15,10 @@ export const UndoSnackbar = ({ name, onUndo }: { name: string; onUndo: () => voi
         <button
           type="button"
           onClick={onUndo}
-          className="flex-none rounded-lg px-3 py-1.5 text-[14px] font-medium text-accent"
+          className={`
+            flex-none rounded-lg px-3 py-1.5 text-[14px] font-medium text-accent outline-hidden
+            focus-visible:ring-2 focus-visible:ring-accent
+          `}
         >
           {t("undo")}
         </button>

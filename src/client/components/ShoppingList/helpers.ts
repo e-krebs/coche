@@ -1,5 +1,8 @@
 import { flushSync } from "react-dom";
 
+// Read imperatively rather than through a matchMedia listener: every consumer either calls this at
+// mutation time or re-renders continuously through the drag/swipe that consumes it, so a stale value
+// can never reach a visible animation.
 export const prefersReducedMotion = () =>
   typeof window !== "undefined" &&
   typeof window.matchMedia === "function" &&

@@ -133,6 +133,16 @@ Decisions that aren't obvious from the markup:
   without touch via the row's edit mode.
   [../../src/client/components/ShoppingList/useSwipeToDelete.ts](../../src/client/components/ShoppingList/useSwipeToDelete.ts),
   [UndoSnackbar.tsx](../../src/client/components/ShoppingList/UndoSnackbar.tsx).
+- **Focus visibility** — one house pattern, applied to every interactive control:
+  `outline-hidden focus-visible:ring-2 focus-visible:ring-accent-text`, with `ring-inset` wherever the
+  element clips (the row, whose `overflow-hidden` would cut an outset ring) and plain `focus:` rather
+  than `focus-visible:` on text inputs, which should show focus however it arrived. `outline-hidden`
+  rather than `outline-none` is load-bearing: rings are box-shadows, forced-colors modes strip
+  box-shadows, and `outline-hidden` keeps a transparent outline that those modes repaint — so the
+  indicator survives without a hand-written `forced-colors` block. Inline editors are marked by their
+  background and a border, never by a permanent ring: the rename input deliberately keeps editing
+  alive while focus moves to the row's Delete, so a ring that never leaves would claim focus that has
+  gone elsewhere.
 - **Modal containment** — the dialogs are hand-rolled `role="dialog"` elements with their own
   `keydown` Tab traps, not native `<dialog>`/`showModal()`: jsdom implements `HTMLDialogElement` as an
   empty subclass, so going native would move containment and Escape out of unit-test reach (see

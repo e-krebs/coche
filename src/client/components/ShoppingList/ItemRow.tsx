@@ -33,6 +33,9 @@ interface ItemRowProps extends RowProps {
   syncing?: boolean;
 }
 
+const focusRing = `outline-hidden
+  focus-visible:ring-2 focus-visible:ring-accent-text`;
+
 /**
  * Stop a control's press from reaching the row's drag sensor so it doesn't arm a long-press drag.
  */
@@ -163,6 +166,7 @@ export const ItemRow = ({
       data-dragging={sortable?.isDragging || undefined}
       data-collapsed={collapsed || undefined}
       className={`
+        ${focusRing}
         relative overflow-hidden rounded-[10px]
         data-collapsed:opacity-0
         data-draggable:cursor-grab data-draggable:active:cursor-grabbing
@@ -207,6 +211,7 @@ export const ItemRow = ({
             onToggle(item.id, !item.checked);
           }}
           className={`
+            ${focusRing}
             grid size-5.5 flex-none place-items-center rounded-full border-[1.5px] border-muted
             text-transparent
             data-checked:border-accent data-checked:bg-accent data-checked:text-on-accent
@@ -239,8 +244,9 @@ export const ItemRow = ({
               if (e.key === "Escape") onEdit(null);
             }}
             className={`
-              flex-1 rounded-lg bg-accent-soft px-2.5 py-1.5 text-[15px] ring-2 ring-accent-text
-              outline-none ring-inset
+              flex-1 rounded-lg border border-accent-text bg-accent-soft px-2.5 py-1.5 text-[15px]
+              outline-hidden
+              focus:ring-2 focus:ring-accent-text focus:ring-inset
             `}
           />
         ) : (
@@ -252,7 +258,8 @@ export const ItemRow = ({
               onEdit({ id: item.id, mode: "name" });
             }}
             className={`
-              flex-1 text-left text-[15px]
+              ${focusRing}
+              flex-1 rounded-md text-left text-[15px]
               data-checked:text-faint data-checked:line-through
             `}
           >
@@ -272,6 +279,7 @@ export const ItemRow = ({
                 } else onSetQuantity(item.id, quantity - 1);
               }}
               className={`
+                ${focusRing}
                 grid size-7 place-items-center rounded-full border border-hairline text-muted
               `}
             >
@@ -283,7 +291,10 @@ export const ItemRow = ({
               onClick={() => {
                 onEdit(null);
               }}
-              className="min-w-5 text-center"
+              className={`
+                ${focusRing}
+                min-w-5 rounded-md text-center
+              `}
             >
               {quantity}
             </button>
@@ -294,6 +305,7 @@ export const ItemRow = ({
                 onSetQuantity(item.id, quantity + 1);
               }}
               className={`
+                ${focusRing}
                 grid size-7 place-items-center rounded-full border border-hairline text-muted
               `}
             >
@@ -310,6 +322,7 @@ export const ItemRow = ({
               onEdit({ id: item.id, mode: "qty" });
             }}
             className={`
+              ${focusRing}
               flex size-7 flex-none items-center justify-center rounded-full border border-hairline
               text-[14px] font-medium text-muted tabular-nums
             `}
@@ -327,6 +340,7 @@ export const ItemRow = ({
               onEdit({ id: item.id, mode: "qty" });
             }}
             className={`
+              ${focusRing}
               grid size-7 flex-none place-items-center rounded-full border border-hairline
               text-[15px] font-medium text-faint
             `}
@@ -345,7 +359,10 @@ export const ItemRow = ({
             onClick={() => {
               onDelete(item.id);
             }}
-            className="grid size-7.5 flex-none place-items-center rounded-full text-faint"
+            className={`
+              ${focusRing}
+              grid size-7.5 flex-none place-items-center rounded-full text-faint
+            `}
           >
             <DeleteIcon className="size-4.5" />
           </button>

@@ -34,7 +34,8 @@ export const CheckedSection = ({
           aria-controls={panelId}
           className={`
             mt-1.5 flex w-full items-center gap-3 border-t border-hairline px-2 pt-3 pb-2.5
-            text-[14px] font-medium text-muted
+            text-[14px] font-medium text-muted outline-hidden
+            focus-visible:ring-2 focus-visible:ring-accent-text focus-visible:ring-inset
           `}
         >
           <ChevronIcon
@@ -77,7 +78,11 @@ export const CheckedSection = ({
           <button
             type="button"
             onClick={onClearChecked}
-            className={`self-start rounded-full px-3 py-2 text-[14px] font-medium text-accent-text`}
+            className={`
+              self-start rounded-full px-3 py-2 text-[14px] font-medium text-accent-text
+              outline-hidden
+              focus-visible:ring-2 focus-visible:ring-accent-text
+            `}
           >
             {t("clearChecked")}
           </button>
