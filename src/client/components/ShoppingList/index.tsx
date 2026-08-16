@@ -36,7 +36,10 @@ export const ShoppingList = ({
 }) => {
   const t = useTranslation();
   const table = useTable("items");
-  const orderedIds = sortedByPosition(Object.keys(table), (id) => table[id]?.position ?? "");
+  // A nameless row is a partial resurrected by a concurrent edit to a deleted item, not data: add
+  // rejects an empty name and rename keeps the old one, so absent can only mean ghost.
+  const named = Object.keys(table).filter((id) => table[id]?.name);
+  const orderedIds = sortedByPosition(named, (id) => table[id]?.position ?? "");
 
   const items: ItemView[] = orderedIds.map((id) => {
     const row = table[id];

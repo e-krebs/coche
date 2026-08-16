@@ -62,6 +62,19 @@ describe("useListActions", () => {
       expect(orderedNames(store)).toEqual(["A", "B", "C"]);
     });
 
+    // generateKeyBetween("", null) throws, and add() runs inside animate() — so before the guard a
+    // single position-less ghost made this list reject every further item, silently.
+    it("still appends when a resurrected partial has no position", () => {
+      const { store, result } = setup();
+      store.setRow("items", "ghost", { checked: true });
+      let added: boolean | undefined;
+      act(() => {
+        added = result.current.add("Milk");
+      });
+      expect(added).toBe(true);
+      expect(store.getCell("items", idByName(store, "Milk"), "position")).toBe("a0");
+    });
+
     it("returns false without a store (renders with no Provider)", () => {
       const { result } = renderHook(() =>
         useListActions({ items: [], setEditing: vi.fn(), restoreFocus: vi.fn() }),
