@@ -74,11 +74,14 @@ const renderSortableRow = (
 /** Query handles grouped so tests never call `screen.*` inline; parametrized by item name. */
 const ui = {
   addQty: (name: string) => screen.getByRole("button", { name: `Add quantity to ${name}` }),
-  editQty: (name: string) => screen.getByRole("button", { name: `Edit quantity of ${name}` }),
+  editQty: (name: string, count: number) =>
+    screen.getByRole("button", { name: `Edit quantity of ${name}, currently ${count}` }),
   incQty: (name: string) => screen.getByRole("button", { name: `Increase quantity of ${name}` }),
   decQty: (name: string) => screen.getByRole("button", { name: `Decrease quantity of ${name}` }),
-  closeQty: (name: string) =>
-    screen.getByRole("button", { name: `Close quantity editor for ${name}` }),
+  closeQty: (name: string, count: number) =>
+    screen.getByRole("button", {
+      name: `Close quantity editor for ${name}, currently ${count}`,
+    }),
   checkoff: (name: string) => screen.getByRole("button", { name: `Check off ${name}` }),
   name: (name: string) => screen.getByRole("button", { name }),
   rename: (name: string) => screen.getByLabelText(`Rename ${name}`),
@@ -145,10 +148,17 @@ describe("ItemRow", () => {
   describe("when a quantity is set but not being edited", () => {
     it("shows the value and opens the stepper on click", async () => {
       const { onEdit, user } = renderRow({ item: { quantity: 2 } });
-      const btn = ui.editQty("Milk");
+      const btn = ui.editQty("Milk", 2);
       expect(btn).toHaveTextContent("2");
       await user.click(btn);
       expect(onEdit).toHaveBeenCalledWith({ id: "1", mode: "qty" });
+    });
+
+    // The aria-label overrides the button's text, so without the value in the label the number is
+    // unreachable to assistive tech.
+    it("carries the value in its accessible name, not only its text", () => {
+      renderRow({ item: { quantity: 3 } });
+      expect(ui.editQty("Milk", 3)).toHaveAccessibleName("Edit quantity of Milk, currently 3");
     });
   });
 
@@ -179,7 +189,7 @@ describe("ItemRow", () => {
 
     it("closes the stepper on the value button", async () => {
       const { onEdit, user } = renderRow({ item: { quantity: 2 }, editing: editingQty });
-      await user.click(ui.closeQty("Milk"));
+      await user.click(ui.closeQty("Milk", 2));
       expect(onEdit).toHaveBeenCalledWith(null);
     });
   });

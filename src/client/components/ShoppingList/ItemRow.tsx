@@ -287,7 +287,7 @@ export const ItemRow = ({
             </button>
             <button
               type="button"
-              aria-label={t("closeQuantity", { name: item.name })}
+              aria-label={t("closeQuantity", { name: item.name, count: quantity })}
               onClick={() => {
                 onEdit(null);
               }}
@@ -315,7 +315,7 @@ export const ItemRow = ({
         ) : quantity !== undefined ? (
           <button
             type="button"
-            aria-label={t("editQuantity", { name: item.name })}
+            aria-label={t("editQuantity", { name: item.name, count: quantity })}
             ref={qtyBtnRef}
             {...stopDrag}
             onClick={() => {
