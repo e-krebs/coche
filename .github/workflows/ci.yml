@@ -46,13 +46,22 @@ jobs:
   # Local-only e2e tier: hermetic (no Worker, Clerk network blocked), so it needs no secrets.
   e2e:
     runs-on: ubuntu-latest
+    # A hung Playwright worker outlives Playwright's own webServer timeout, so bound the job itself
+    # rather than letting it sit for the 6-hour default.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
         with:
           playwright: "true"
-      # Probe A: Playwright's own bin, nub out of the execution path entirely.
-      - run: ./node_modules/.bin/playwright test
+      - name: Which Node and which browser
+        run: |
+          echo "node on PATH: $(which node) $(node --version)"
+          nub node which || true
+          ls ~/.cache/ms-playwright || true
+      # nub is out of the execution path here — this is Playwright's own bin. One worker and a line
+      # reporter so a hang points at a specific spec instead of going quiet after the worker banner.
+      - run: ./node_modules/.bin/playwright test --workers=1 --reporter=line
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
@@ -65,6 +74,7 @@ jobs:
   # public and committed in .env.e2e-sync; only the matching sk_test lives in the secret.
   e2e-sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     env:
       CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
     steps:
@@ -93,8 +103,7 @@ jobs:
           DEV=true
           EOF
       - if: steps.gate.outputs.enabled == 'true'
-        # Probe B: nub's exec path instead of its script-shell path.
-        run: nubx playwright test --config playwright.config.sync.ts
+        run: nubx playwright test --config playwright.config.sync.ts --workers=1 --reporter=line
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() && steps.gate.outputs.enabled == 'true' }}
         with:
