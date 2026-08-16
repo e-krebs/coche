@@ -96,7 +96,12 @@ Decisions that aren't obvious from the markup:
   row's input, a drag handle for ordering,
   and delete behind a confirmation nested inside the sheet, naming every item the delete destroys —
   checked included, which is why the roster carries both counts. Deleting the list you're standing on
-  switches away and closes the sheet; deleting any other leaves it open. The active list is URL state
+  switches away and closes the sheet; deleting any other leaves it open. **Escape is decided in one
+  place**, the sheet's own handler, so it can weigh what is in flight: it cancels a keyboard drag
+  without closing (dnd-kit already reads Escape as cancel), it clears a half-typed list name rather
+  than discarding it along with the sheet, and only otherwise closes. The inline rename input is the
+  one exception, keeping `Enter` and `Escape` for itself — and only those two, so `Tab` still reaches
+  the sheet's trap rather than being decided by native tab order. The active list is URL state
   (`/lists/$listId`, replacing rather than pushing so Back doesn't walk a switch history) plus a
   device-local last-used hint for `/` — deliberately not a synced value, same seam as the locale
   mirror. An id that no longer resolves redirects to the first list rather than a not-found screen.

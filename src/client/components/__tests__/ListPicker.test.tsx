@@ -77,6 +77,9 @@ const ui = {
     return screen.getByRole("button", { name: "Cancel" });
   },
   queryDialog: (name: RegExp) => screen.queryByRole("dialog", { name }),
+  get sheet() {
+    return screen.getByRole("dialog", { name: "Lists" });
+  },
 };
 
 describe("ListPicker", () => {
@@ -302,6 +305,47 @@ describe("ListPicker", () => {
       ui.reorder("Garden").focus();
       await user.keyboard("{ }{ArrowUp}{Escape}");
       expect(onClose).not.toHaveBeenCalled();
+    });
+
+    // Closing the sheet would discard the half-typed name with it.
+    it("clears a half-typed new list name instead of closing", async () => {
+      const { onClose, user } = setup({ lists: twoLists });
+      await user.click(ui.edit);
+      await user.type(ui.newName, "Hardware{Escape}");
+      expect(ui.newName).toHaveValue("");
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("closes once the new list name is empty again", async () => {
+      const { onClose, user } = setup({ lists: twoLists });
+      await user.click(ui.edit);
+      await user.type(ui.newName, "Hardware{Escape}{Escape}");
+      expect(onClose).toHaveBeenCalledOnce();
+    });
+  });
+
+  // The sheet holds every other focusable in the test document, so native Tab would wrap inside it
+  // whether or not the trap works. `trigger()` puts a focusable after the sheet in DOM order — the
+  // only way an escape has somewhere to land.
+  describe("when Tab is pressed", () => {
+    it("stays inside the sheet", async () => {
+      const { user } = setup({ lists: twoLists });
+      const outside = trigger();
+      ui.radio("Coche").focus();
+      for (let i = 0; i < 10; i++) await user.tab();
+      expect(outside).not.toHaveFocus();
+      expect(ui.sheet.contains(document.activeElement)).toBe(true);
+    });
+
+    // The rename input owns Enter and Escape, but Tab has to reach the sheet's trap.
+    it("stays inside the sheet while renaming a list", async () => {
+      const { user } = setup({ lists: twoLists });
+      const outside = trigger();
+      await user.click(ui.edit);
+      await user.click(ui.name("Garden"));
+      for (let i = 0; i < 10; i++) await user.tab();
+      expect(outside).not.toHaveFocus();
+      expect(ui.sheet.contains(document.activeElement)).toBe(true);
     });
   });
 });

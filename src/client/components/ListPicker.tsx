@@ -131,10 +131,13 @@ const EditRow = ({
             onRename(e.target.value);
           }}
           onKeyDown={(e) => {
-            // Both keys are the sheet's otherwise — Escape would close it, Enter submit nothing.
+            // Both keys are the sheet's otherwise — Escape would close it, Enter submit nothing. Only
+            // those two: Tab has to keep bubbling or the sheet's trap never sees it and focus walks
+            // out of the modal.
+            if (e.key !== "Enter" && e.key !== "Escape") return;
             e.stopPropagation();
             if (e.key === "Enter") onRename(e.currentTarget.value);
-            if (e.key === "Escape") onRename(null);
+            else onRename(null);
           }}
           className={`
             flex-1 rounded-lg bg-accent-soft px-2.5 py-1.5 text-[15px] ring-2 ring-accent-text
@@ -215,7 +218,14 @@ export const ListPicker = ({
     if (e.key === "Escape") {
       // dnd-kit cancels a keyboard drag on Escape; closing the sheet as well would take the whole
       // edit session with it.
-      if (!dragging) onClose();
+      if (dragging) return;
+      // Escape over a half-typed list name clears the field rather than discarding it with the sheet.
+      if (newName) {
+        e.preventDefault();
+        setNewName("");
+        return;
+      }
+      onClose();
       return;
     }
     if (e.key === "Tab") {
