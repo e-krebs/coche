@@ -112,12 +112,16 @@ export const waitForServiceWorker = async (page: Page): Promise<void> => {
 
 /**
  * Wait for a non-zero Y translate (move applied) before dropping — poll-based to avoid
- * fixed-timeout flake.
+ * fixed-timeout flake. The generous ceiling is for worker contention: the default 5s is enough for
+ * this drag in isolation but not always with the whole suite running in parallel.
  */
 export const waitForDragShift = async (page: Page): Promise<unknown> =>
-  page.waitForFunction(() =>
-    [...document.querySelectorAll<HTMLElement>("li[data-draggable]")].some((li) => {
-      const m = /translate3d\(\s*-?\d+px,\s*(-?\d+)px/.exec(li.style.transform || "");
-      return !!m && Number(m[1]) !== 0;
-    }),
+  page.waitForFunction(
+    () =>
+      [...document.querySelectorAll<HTMLElement>("li[data-draggable]")].some((li) => {
+        const m = /translate3d\(\s*-?\d+px,\s*(-?\d+)px/.exec(li.style.transform || "");
+        return !!m && Number(m[1]) !== 0;
+      }),
+    undefined,
+    { timeout: 20_000 },
   );
