@@ -19,9 +19,9 @@ Client logic runs under Vitest (jsdom) in
 - **Sync** ([../../e2e/sync/](../../e2e/sync/),
   [../../playwright.config.sync.ts](../../playwright.config.sync.ts)) — real Clerk via
   `@clerk/testing` against a local `wrangler dev` Worker, provisioning a fresh `+clerk_test` user
-  per test (each gets an isolated HMAC `listId` and a clean Durable Object). Covers live two-context
-  CRDT merge, cross-user isolation, and sign-out clearing local data. CI runs it only when
-  `CLERK_SECRET_KEY` is present.
+  per test (each gets an isolated HMAC-derived sync unit, so a clean Durable Object). Covers live
+  two-context CRDT merge, cross-user isolation, and sign-out clearing local data. CI runs it only
+  when `CLERK_SECRET_KEY` is present.
 
 Source: [../../src/client/store/](../../src/client/store/),
 [../../src/client/components/](../../src/client/components/),
@@ -35,7 +35,7 @@ Renders on GitHub. The numbered edges are the connection handshake in order.
 flowchart TB
   subgraph browser["Browser — static SPA on Cloudflare Pages"]
     spa["App shell<br/>TanStack Router · React 19 · Vite · Tailwind"]
-    store["TinyBase MergeableStore (CRDT)<br/>+ mergeable IndexedDB persister<br/>per-user DB · offline read/write"]
+    store["TinyBase MergeableStore (CRDT)<br/>+ mergeable IndexedDB persister<br/>per-user DB, all of the user's lists · offline read/write"]
     ident["cached userId · localStorage<br/>offline identity gate"]
     clerk["Clerk · clerk-js served same-origin"]
     sw["Service worker (PWA)<br/>precache shell · runtime-cache clerk-js · never caches authed responses"]
@@ -58,27 +58,46 @@ flowchart TB
 
 | Component | Role | Location |
 |---|---|---|
-| SPA shell | Routing, auth UI, app shell | [../../src/client/routes/__root.tsx](../../src/client/routes/__root.tsx), [../../src/client/router.tsx](../../src/client/router.tsx) |
+| SPA shell | Routing, auth UI, app shell. A pathless `_app` layout route sits between the root and the per-list routes: the cached-identity gate, `StoreProvider` and the single `useSync` call mount there, above the `/lists/$listId` boundary, so switching lists never remounts the store | [../../src/client/routes/__root.tsx](../../src/client/routes/__root.tsx), [../../src/client/routes/](../../src/client/routes/), [../../src/client/router.tsx](../../src/client/router.tsx) |
 | Clerk (client) | Identity provider: `ClerkProvider` + `useAuth` | [../../src/client/routes/__root.tsx](../../src/client/routes/__root.tsx), [../../src/client/env.ts](../../src/client/env.ts) |
 | Cached identity gate | `{userId}` in localStorage; renders the app offline, independent of Clerk readiness | [../../src/client/store/identity.ts](../../src/client/store/identity.ts) |
 | Local store | TinyBase `MergeableStore` (CRDT) ⇄ a mergeable `IndexedDB` persister that preserves HLCs and tombstones across reload; DB `shopping-<userId>` | [../../src/client/store/schema.ts](../../src/client/store/schema.ts), [../../src/client/store/store.ts](../../src/client/store/store.ts), [../../src/client/store/persister.ts](../../src/client/store/persister.ts) |
-| Shopping list UI | Two lists (unchecked/checked), search, rename, quantity, delete, drag-reorder | [../../src/client/components/ShoppingList/](../../src/client/components/ShoppingList/) |
+| Shopping list UI | The active list's items in two sections (unchecked/checked), search, rename, quantity, delete, drag-reorder | [../../src/client/components/ShoppingList/](../../src/client/components/ShoppingList/) |
+| List picker | Bottom sheet over the header title: switch list, and an edit mode to create, rename, reorder and delete lists | [../../src/client/components/ShoppingList/](../../src/client/components/ShoppingList/) |
+| Lists roster | Virtual default row, the gated default-list migration, list CRUD, the orphan sweep and position backfill | [../../src/client/store/lists.ts](../../src/client/store/lists.ts) |
 | Sign-out teardown | Deletes the local IndexedDB replica and broadcasts to peer tabs on any signed-out transition | [../../src/client/store/teardown.ts](../../src/client/store/teardown.ts) |
 | Service worker | Precache the SPA shell; runtime-cache the same-origin `clerk-js` served from `/clerk-js/`; the sync Worker origin stays network-only | [../../vite.config.ts](../../vite.config.ts) |
 | Content-Security-Policy | [../../csp/dev.headers](../../csp/dev.headers) is committed and host-pinned for dev/preview; production resolves [../../csp/prod.headers.template](../../csp/prod.headers.template) into `dist/_headers` at build time so no deployment host is committed (see [../adr/0011-deployment-identifiers-out-of-repo.md](../adr/0011-deployment-identifiers-out-of-repo.md)); `yarn check:csp` — a gate CI and `yarn deploy:spa` run, not `yarn build` — fails on drift between the two, a stray placeholder, a `dist/` with no policy, or a Report-Only template without an explicit opt-in | [../../scripts/check-csp.ts](../../scripts/check-csp.ts), [../../scripts/gen-headers.ts](../../scripts/gen-headers.ts) |
 | `/ws-ticket` endpoint | Verifies the Clerk JWT (`verifyClerkUser`), derives `listId` and mints a single-use WS ticket (`deriveListId`, `mintTicket`) | [../../src/server/index.ts](../../src/server/index.ts), [../../src/server/clerk.ts](../../src/server/clerk.ts), [../../src/server/auth.ts](../../src/server/auth.ts) |
 | WS upgrade handler | Validates the ticket and checks `Origin` (`verifyTicket`, `originAllowed`), forwards to the EU Durable Object, which burns the ticket | [../../src/server/index.ts](../../src/server/index.ts), [../../src/server/auth.ts](../../src/server/auth.ts) |
-| Durable Object | `ShoppingListDurableObject`, one per `listId`, `jurisdiction('eu')` in prod, SQLite-backed | [../../src/server/durable-object.ts](../../src/server/durable-object.ts) |
+| Durable Object | `ShoppingListDurableObject`, one per derived `listId` — i.e. one sync unit per user, carrying all of their lists — `jurisdiction('eu')` in prod, SQLite-backed | [../../src/server/durable-object.ts](../../src/server/durable-object.ts) |
 
 Constraints met: **local-first** (CRDT in IndexedDB, offline r/w, conflict-free), **EU residency**
-(the DO is pinned `eu`), and **per-user with a path to sharing** (one DO per `listId`; a membership
-layer is addable later without re-keying — see
+(the DO is pinned `eu`), and **per-user with a path to sharing** (one DO per sync unit — one per
+user today, holding every list they own; a membership layer is addable later without re-keying — see
 [../adr/0006-deterministic-hmac-listid.md](../adr/0006-deterministic-hmac-listid.md)).
 
 ## Design & UX
 
 Decisions that aren't obvious from the markup:
 
+- **Lists & the picker** — the header title is the active list's name *and* the button that opens
+  the list picker: a bottom sheet forked from the language chooser (scrim, `role="dialog"` +
+  `aria-modal`, a radiogroup with arrow-roving and a trapped Tab). Because the trigger lives in the
+  title band, that band **shrinks** on scroll — roughly 49 px down to 31 px, dropping the sync dot
+  and the avatar — instead of collapsing to nothing, so the picker stays reachable at any offset.
+  The cost is a taller scrolled header. Each list shows its **unchecked** count only: the number
+  you'd act on, so `0` reads as "nothing to do here". List management lives in the sheet's edit
+  mode: an inline new-list field, tap-to-rename reusing the row's input, a drag handle for ordering,
+  and delete behind a confirmation nested inside the sheet, naming the count. The active list is URL
+  state (`/lists/$listId`, replacing rather than pushing so Back doesn't walk a switch history) plus
+  a device-local last-used hint for `/` — deliberately not a synced value, same seam as the locale
+  mirror. Switching resets the view: query cleared, any open editor closed, the checked section
+  collapsed, scrolled to top. Everything else about a switch is a client-side filter — one store per
+  user holds every list, so there is no request and no loading state
+  ([../adr/0013-multi-list-single-store.md](../adr/0013-multi-list-single-store.md)).
+  [ListHeader.tsx](../../src/client/components/ShoppingList/ListHeader.tsx),
+  [../../src/client/components/ShoppingList/](../../src/client/components/ShoppingList/).
 - **Reorder** — dnd-kit, whole-row drag: press-and-hold on touch (220 ms activation delay so a
   vertical swipe still scrolls), 6 px on mouse, plus keyboard reorder; disabled while the
   add/search input is focused. See [../adr/0008-dnd-kit-reorder.md](../adr/0008-dnd-kit-reorder.md).
@@ -96,7 +115,10 @@ Decisions that aren't obvious from the markup:
   than dropping it to `<body>`: rename/quantity commits refocus the row, delete moves to a
   neighbour, Undo returns to the restored item. Each only reclaims focus that was genuinely lost, so
   it never steals focus the user moved on purpose, and always targets a button so it can't pop the
-  soft keyboard.
+  soft keyboard. The same rule holds through the picker's two nested layers: opening the sheet moves
+  focus into it and closing returns it to the title trigger, and the delete confirmation — a dialog
+  inside a dialog — returns focus to the row that opened it, not to whatever the DOM happened to
+  leave focused.
   [../../src/client/components/ShoppingList/useListActions.ts](../../src/client/components/ShoppingList/useListActions.ts),
   [ItemRow.tsx](../../src/client/components/ShoppingList/ItemRow.tsx).
 - **Internationalisation** — FR/EN via a typed dictionary
@@ -105,7 +127,10 @@ Decisions that aren't obvious from the markup:
   picks a `{ one, other }` plural form by `count` via the locale's `Intl.PluralRules`. The
   chosen language is a synced CRDT value (`VALUES_SCHEMA.locale`) mirrored to `localStorage` so it's
   readable above `StoreProvider` — that mirror drives both the app UI and Clerk's own strings
-  (`@clerk/localizations`).
+  (`@clerk/localizations`). The copy stays **neutral about what a list is for**: a list can be
+  Hardware or Garden as easily as a weekly shop, so strings talk about items and lists rather than
+  buying or shopping. (The product framing — the app's name, the manifest, this repo's README — is
+  positioning, and stays.)
   [../../src/client/routes/__root.tsx](../../src/client/routes/__root.tsx).
 - **Theme** — light and dark, following `prefers-color-scheme`. The butter accent holds in both and
   `--color-accent-text` swaps to a readable tone per theme. A lighter header (`--color-header`) over
@@ -115,14 +140,19 @@ Decisions that aren't obvious from the markup:
 - **Motion** — add/check/delete animate through the View Transitions API (`flushSync` commits the
   store change before the API snapshots; each row carries a `view-transition-name`, and rows in a
   collapsed section render at `opacity: 0` so a named element isn't lifted out of its clip).
-  Title-collapse and the checked-section fold use CSS `grid-template-rows`; swipe-to-delete tracks
-  the finger with a CSS transform and springs back with a CSS transition, and crossing the delete
-  threshold plays a short CSS keyframe pulse. Motion is CSS-driven (no hand-rolled JS animation) and
+  The checked-section fold uses CSS `grid-template-rows`, and the title band's shrink is a CSS
+  transition on the same scrolled flag — sized down to a shorter band rather than to zero, so the
+  picker trigger is never unmounted mid-scroll. Swipe-to-delete tracks the finger with a CSS
+  transform and springs back with a CSS transition, and crossing the delete threshold plays a short
+  CSS keyframe pulse. Motion is CSS-driven (no hand-rolled JS animation) and
   all of it is gated on `prefers-reduced-motion`.
   [../../src/client/components/ShoppingList/helpers.ts](../../src/client/components/ShoppingList/helpers.ts),
   [ItemRow.tsx](../../src/client/components/ShoppingList/ItemRow.tsx).
 - **Scroll restoration** — page-level scroll under a sticky header; the offset is persisted to
-  `sessionStorage` and re-applied before paint in a `useLayoutEffect` once rows exist.
+  `sessionStorage` under a **per-list** key and re-applied before paint in a `useLayoutEffect` once
+  rows exist. One shared key would restore list A's offset into list B, so the key carries the list
+  id. Restoring is **reload-only**: switching lists scrolls to top, because landing halfway down a
+  list you just picked reads as a bug rather than as a convenience.
   `history.scrollRestoration` is `manual`, and `StoreProvider` withholds the list until the local
   load resolves so it paints populated and already-scrolled.
   [../../src/client/main.tsx](../../src/client/main.tsx),
@@ -151,4 +181,3 @@ every hop or every actor. The caveats matter — this is not "EU sovereign":
 
 DO SQLite is encrypted at rest (Cloudflare-managed), which is a security property, not a residency
 one. See [../adr/0004-eu-residency-cloudflare.md](../adr/0004-eu-residency-cloudflare.md).
-</invoke>

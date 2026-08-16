@@ -31,7 +31,7 @@ Code touched → doc to check (update if the change is user- or reader-visible):
 
 | Code area | Type | Doc to check |
 |---|---|---|
-| `src/client/store/schema.ts`, `store.ts`, `persister.ts`, `reorder.ts` | reference; explanation | [docs/reference/data-model.md](docs/reference/data-model.md); [docs/explanation/auth-and-sync.md](docs/explanation/auth-and-sync.md) (merge semantics / durability) |
+| `src/client/store/schema.ts`, `store.ts`, `lists.ts`, `persister.ts`, `reorder.ts` | reference; explanation | [docs/reference/data-model.md](docs/reference/data-model.md); [docs/explanation/auth-and-sync.md](docs/explanation/auth-and-sync.md) (merge semantics / durability) |
 | `src/client/store/sync.ts`, `identity.ts`, `teardown.ts`, `StoreProvider.tsx`, `components/SyncStatus.tsx` | explanation | [docs/explanation/auth-and-sync.md](docs/explanation/auth-and-sync.md) (reconnect, sync status, offline identity, teardown) |
 | `src/client/components/ShoppingList/**` (list UI, reorder, swipe/undo, focus) | explanation | [docs/explanation/architecture.md](docs/explanation/architecture.md) (Design & UX) |
 | Cross-cutting UX: theme (`styles.css`), motion, a11y | explanation | [docs/explanation/architecture.md](docs/explanation/architecture.md) (Design & UX) |

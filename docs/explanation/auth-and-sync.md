@@ -16,6 +16,12 @@ authorization is "the ticket was minted for *your* derived `listId`". A stored m
 added only when shared lists land, without re-keying the Durable Object. See
 [../adr/0006-deterministic-hmac-listid.md](../adr/0006-deterministic-hmac-listid.md).
 
+This derived `listId` names the **sync unit** — one Durable Object and one local replica per user,
+carrying *every* list that user owns — and not a list in the UI: the lists a user switches between
+are rows in the local `lists` table, referenced by `items.listId`, a client-side value the server
+never sees ([../reference/data-model.md](../reference/data-model.md),
+[../adr/0013-multi-list-single-store.md](../adr/0013-multi-list-single-store.md)).
+
 ## `POST /ws-ticket` — one-time ticket flow
 
 1. The client sends its Clerk JWT in the `Authorization` header (`Bearer <clerkJWT>`).
@@ -128,11 +134,16 @@ the app tears down the local store and cached identity *before* first render —
 safety mechanism. The cached store renders only when offline **and** the cached identity matches the
 last-confirmed user.
 
+The gate, `StoreProvider` and the single `useSync` call all mount in a pathless layout route above
+the per-list routes. Switching lists only changes the URL below that boundary, so it can never
+remount the gate or reopen the store — which would flash an empty list on every switch.
+
 ## CRDT merge semantics
 
 `MergeableStore` merges per-cell by HLC (hybrid logical clock) timestamp: conflict-free, latest
-write wins **per cell**. Expected v1 behaviors, each backed by a test in
-[../../src/client/store/__tests__/merge.test.ts](../../src/client/store/__tests__/merge.test.ts):
+write wins **per cell**. Expected behaviors, each backed by a test in
+[../../src/client/store/__tests__/merge.test.ts](../../src/client/store/__tests__/merge.test.ts) or
+its neighbours:
 
 - **Delete-vs-concurrent-edit resurrection.** If one device deletes a row while another edits a cell
   on that row, the merge can partially resurrect it. Modelling delete as an explicit tombstone cell
@@ -141,6 +152,16 @@ write wins **per cell**. Expected v1 behaviors, each backed by a test in
   item can un-check itself from the user's point of view.
 - **Quantity is LWW, not additive.** Two offline increments settle at the higher single value, not
   the sum — one write wins, nothing sums.
+- **A nameless list row can't revert a rename.** The default-list migration writes `createdAt` and
+  nothing else. A device migrating today after another device renamed that list last week writes no
+  `name` cell, so it contributes nothing to compete with — and the rename stands. Had it written a
+  name, its fresher HLC would win per-cell and the rename would silently vanish; that is precisely
+  why the row is nameless, and why the migration leaves `position` absent too, against a reorder.
+- **Deleting a list vs. a concurrent add resurrects the list, nameless.** One device deletes a list
+  while another, offline, adds an item to it. The item survives the merge carrying a `listId` that
+  names no row, which would leave it invisible forever, so the client resurrects the missing `lists`
+  row instead — with no `name`, since there is none to recover. The list reappears rather than the
+  item disappearing, and it renders as the app title until renamed.
 
 ### Item ids are globally unique, not TinyBase row ids
 
@@ -154,7 +175,11 @@ tiebreaker precisely because it's globally unique. There is no separate `id` cel
 doubles as the item's id.
 
 Reorder ordering is a fractional index with the same `(position, itemId)` tiebreaker, which
-converges deterministically even under concurrent-offline duplicate keys. See
+converges deterministically even under concurrent-offline duplicate keys. Positions are only
+comparable **within one list** — items against the items sharing their `listId`, lists against the
+same user's other lists — so every reorder, append and bulk mutation computes its neighbours from
+that one list's rows. Compared globally, a dragged row's neighbours can belong to another list
+entirely and the drop lands at an arbitrary index once the view re-filters. See
 [../adr/0007-fractional-index-reorder.md](../adr/0007-fractional-index-reorder.md).
 
 ### Local durability preserves CRDT metadata
@@ -186,3 +211,13 @@ resurrect a deleted item. Two unit tests assert an HLC and a tombstone survive s
 - **Local-first can't retract already-synced replicas.** Once a device has synced, removing a user's
   access doesn't delete their local copy — a property of local-first systems, relevant before
   sharing ships.
+- **"The last list can't be deleted" is a client-side rule, not an invariant of the merge.** Each
+  device refuses to delete its last remaining list, but two devices deleting two different lists
+  concurrently still settle on an empty roster. It self-heals: an empty roster renders a virtual
+  default list and re-runs the default-list migration, so no zero-lists state is ever reachable in
+  the UI. Enforcing it in the CRDT would mean modelling the roster as something other than
+  independent rows.
+- **A resurrected list is indistinguishable from the default until renamed.** Both have no `name`
+  cell, so both render as the app title. The alternative — writing a name when resurrecting — is the
+  LWW hazard the nameless row exists to avoid, so this is an accepted quirk rather than a bug: a
+  user who deleted a list and gets it back sees a second "Coche" and renames it.

@@ -62,3 +62,5 @@ Architecture decision records sit outside the four quadrants as their own recogn
   Deployment identifiers stay out of the repo; the production CSP is generated at build time
 - [adr/0012-typescript-build-scripts.md](adr/0012-typescript-build-scripts.md) — TypeScript build
   scripts on a Node 24 baseline, executed by native type stripping
+- [adr/0013-multi-list-single-store.md](adr/0013-multi-list-single-store.md) — Multiple lists in one
+  store, one sync unit per user
