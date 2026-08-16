@@ -51,7 +51,8 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           playwright: "true"
-      - run: nub run test:e2e
+      # Probe A: Playwright's own bin, nub out of the execution path entirely.
+      - run: ./node_modules/.bin/playwright test
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
@@ -92,7 +93,8 @@ jobs:
           DEV=true
           EOF
       - if: steps.gate.outputs.enabled == 'true'
-        run: nub run test:e2e:sync
+        # Probe B: nub's exec path instead of its script-shell path.
+        run: nubx playwright test --config playwright.config.sync.ts
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() && steps.gate.outputs.enabled == 'true' }}
         with:
