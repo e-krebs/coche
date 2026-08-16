@@ -30,14 +30,16 @@ export default defineConfig({
   webServer: [
     {
       // DEV=true routes to the plain DO namespace (jurisdiction('eu') throws in workerd) and allows the preview origin (token's azp). Secrets load from .dev.vars.
-      command: `nubx wrangler dev --port ${WORKER_PORT} --var DEV:true --var ALLOWED_ORIGINS:${APP_ORIGIN} --var CLERK_AUTHORIZED_PARTIES:${APP_ORIGIN} --persist-to .wrangler/e2e-state`,
+      command: `wrangler dev --port ${WORKER_PORT} --var DEV:true --var ALLOWED_ORIGINS:${APP_ORIGIN} --var CLERK_AUTHORIZED_PARTIES:${APP_ORIGIN} --persist-to .wrangler/e2e-state`,
       port: WORKER_PORT, // TCP-ready check — the Worker has no 2xx health route
       reuseExistingServer: !CI,
       timeout: 120_000,
       env: { WRANGLER_SEND_METRICS: "false" },
     },
     {
-      command: `nub run build:e2e:sync && nub run preview --port ${APP_PORT} --strictPort`,
+      // Bare `vite preview` and `wrangler dev` above: nub does not forward termination to its
+      // grandchild, so a wrapped server outlives Playwright's kill and the run never exits.
+      command: `nub run build:e2e:sync && vite preview --port ${APP_PORT} --strictPort`,
       url: APP_ORIGIN,
       reuseExistingServer: !CI,
       timeout: 120_000,

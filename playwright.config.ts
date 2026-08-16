@@ -16,7 +16,10 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: `nub run build:e2e && nub run preview --port ${PORT} --strictPort`,
+    // `vite preview` is bare, not `nub run preview`: nub does not forward termination to its
+    // grandchild, so Playwright kills the wrapper, the server survives holding the port, and the
+    // run never exits after the last test. The build is fine wrapped — it exits on its own.
+    command: `nub run build:e2e && vite preview --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !CI,
     timeout: 120_000,

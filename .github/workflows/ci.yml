@@ -54,14 +54,7 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           playwright: "true"
-      - name: Which Node and which browser
-        run: |
-          echo "node on PATH: $(which node) $(node --version)"
-          nub node which || true
-          ls ~/.cache/ms-playwright || true
-      # nub is out of the execution path here — this is Playwright's own bin. One worker and a line
-      # reporter so a hang points at a specific spec instead of going quiet after the worker banner.
-      - run: ./node_modules/.bin/playwright test --workers=1 --reporter=line
+      - run: nub run test:e2e
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
@@ -103,7 +96,7 @@ jobs:
           DEV=true
           EOF
       - if: steps.gate.outputs.enabled == 'true'
-        run: nubx playwright test --config playwright.config.sync.ts --workers=1 --reporter=line
+        run: nub run test:e2e:sync
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() && steps.gate.outputs.enabled == 'true' }}
         with:
