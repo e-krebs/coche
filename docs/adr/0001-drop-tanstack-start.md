@@ -25,4 +25,4 @@ a static SPA on Cloudflare Pages with an `_redirects` SPA fallback.
 - Auth becomes purely client-side: `@clerk/clerk-react` replaces `@clerk/tanstack-react-start`.
 - Implemented in [../../src/client/routes/__root.tsx](../../src/client/routes/__root.tsx),
   [../../src/client/router.tsx](../../src/client/router.tsx), and
-  [../../vite.config.js](../../vite.config.js).
+  [../../vite.config.ts](../../vite.config.ts).

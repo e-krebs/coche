@@ -26,9 +26,9 @@ who never visits learns them, and whether a fork starts out misconfigured.
 Deployment-specific identifiers live in the deployment, never in tracked files.
 
 - [../../csp/prod.headers.template](../../csp/prod.headers.template) is committed with `%FAPI_HOST%`
-  and `%SYNC_HOST%` placeholders. [../../scripts/gen-headers.mjs](../../scripts/gen-headers.mjs)
+  and `%SYNC_HOST%` placeholders. [../../scripts/gen-headers.ts](../../scripts/gen-headers.ts)
   resolves them into `dist/_headers` after the bundle is written, so `yarn build` is
-  `vite build && node scripts/gen-headers.mjs`.
+  `vite build && node scripts/gen-headers.ts`.
 - The Frontend API host is derived from `VITE_CLERK_PUBLISHABLE_KEY`, which encodes it, rather than
   configured separately — one value cannot drift from the other. The sync host comes from
   `VITE_SYNC_URL`; with it unset the Worker entries are dropped from `connect-src` entirely, matching
