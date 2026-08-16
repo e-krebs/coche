@@ -24,13 +24,19 @@ runs:
     # (~5s) while its resolution (~13s) and link (~10s) ran anyway — a net loss against the 4s spent
     # restoring 153 MB. A node_modules hit skips all three. Exact-match key, no restore-keys: a
     # partial hit is a tree that disagrees with the lockfile, which is worse than installing cold.
-    # Safe to move between runs because every job pins ubuntu-latest x64 and the key pins the lockfile.
+    #
+    # The key covers package.json and .yarnrc.yml, not just the lockfile: skipping the install also
+    # skips `--immutable`'s drift guard, so a package.json-only change (a widened range, a dropped
+    # dep, a merge that keeps main's lockfile) would otherwise hit the cache and test the old
+    # dependency set green. runner.arch is in there because the tree holds prebuilt native binaries
+    # (workerd, sharp, @rollup/*, @oxlint/*) — on an arm runner an x64 hit looks like dependency
+    # corruption rather than a stale cache.
     - name: Restore node_modules
       id: modules
       uses: actions/cache@v4
       with:
         path: node_modules
-        key: node-modules-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+        key: node-modules-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml') }}
     - if: steps.modules.outputs.cache-hit != 'true'
       run: yarn install --immutable
       shell: bash
@@ -49,7 +55,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ~/.cache/ms-playwright
-        key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+        key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}
     - name: Install Chromium
       if: inputs.playwright == 'true' && steps.browsers.outputs.cache-hit != 'true'
       shell: bash
