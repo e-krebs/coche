@@ -126,7 +126,11 @@ Decisions that aren't obvious from the markup:
 - **Swipe-to-delete & undo** — on touch, a left-swipe reveals a growing red action pill that
   brightens past a one-third-width commit threshold. Only a finger-lift past the threshold commits;
   any `touchcancel` (edge back-swipe, shade pull, app-switch) springs back, so a destructive action
-  never fires on an interrupted gesture. A commit slides the row off and shows an Undo snackbar
+  never fires on an interrupted gesture. The undo window is **ten seconds and pauses on hover or
+  focus**, because the snackbar is last in the DOM — several Tab presses away — and the delete has just
+  moved focus onto a neighbouring row, so a short fixed window is unreachable by keyboard. If it does
+  expire while the Undo button holds focus, the same restore that covers a delete catches the fall.
+  A commit slides the row off and shows an Undo snackbar
   that restores the item via `store.setRow` under the same rowId, preserving its
   `(position, id)` order. The gesture tracks a single `Touch.identifier`, is suppressed during a
   drag, and is blocked from starting (but never torn down) while syncing. Delete is also reachable

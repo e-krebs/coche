@@ -22,6 +22,10 @@ type StoredItem = z.infer<typeof itemSchema>;
 
 type Undo = { id: string; row: StoredItem } | null;
 
+// Long enough to reach by keyboard: the snackbar is last in the DOM, so it is several Tab presses
+// away, and the delete has just moved focus to a neighbouring row.
+const UNDO_MS = 10_000;
+
 /**
  * Store mutations for the list, each fail-closed behind a `hasRow` guard so a cross-tab/CRDT delete
  * between render and action can't resurrect a row. Owns the Undo buffer for deletes.
@@ -50,6 +54,22 @@ export const useListActions = ({
     },
     [],
   );
+
+  const startUndoTimer = () => {
+    window.clearTimeout(undoTimer.current);
+    undoTimer.current = window.setTimeout(() => {
+      setUndo(null);
+      // The snackbar may be holding focus as it expires; restoreFocus is a no-op unless it dropped.
+      restoreFocus();
+    }, UNDO_MS);
+  };
+  // Hovering or focusing the snackbar means the user is still deciding.
+  const pauseUndo = () => {
+    window.clearTimeout(undoTimer.current);
+  };
+  const resumeUndo = () => {
+    if (undo) startUndoTimer();
+  };
 
   const add = (name: string) => {
     if (!name || !store) return false;
@@ -108,10 +128,7 @@ export const useListActions = ({
     });
     setEditing(null);
     setUndo({ id, row });
-    window.clearTimeout(undoTimer.current);
-    undoTimer.current = window.setTimeout(() => {
-      setUndo(null);
-    }, 5000);
+    startUndoTimer();
     restoreFocus(neighbor);
     announce(t("deletedUndo", { name: row.name }));
   };
@@ -172,5 +189,17 @@ export const useListActions = ({
     if (key) store.setCell("items", activeId, "position", key);
   };
 
-  return { add, toggle, rename, remove, undoDelete, setQuantity, clearChecked, reorder, undo };
+  return {
+    add,
+    toggle,
+    rename,
+    remove,
+    undoDelete,
+    setQuantity,
+    clearChecked,
+    reorder,
+    undo,
+    pauseUndo,
+    resumeUndo,
+  };
 };

@@ -1,9 +1,26 @@
 import { useTranslation } from "client/i18n/useTranslation";
 
-export const UndoSnackbar = ({ name, onUndo }: { name: string; onUndo: () => void }) => {
+export const UndoSnackbar = ({
+  name,
+  onUndo,
+  onPause,
+  onResume,
+}: {
+  name: string;
+  onUndo: () => void;
+  onPause: () => void;
+  onResume: () => void;
+}) => {
   const t = useTranslation();
   return (
-    <div className="fixed inset-x-0 bottom-4 z-30 flex justify-center px-4">
+    <div
+      // Reaching Undo shouldn't race the window that offers it.
+      onFocus={onPause}
+      onBlur={onResume}
+      onMouseEnter={onPause}
+      onMouseLeave={onResume}
+      className="fixed inset-x-0 bottom-4 z-30 flex justify-center px-4"
+    >
       {/* The shared status region carries the announcement; this is the visual toast only */}
       <div
         className={`

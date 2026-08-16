@@ -254,7 +254,14 @@ export const ShoppingList = ({
         )}
       </main>
 
-      {actions.undo && <UndoSnackbar name={actions.undo.row.name} onUndo={actions.undoDelete} />}
+      {actions.undo && (
+        <UndoSnackbar
+          name={actions.undo.row.name}
+          onUndo={actions.undoDelete}
+          onPause={actions.pauseUndo}
+          onResume={actions.resumeUndo}
+        />
+      )}
     </div>
   );
 };
