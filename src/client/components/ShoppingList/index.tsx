@@ -149,7 +149,8 @@ export const ShoppingList = ({
         onFocusChange={setInputFocused}
       />
 
-      <div className="px-4 pb-4">
+      {/* The header stays outside, so it keeps its banner role and the items get the main landmark */}
+      <main className="px-4 pb-4">
         {searching ? (
           matches.length === 0 ? (
             <p className={emptyClass}>{t("noMatches")}</p>
@@ -237,7 +238,7 @@ export const ShoppingList = ({
             )}
           </>
         )}
-      </div>
+      </main>
 
       {actions.undo && <UndoSnackbar name={actions.undo.row.name} onUndo={actions.undoDelete} />}
     </div>

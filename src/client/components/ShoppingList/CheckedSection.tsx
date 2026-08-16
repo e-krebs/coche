@@ -23,23 +23,26 @@ export const CheckedSection = ({
   const t = useTranslation();
   return (
     <div className="group flex flex-col" data-open={showChecked || undefined}>
-      <button
-        onClick={onToggleShow}
-        aria-expanded={showChecked}
-        className={`
-          mt-1.5 flex items-center gap-3 border-t border-hairline px-2 pt-3 pb-2.5 text-[14px]
-          font-medium text-muted
-        `}
-      >
-        <ChevronIcon
+      {/* Heading so the two item groups are distinguishable to heading navigation */}
+      <h2>
+        <button
+          onClick={onToggleShow}
+          aria-expanded={showChecked}
           className={`
-            size-5 text-muted transition-transform duration-200
-            group-data-open:rotate-90
-            motion-reduce:transition-none
+            mt-1.5 flex w-full items-center gap-3 border-t border-hairline px-2 pt-3 pb-2.5
+            text-[14px] font-medium text-muted
           `}
-        />
-        {t("checked", { count: checked.length })}
-      </button>
+        >
+          <ChevronIcon
+            className={`
+              size-5 text-muted transition-transform duration-200
+              group-data-open:rotate-90
+              motion-reduce:transition-none
+            `}
+          />
+          {t("checked", { count: checked.length })}
+        </button>
+      </h2>
       <div
         className={`
           grid grid-rows-[0fr] transition-[grid-template-rows] duration-200

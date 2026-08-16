@@ -42,6 +42,12 @@ const ui = {
   get switchList() {
     return screen.getByRole("button", { name: "Coche" });
   },
+  get main() {
+    return screen.getByRole("main");
+  },
+  get checkedHeading() {
+    return screen.getByRole("heading", { level: 2, name: /Checked \(\d+\)/ });
+  },
   checkoff: (name: string) => screen.getByRole("button", { name: `Check off ${name}` }),
   queryCheckoff: (name: string) => screen.queryByRole("button", { name: `Check off ${name}` }),
   name: (name: string) => screen.getByRole("button", { name }),
@@ -182,6 +188,22 @@ describe("ShoppingList", () => {
         .getRowIds("items")
         .find((i) => store.getCell("items", i, "name") === "Butter")!;
       expect(store.getCell("items", id, "checked")).toBe(true);
+    });
+  });
+
+  describe("landmarks and headings", () => {
+    it("puts the items in a main landmark, leaving the header its banner role", () => {
+      setup();
+      expect(ui.main).toBeInTheDocument();
+      expect(ui.main).not.toContainElement(ui.switchList);
+    });
+
+    it("heads the checked group with an h2 under the list's h1", async () => {
+      const { user } = setup();
+      await user.type(ui.field, "Milk{Enter}");
+      await user.click(ui.checkoff("Milk"));
+      expect(ui.listTitle).toHaveAccessibleName("Coche");
+      expect(ui.checkedHeading).toBeInTheDocument();
     });
   });
 

@@ -133,6 +133,13 @@ Decisions that aren't obvious from the markup:
   without touch via the row's edit mode.
   [../../src/client/components/ShoppingList/useSwipeToDelete.ts](../../src/client/components/ShoppingList/useSwipeToDelete.ts),
   [UndoSnackbar.tsx](../../src/client/components/ShoppingList/UndoSnackbar.tsx).
+- **Landmarks & headings** — the items sit in a `<main>`, with the title band left outside it so it
+  keeps its `banner` role. Heading structure carries the two groups: the list name is the `<h1>` (and
+  the picker trigger), and the checked disclosure is an `<h2>`, so heading navigation can tell "still
+  to buy" from "already in the basket" without reading through. There is deliberately **no skip
+  link**: the add/find field lives inside the header, so skipping to the main landmark would jump past
+  the app's most-used control, and a landmark already satisfies bypass-blocks on a single-screen app.
+  There is nothing repeated across pages to bypass.
 - **Focus & keyboard** — mutations that unmount the focused control return focus to a button rather
   than dropping it to `<body>`: rename/quantity commits refocus the row, delete moves to a
   neighbour, Undo returns to the restored item. When there is no row left to return to — the last
