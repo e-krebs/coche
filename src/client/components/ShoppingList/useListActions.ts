@@ -47,9 +47,13 @@ export const useListActions = ({
 
   const add = (name: string) => {
     if (!name || !store) return false;
+    // Skip position-less rows. A concurrent edit to a deleted item resurrects it as a partial with
+    // no position (see merge.test.ts), and generateKeyBetween("", null) throws — inside animate(),
+    // so it would surface only as an unhandled rejection and this list would silently stop adding.
     const positions = store
       .getRowIds("items")
-      .map((id) => store.getCell("items", id, "position") ?? "");
+      .map((id) => store.getCell("items", id, "position"))
+      .filter((p): p is string => !!p);
     const lastPos = positions.length ? positions.reduce((m, p) => (p > m ? p : m)) : null;
     animate(() =>
       store.setRow("items", newItemId(), {
