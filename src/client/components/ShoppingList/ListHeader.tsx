@@ -1,8 +1,14 @@
 import { type ReactNode, type RefObject } from "react";
 import { useTranslation } from "client/i18n/useTranslation";
-import { AddIcon, CloseIcon, SearchIcon } from "client/components/icons";
+import { AddIcon, CloseIcon, ExpandIcon, SearchIcon } from "client/components/icons";
 
+/**
+ * Band 1 (title + headerRight) shrinks rather than collapses on scroll: it carries the list
+ * switcher, and the hysteresis floor means a vanished band only comes back at the very top.
+ */
 export const ListHeader = ({
+  listName,
+  onPickList,
   headerRight,
   scrolled,
   query,
@@ -11,6 +17,8 @@ export const ListHeader = ({
   onSubmit,
   onFocusChange,
 }: {
+  listName: string;
+  onPickList: () => void;
   headerRight?: ReactNode;
   scrolled: boolean;
   query: string;
@@ -30,21 +38,50 @@ export const ListHeader = ({
       <div
         data-scrolled={scrolled || undefined}
         className={`
-          grid grid-rows-[1fr] opacity-100 transition-[grid-template-rows,opacity] duration-300
-          ease-out
-          data-scrolled:grid-rows-[0fr] data-scrolled:opacity-0
+          group grid grid-cols-[1fr_auto_1fr] items-center pt-3 pb-1 transition-[padding]
+          duration-300 ease-out
+          data-scrolled:pt-1.5 data-scrolled:pb-0.5
           motion-reduce:transition-none
         `}
       >
-        <div className="overflow-hidden">
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center pt-3 pb-1">
-            <span aria-hidden />
-            <h1 className="text-center text-[22px] font-medium tracking-tight">{t("appTitle")}</h1>
-            {headerRight && (
-              <div className="flex items-center justify-end gap-3">{headerRight}</div>
-            )}
+        <span aria-hidden />
+        <h1 className="min-w-0">
+          <button
+            type="button"
+            onClick={onPickList}
+            aria-haspopup="dialog"
+            aria-label={t("switchList")}
+            data-list-trigger
+            className={`
+              flex max-w-full items-center gap-1 rounded-lg px-1 text-[22px] font-medium
+              tracking-tight transition-[font-size] duration-300 ease-out outline-none
+              group-data-scrolled:text-[15px]
+              focus-visible:ring-2 focus-visible:ring-accent-text
+              motion-reduce:transition-none
+            `}
+          >
+            <span className="truncate">{listName}</span>
+            <ExpandIcon
+              className={`
+                size-5 flex-none text-muted transition-[width,height] duration-300 ease-out
+                group-data-scrolled:size-4
+                motion-reduce:transition-none
+              `}
+            />
+          </button>
+        </h1>
+        {headerRight && (
+          <div
+            className={`
+              flex items-center justify-end gap-3 transition-[opacity,visibility] duration-300
+              ease-out
+              group-data-scrolled:invisible group-data-scrolled:opacity-0
+              motion-reduce:transition-none
+            `}
+          >
+            {headerRight}
           </div>
-        </div>
+        )}
       </div>
       <form
         onSubmit={(e) => {

@@ -59,7 +59,27 @@ export const addItem = async (page: Page, name: string): Promise<void> => {
   await expect(checkbox(page, name)).toBeVisible();
 };
 
-/** Unchecked item names, in display order. */
+export const switchList = (page: Page) => page.getByRole("button", { name: "Switch list" });
+
+/** Creates a list from the picker's Edit mode and lands on it (creating switches and closes). */
+export const createList = async (page: Page, name: string): Promise<void> => {
+  await switchList(page).click();
+  await page.getByRole("button", { name: "Edit lists" }).click();
+  await page.getByLabel("New list name").fill(name);
+  await page.getByRole("button", { name: "Create list" }).click();
+  await expect(switchList(page)).toHaveText(name);
+};
+
+export const pickList = async (page: Page, name: string): Promise<void> => {
+  await switchList(page).click();
+  await page.getByRole("radio", { name: new RegExp(`^${name},`) }).click();
+  await expect(switchList(page)).toHaveText(name);
+};
+
+/**
+ * Unchecked item names, in display order. Anchored to the items list, which precedes the picker's
+ * own <ul> in the DOM.
+ */
 export const uncheckedNames = async (page: Page): Promise<string[]> =>
   page
     .locator("ul")

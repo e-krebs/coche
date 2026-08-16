@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider, createShoppingStore } from "client/store/store";
@@ -7,12 +7,13 @@ import { ShoppingList } from "client/components/ShoppingList";
 
 const setup = () => {
   const store = createShoppingStore();
+  const onPickList = vi.fn();
   render(
     <Provider store={store}>
-      <ShoppingList listId={DEFAULT_LIST_ID} />
+      <ShoppingList listId={DEFAULT_LIST_ID} listName="Coche" onPickList={onPickList} />
     </Provider>,
   );
-  return { store, user: userEvent.setup() };
+  return { store, onPickList, user: userEvent.setup() };
 };
 
 const names = (store: ReturnType<typeof createShoppingStore>) =>
@@ -35,6 +36,9 @@ const ui = {
   get checkedToggle() {
     return screen.getByRole("button", { name: /Checked \(\d+\)/ });
   },
+  get switchList() {
+    return screen.getByRole("button", { name: "Switch list" });
+  },
   checkoff: (name: string) => screen.getByRole("button", { name: `Check off ${name}` }),
   queryCheckoff: (name: string) => screen.queryByRole("button", { name: `Check off ${name}` }),
   name: (name: string) => screen.getByRole("button", { name }),
@@ -45,6 +49,17 @@ const ui = {
 };
 
 describe("ShoppingList", () => {
+  // The trigger is the title, in the band that shrinks on scroll rather than vanishing — so it stays
+  // reachable at any scroll position.
+  describe("when the list name is tapped", () => {
+    it("names the list and asks the parent to open the picker", async () => {
+      const { onPickList, user } = setup();
+      expect(ui.switchList).toHaveTextContent("Coche");
+      await user.click(ui.switchList);
+      expect(onPickList).toHaveBeenCalledOnce();
+    });
+  });
+
   describe("when adding an item", () => {
     it("trims surrounding whitespace and rejects empty names", async () => {
       const { store, user } = setup();

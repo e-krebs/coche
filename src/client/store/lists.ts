@@ -16,6 +16,8 @@ export type ListSummary = {
   createdAt: number;
   /** Unchecked items, the count worth acting on. Reads 0 until the first sync lands. */
   count: number;
+  /** Every item, checked included — what a delete would actually destroy. */
+  total: number;
 };
 
 type ListsTable = Record<string, { name?: string; position?: string; createdAt?: number }>;
@@ -51,30 +53,27 @@ export const rosterFrom = ({
   items: ItemsTable;
 }): ListSummary[] => {
   const counts = new Map<string, number>();
-  const referenced = new Set<string>();
+  const totals = new Map<string, number>();
   Object.values(items).forEach((item) => {
     // Only complete rows count. A partial resurrected by a concurrent edit has no listId, and
     // setRow("lists", undefined, …) would mint a real list keyed "undefined".
     if (!item.listId || !item.name || !item.position) return;
-    referenced.add(item.listId);
+    totals.set(item.listId, (totals.get(item.listId) ?? 0) + 1);
     if (!item.checked) counts.set(item.listId, (counts.get(item.listId) ?? 0) + 1);
   });
 
-  const rows: ListSummary[] = Object.entries(lists).map(([id, row]) => ({
+  const summarize = (id: string, row: ListsTable[string]): ListSummary => ({
     id,
     name: row.name,
     position: row.position ?? "",
     createdAt: row.createdAt ?? 0,
     count: counts.get(id) ?? 0,
-  }));
-  if (!(DEFAULT_LIST_ID in lists) && (rows.length === 0 || referenced.has(DEFAULT_LIST_ID)))
-    rows.push({
-      id: DEFAULT_LIST_ID,
-      name: undefined,
-      position: "",
-      createdAt: 0,
-      count: counts.get(DEFAULT_LIST_ID) ?? 0,
-    });
+    total: totals.get(id) ?? 0,
+  });
+
+  const rows = Object.entries(lists).map(([id, row]) => summarize(id, row));
+  if (!(DEFAULT_LIST_ID in lists) && (rows.length === 0 || totals.has(DEFAULT_LIST_ID)))
+    rows.push(summarize(DEFAULT_LIST_ID, {}));
   return rows.sort(byRosterOrder);
 };
 
@@ -83,6 +82,23 @@ const rosterOf = (store: ShoppingStore): ListSummary[] =>
 
 export const useLists = (): ListSummary[] =>
   rosterFrom({ lists: useTable("lists"), items: useTable("items") });
+
+/** The roster plus its mutations, bound to the store — the list picker's whole data dependency. */
+export const useListRoster = () => {
+  const store = useStore();
+  const lists = useLists();
+  return {
+    lists,
+    add: (name: string) => (store ? addList({ store, name }) : null),
+    rename: ({ id, name }: { id: string; name: string }) => {
+      if (store) renameList({ store, id, name });
+    },
+    remove: (id: string) => (store ? deleteList({ store, id }) : false),
+    reorder: (move: { activeId: string; overId: string }) => {
+      if (store) reorderLists({ store, ...move });
+    },
+  };
+};
 
 /** True when `id` names a list the user can see, the still-virtual default list included. */
 export const hasList = ({ store, id }: { store: ShoppingStore; id: string }): boolean =>

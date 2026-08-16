@@ -30,10 +30,14 @@ import type { Editing, ItemView, RowProps } from "./types";
 /** Mount with `key={listId}`: a switch resets query, edit mode, the checked fold and the Undo buffer. */
 export const ShoppingList = ({
   listId,
+  listName,
+  onPickList,
   headerRight,
   syncing = false,
 }: {
   listId: string;
+  listName: string;
+  onPickList: () => void;
   headerRight?: ReactNode;
   syncing?: boolean;
 }) => {
@@ -59,7 +63,7 @@ export const ShoppingList = ({
   const [showChecked, setShowChecked] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [inputFocused, setInputFocused] = useState(false);
-  const scrolled = useHeaderCollapse(items.length);
+  const scrolled = useHeaderCollapse({ listId, itemsLength: items.length });
   const inputRef = useRef<HTMLInputElement>(null);
   const nameBtnRefs = useRef(new Map<string, HTMLButtonElement>());
   const registerNameBtn = useCallback((id: string, el: HTMLButtonElement | null) => {
@@ -130,6 +134,8 @@ export const ShoppingList = ({
   return (
     <div>
       <ListHeader
+        listName={listName}
+        onPickList={onPickList}
         headerRight={headerRight}
         scrolled={scrolled}
         query={query}

@@ -4,11 +4,12 @@ import { UserButton } from "@clerk/clerk-react";
 import { useIdentity } from "client/store/identity";
 import { StoreProvider } from "client/store/StoreProvider";
 import { useStore } from "client/store/store";
-import { readLastList, useLists, useRosterRepair } from "client/store/lists";
+import { readLastList, useLists, useRosterRepair, writeLastList } from "client/store/lists";
 import { useSync } from "client/store/sync";
 import { ShoppingList } from "client/components/ShoppingList";
 import { SyncStatus } from "client/components/SyncStatus";
 import { LanguageDialog } from "client/components/LanguageDialog";
+import { ListPicker } from "client/components/ListPicker";
 import { CheckIcon, GlobeIcon } from "client/components/icons";
 import { useLocale, useSetLocale, useSyncLocale, useTranslation } from "client/i18n/useTranslation";
 
@@ -45,15 +46,26 @@ const ListView = () => {
   // Local-only has no replica to race, so it never waits for a sync that won't come.
   useRosterRepair({ synced: everSynced || status === "disabled" });
   const lists = useLists();
-  const [hint] = useState(readLastList);
-  // The roster is never empty — a virtual default list stands in until repair runs.
-  const listId = lists.find((l) => l.id === hint)?.id ?? lists[0].id;
+  const [chosen, setChosen] = useState(readLastList);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // The roster has the last word: it is never empty (a virtual default list stands in), and the
+  // chosen list can be deleted from another device.
+  const active = lists.find((l) => l.id === chosen) ?? lists[0];
+  const selectList = (id: string) => {
+    setChosen(id);
+    writeLastList(id);
+    window.scrollTo(0, 0); // the outgoing list's offset means nothing on the new one
+  };
 
   return (
     <div className="mx-auto min-h-dvh max-w-md">
       <ShoppingList
-        key={listId}
-        listId={listId}
+        key={active.id}
+        listId={active.id}
+        listName={active.name ?? t("appTitle")}
+        onPickList={() => {
+          setPickerOpen(true);
+        }}
         syncing={status === "connecting" && !everSynced}
         headerRight={
           <>
@@ -72,6 +84,15 @@ const ListView = () => {
           </>
         }
       />
+      {pickerOpen && (
+        <ListPicker
+          activeId={active.id}
+          onSelect={selectList}
+          onClose={() => {
+            setPickerOpen(false);
+          }}
+        />
+      )}
       {langOpen && (
         <LanguageDialog
           locale={locale}

@@ -77,6 +77,16 @@ html {
   .animate-bounce-sync { animation: none; }
 }
 
+/* bottom sheet entrance — a mount can't be a transition, so it's a keyframe like snackbar-in */
+@keyframes sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.animate-sheet-in { animation: sheet-in 0.25s cubic-bezier(0.32, 0.72, 0, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .animate-sheet-in { animation: none; }
+}
+
 @keyframes snackbar-in {
   from { transform: translateY(1rem); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }

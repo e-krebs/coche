@@ -69,6 +69,8 @@ type-checking, not a test suite itself.
 
 - [../../src/client/__tests__/](../../src/client/__tests__/) — the global setup and shared MSW
   server above; not a suite itself.
+- [../../src/client/components/__tests__/](../../src/client/components/__tests__/) — the list picker:
+  pick, create, rename, delete-behind-confirmation, and the dialog's focus contract.
 - [../../src/client/components/ShoppingList/__tests__/](../../src/client/components/ShoppingList/__tests__/)
   — shopping-list components and hooks.
 - [../../src/client/i18n/__tests__/](../../src/client/i18n/__tests__/) — i18n resources/lookup.
@@ -101,9 +103,9 @@ vs. real-Clerk trade-off), see
   can't reach the FAPI — Clerk never initializes and the seeded cached identity drives the app.
 - The fixtures module also exports the DOM helpers shared across local specs: `field`, `checkbox`,
   `row`, `gotoApp`, `addItem`, `uncheckedNames`, `waitForServiceWorker`, `waitForDragShift`, plus
-  the list-picker helpers — opening the sheet from the header title, switching to a named list, and
-  creating one. `uncheckedNames` anchors on the unchecked *item* list rather than the page's first
-  `ul`, because the picker sheet renders a list of its own.
+  the list-picker helpers — `switchList` (the header title), `pickList`, and `createList`.
+  `uncheckedNames` still takes the page's first `ul`: the picker's own list renders after the item
+  list, so the anchor holds even with the sheet open.
 - Type-checked independently via [../../e2e/local/tsconfig.json](../../e2e/local/tsconfig.json).
 
 ### Sync tier — `e2e/sync/`

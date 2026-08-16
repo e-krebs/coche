@@ -62,7 +62,7 @@ describe("rosterFrom", () => {
   describe("while the default list has no row", () => {
     it("stands one in for an empty roster, nameless", () => {
       expect(rosterOf(seed())).toEqual([
-        { id: DEFAULT_LIST_ID, name: undefined, position: "", createdAt: 0, count: 0 },
+        { id: DEFAULT_LIST_ID, name: undefined, position: "", createdAt: 0, count: 0, total: 0 },
       ]);
     });
 
