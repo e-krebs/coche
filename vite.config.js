@@ -104,8 +104,11 @@ export default defineConfig(({ command }) => {
           name: "Coche",
           short_name: "Coche",
           description: "Offline-first, per-user shopping list",
-          theme_color: "#ffffff",
-          background_color: "#f1f3f4",
+          // Manifest colors can't media-query (color_scheme_dark isn't shipped); the WebAPK paints
+          // the status-bar seam and splash from these, so they're dark-biased — light mode's live
+          // status bar still comes from the media-queried theme-color metas in index.html.
+          theme_color: "#2d2e31",
+          background_color: "#1f1f1f",
           display: "standalone",
           start_url: "/",
           // "any"-purpose circles + a full-bleed maskable the OS masks to its own shape. Dev server injects no manifest — test the real install on a production build (yarn preview).
