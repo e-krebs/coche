@@ -260,7 +260,7 @@ export const ItemRow = ({
             className={`
               ${focusRing}
               flex-1 rounded-md text-left text-[15px]
-              data-checked:text-faint data-checked:line-through
+              data-checked:text-muted data-checked:line-through
             `}
           >
             {q ? <Highlighted name={item.name} q={q} /> : item.name}
@@ -342,7 +342,7 @@ export const ItemRow = ({
             className={`
               ${focusRing}
               grid size-7 flex-none place-items-center rounded-full border border-hairline
-              text-[15px] font-medium text-faint
+              text-[15px] font-medium text-muted
             `}
           >
             #
@@ -361,7 +361,7 @@ export const ItemRow = ({
             }}
             className={`
               ${focusRing}
-              grid size-7.5 flex-none place-items-center rounded-full text-faint
+              grid size-7.5 flex-none place-items-center rounded-full text-muted
             `}
           >
             <DeleteIcon className="size-4.5" />

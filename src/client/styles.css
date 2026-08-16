@@ -20,7 +20,7 @@
 
   --color-accent: #fcd34d;
   --color-on-accent: #1f1f1f;
-  --color-accent-text: #b7791f; /* muted ochre — text/links on white */
+  --color-accent-text: #96631a; /* ochre; dark enough for text on the canvas, not just white */
   --color-accent-soft: #fefbe8;
 
   --color-synced: #1e8e3e;

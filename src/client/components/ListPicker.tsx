@@ -27,7 +27,7 @@ const rowBase = `flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left t
   focus-visible:bg-canvas focus-visible:ring-2 focus-visible:ring-accent-text
   focus-visible:ring-inset`;
 
-const iconBtn = `grid size-8 flex-none place-items-center rounded-full text-faint outline-hidden
+const iconBtn = `grid size-8 flex-none place-items-center rounded-full text-muted outline-hidden
   focus-visible:ring-2 focus-visible:ring-accent-text`;
 
 const PickRow = ({
@@ -68,7 +68,7 @@ const PickRow = ({
         <CheckIcon className="size-3" />
       </span>
       <span className="flex-1 truncate">{label}</span>
-      <span className="flex-none text-[14px] text-faint tabular-nums">{list.count}</span>
+      <span className="flex-none text-[14px] text-muted tabular-nums">{list.count}</span>
     </button>
   );
 };

@@ -133,6 +133,16 @@ Decisions that aren't obvious from the markup:
   without touch via the row's edit mode.
   [../../src/client/components/ShoppingList/useSwipeToDelete.ts](../../src/client/components/ShoppingList/useSwipeToDelete.ts),
   [UndoSnackbar.tsx](../../src/client/components/ShoppingList/UndoSnackbar.tsx).
+- **Colour contrast** — the neutral ramp has a contract: `--color-faint` is for **decoration and
+  disabled state only** (a radio outline, the offline dot, a `disabled:` colour, all of which the
+  contrast minimums exempt), and `--color-muted` is the floor for anything a user has to read or
+  click. `faint` cannot carry content — it measures about 2.4:1 on the canvas in light mode and 3.6:1
+  in dark, so it fails body text in both, and fails even the 3:1 non-text bar for an icon button. That
+  is why the empty and no-match copy, checked item names, the quantity glyph, list counts and the
+  picker's icon buttons all sit on `muted`. `--color-accent-text` is the accent's *text* form, distinct
+  from `--color-accent` (the butter-yellow fill, unchanged): it is tuned against the **canvas**, the
+  worse of its two backgrounds, not against white, since that is the binding constraint. It also
+  doubles as the focus-ring colour, so tuning it for text raises the ring's margin at the same time.
 - **Focus visibility** — one house pattern, applied to every interactive control:
   `outline-hidden focus-visible:ring-2 focus-visible:ring-accent-text`, with `ring-inset` wherever the
   element clips (the row, whose `overflow-hidden` would cut an outset ring) and plain `focus:` rather

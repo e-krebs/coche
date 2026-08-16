@@ -133,7 +133,7 @@ export const ShoppingList = ({
 
   const activeItem = activeId ? items.find((i) => i.id === activeId) : undefined;
 
-  const emptyClass = "py-8 text-center text-[14px] text-faint";
+  const emptyClass = "py-8 text-center text-[14px] text-muted";
 
   return (
     <div>
