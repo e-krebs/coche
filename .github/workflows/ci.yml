@@ -13,6 +13,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
+# nub.jsonc's nodeCompat only disarms the augmentation for the process nub launches. The env var is
+# documented to persist across descendant node/nub calls, which is what Playwright's worker processes
+# are — and they hang indefinitely at startup when the augmentation reaches them.
+env:
+  NODE_COMPAT: "1"
+
 jobs:
   verify:
     runs-on: ubuntu-latest
