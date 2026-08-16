@@ -76,13 +76,28 @@ const ui = {
   get cancel() {
     return screen.getByRole("button", { name: "Cancel" });
   },
-  queryDialog: (name: RegExp) => screen.queryByRole("dialog", { name }),
+  // alertdialog, not dialog — Testing Library matches the exact role, not what it inherits from.
+  queryDialog: (name: RegExp) => screen.queryByRole("alertdialog", { name }),
   get sheet() {
     return screen.getByRole("dialog", { name: "Lists" });
   },
 };
 
 describe("ListPicker", () => {
+  it("names the sheet from its visible heading", () => {
+    setup({ lists: twoLists });
+    expect(ui.sheet).toHaveAccessibleName("Lists");
+  });
+
+  // The toggle swaps the body between a menu and a sortable roster, so the label change alone leaves
+  // the state unannounced.
+  it("reports edit mode as a pressed toggle", async () => {
+    const { user } = setup({ lists: twoLists });
+    expect(ui.edit).toHaveAttribute("aria-pressed", "false");
+    await user.click(ui.edit);
+    expect(screen.getByRole("button", { name: "Done" })).toHaveAttribute("aria-pressed", "true");
+  });
+
   // An absent lists.name is the default list, not missing data — the migration never writes that
   // cell, so the app title stands in.
   it("names a nameless list with the app title and counts its unchecked items", () => {
@@ -194,8 +209,10 @@ describe("ListPicker", () => {
       await user.click(ui.del("Garden"));
       const dialog = ui.queryDialog(/^Delete “Garden”\?$/);
       expect(dialog).not.toBeNull();
-      // Every item, checked included — that is what the delete destroys.
+      // Every item, checked included — that is what the delete destroys. Wired as the description, so
+      // assistive tech gets it on arrival rather than only if the user reads past the title.
       expect(dialog).toHaveTextContent("Its 2 items go with it.");
+      expect(dialog).toHaveAccessibleDescription(/Its 2 items go with it\./);
       expect(store.hasRow("lists", "garden")).toBe(true);
     });
 

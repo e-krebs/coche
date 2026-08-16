@@ -133,6 +133,17 @@ Decisions that aren't obvious from the markup:
   without touch via the row's edit mode.
   [../../src/client/components/ShoppingList/useSwipeToDelete.ts](../../src/client/components/ShoppingList/useSwipeToDelete.ts),
   [UndoSnackbar.tsx](../../src/client/components/ShoppingList/UndoSnackbar.tsx).
+- **Dialog naming** — each dialog is named by `aria-labelledby` pointing at its own visible `<h2>`,
+  rather than an `aria-label` repeating the same words in a second place that can drift. The delete
+  confirmation is an `alertdialog`, and its body — the sentence naming every item the delete
+  destroys, and that it can't be undone — is wired as the accessible **description**, so it reaches
+  assistive tech on arrival instead of only when the user reads past the title. State that a label
+  change alone wouldn't announce is exposed too: `aria-pressed` on the Edit-lists toggle, which swaps
+  the sheet's body between a menu and a sortable roster, and `aria-controls` on the checked
+  disclosure. The picker trigger deliberately carries **no `aria-expanded`** — `aria-haspopup="dialog"`
+  already says a dialog opens, `aria-expanded` describes content that expands in place, and while the
+  sheet is open the trigger sits inside an `inert` subtree, so the value could never be read as
+  anything but `false`.
 - **Landmarks & headings** — the items sit in a `<main>`, with the title band left outside it so it
   keeps its `banner` role. Heading structure carries the two groups: the list name is the `<h1>` (and
   the picker trigger), and the checked disclosure is an `<h2>`, so heading navigation can tell "still

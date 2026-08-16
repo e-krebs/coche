@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -194,6 +194,7 @@ export const ListPicker = ({
   const [newName, setNewName] = useState("");
   const sheetRef = useRef<HTMLDivElement>(null);
   const newNameRef = useRef<HTMLInputElement>(null);
+  const titleId = useId();
 
   const nameOf = (list: ListSummary) => list.name ?? t("appTitle");
   // The roster is never empty, and there is no zero-lists state to fall into.
@@ -279,7 +280,7 @@ export const ListPicker = ({
         className="fixed inset-0 z-40 flex items-end justify-center"
         role="dialog"
         aria-modal="true"
-        aria-label={t("lists")}
+        aria-labelledby={titleId}
         onKeyDown={onKeyDown}
       >
         <button
@@ -303,11 +304,14 @@ export const ListPicker = ({
               py-3
             `}
           >
-            <h2 className="text-[13px] font-medium tracking-wide text-muted uppercase">
+            <h2 id={titleId} className="text-[13px] font-medium tracking-wide text-muted uppercase">
               {t("lists")}
             </h2>
             <button
               type="button"
+              // A mode toggle, not a disclosure: it swaps the sheet's body between a menu of lists and
+              // a sortable roster, so the label change alone leaves the state unannounced.
+              aria-pressed={editing}
               onClick={() => {
                 setEditing((v) => !v);
                 setRenaming(null);

@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { useTranslation } from "client/i18n/useTranslation";
 import { ChevronIcon } from "client/components/icons";
 import { ItemRow } from "./ItemRow";
@@ -21,6 +22,7 @@ export const CheckedSection = ({
   rowProps: RowProps;
 }) => {
   const t = useTranslation();
+  const panelId = useId();
   return (
     <div className="group flex flex-col" data-open={showChecked || undefined}>
       {/* Heading so the two item groups are distinguishable to heading navigation */}
@@ -28,6 +30,7 @@ export const CheckedSection = ({
         <button
           onClick={onToggleShow}
           aria-expanded={showChecked}
+          aria-controls={panelId}
           className={`
             mt-1.5 flex w-full items-center gap-3 border-t border-hairline px-2 pt-3 pb-2.5
             text-[14px] font-medium text-muted
@@ -51,6 +54,7 @@ export const CheckedSection = ({
         `}
       >
         <div
+          id={panelId}
           className="flex flex-col overflow-hidden"
           inert={!showChecked}
           aria-hidden={!showChecked}

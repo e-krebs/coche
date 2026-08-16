@@ -82,7 +82,7 @@ test.describe("lists", () => {
     await page.getByRole("button", { name: "Delete Hardware" }).click();
 
     // Confirmed, not undone: the count is every item the delete destroys.
-    const dialog = page.getByRole("dialog", { name: /^Delete “Hardware”\?$/ });
+    const dialog = page.getByRole("alertdialog", { name: /^Delete “Hardware”\?$/ });
     await expect(dialog).toContainText("Its 1 item goes with it.");
     await dialog.getByRole("button", { name: "Delete" }).click();
 

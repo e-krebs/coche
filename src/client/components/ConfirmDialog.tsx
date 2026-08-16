@@ -1,4 +1,4 @@
-import { useEffect, useRef, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, type KeyboardEvent } from "react";
 import { useTranslation } from "client/i18n/useTranslation";
 import { useOpenerFocus } from "client/components/focus";
 
@@ -21,6 +21,8 @@ export const ConfirmDialog = ({
 }) => {
   const t = useTranslation();
   const buttonsRef = useRef<(HTMLButtonElement | null)[]>([]);
+  const titleId = useId();
+  const bodyId = useId();
 
   // No fallback selector: confirming can tear down the sheet the opener lived in, and then the sheet's
   // own restore has the better claim on focus.
@@ -54,9 +56,12 @@ export const ConfirmDialog = ({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      role="dialog"
+      // alertdialog, not dialog: it interrupts to confirm something destructive, and the body naming
+      // what the delete destroys has to reach assistive tech as the description, not just as text.
+      role="alertdialog"
       aria-modal="true"
-      aria-label={title}
+      aria-labelledby={titleId}
+      aria-describedby={bodyId}
       onKeyDown={onKeyDown}
     >
       <button
@@ -71,8 +76,12 @@ export const ConfirmDialog = ({
           animate-snackbar-in relative z-10 w-full max-w-xs rounded-2xl bg-header p-5 shadow-xl
         `}
       >
-        <h2 className="text-[17px] font-medium">{title}</h2>
-        <p className="mt-2 text-[14px] text-muted">{body}</p>
+        <h2 id={titleId} className="text-[17px] font-medium">
+          {title}
+        </h2>
+        <p id={bodyId} className="mt-2 text-[14px] text-muted">
+          {body}
+        </p>
         <div className="mt-5 flex justify-end gap-2">
           <button
             type="button"

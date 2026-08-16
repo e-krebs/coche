@@ -1,4 +1,4 @@
-import { useEffect, useRef, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, type KeyboardEvent } from "react";
 import { LOCALES, type Locale } from "client/i18n";
 import { useOpenerFocus } from "client/components/focus";
 import { useTranslation } from "client/i18n/useTranslation";
@@ -19,6 +19,7 @@ export const LanguageDialog = ({
   const t = useTranslation();
   const radiosRef = useRef<(HTMLButtonElement | null)[]>([]);
   const groupRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
 
   // The opener is a Clerk menu item that unmounts with its popover, so the captured node is normally
   // detached by restore time — the header title is the fallback because it is the one control present
@@ -61,7 +62,7 @@ export const LanguageDialog = ({
       className="fixed inset-0 z-40 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={t("language")}
+      aria-labelledby={titleId}
       onKeyDown={onKeyDown}
     >
       <button
@@ -78,6 +79,7 @@ export const LanguageDialog = ({
         `}
       >
         <h2
+          id={titleId}
           className={`
             border-b border-hairline px-4 py-3 text-[13px] font-medium tracking-wide text-muted
             uppercase

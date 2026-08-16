@@ -205,6 +205,18 @@ describe("ShoppingList", () => {
       expect(ui.listTitle).toHaveAccessibleName("Coche");
       expect(ui.checkedHeading).toBeInTheDocument();
     });
+
+    it("points the checked disclosure at the panel it expands", async () => {
+      const { user } = setup();
+      await user.type(ui.field, "Milk{Enter}");
+      await user.click(ui.checkoff("Milk"));
+      expect(ui.checkedToggle).toHaveAttribute("aria-expanded", "false");
+      const panelId = ui.checkedToggle.getAttribute("aria-controls");
+      expect(panelId).toBeTruthy();
+      expect(document.getElementById(panelId ?? "")).toBeInTheDocument();
+      await user.click(ui.checkedToggle);
+      expect(ui.checkedToggle).toHaveAttribute("aria-expanded", "true");
+    });
   });
 
   describe("when an item is checked", () => {
