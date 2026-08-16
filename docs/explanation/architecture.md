@@ -133,6 +133,16 @@ Decisions that aren't obvious from the markup:
   without touch via the row's edit mode.
   [../../src/client/components/ShoppingList/useSwipeToDelete.ts](../../src/client/components/ShoppingList/useSwipeToDelete.ts),
   [UndoSnackbar.tsx](../../src/client/components/ShoppingList/UndoSnackbar.tsx).
+- **Modal containment** — the dialogs are hand-rolled `role="dialog"` elements with their own
+  `keydown` Tab traps, not native `<dialog>`/`showModal()`: jsdom implements `HTMLDialogElement` as an
+  empty subclass, so going native would move containment and Escape out of unit-test reach (see
+  [../adr/0014-jsx-a11y-lint-rules.md](../adr/0014-jsx-a11y-lint-rules.md)). `aria-modal` alone only
+  *claims* the page behind is unreachable, and a keydown trap has a blind spot — with focus on
+  `<body>` there is no keydown to intercept. So the list is wrapped in an `inert` subtree whenever
+  either dialog is open, which is a property of the tree rather than of a handler, and the sheet
+  already does the same to itself while the nested confirmation is up. Focus restore survives it
+  because closing clears `inert` in the same commit that unmounts the dialog, one frame before the
+  deferred restore runs — the header trigger it reaches for lives inside that subtree.
 - **Dialog naming** — each dialog is named by `aria-labelledby` pointing at its own visible `<h2>`,
   rather than an `aria-label` repeating the same words in a second place that can drift. The delete
   confirmation is an `alertdialog`, and its body — the sentence naming every item the delete

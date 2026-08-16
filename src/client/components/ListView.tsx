@@ -30,33 +30,36 @@ export const ListView = ({
 
   return (
     <div className="mx-auto min-h-dvh max-w-md">
-      <ShoppingList
-        key={listId}
-        listId={listId}
-        listName={listName}
-        onPickList={() => {
-          setPickerOpen(true);
-        }}
-        // Block gestures only on first connect (its initial sync can reshuffle the list under a
-        // finger); later reconnect blips shouldn't make swipe/reorder flap.
-        syncing={status === "connecting" && !everSynced}
-        headerRight={
-          <>
-            <SyncStatus status={status} />
-            <UserButton>
-              <UserButton.MenuItems>
-                <UserButton.Action
-                  label={t("language")}
-                  labelIcon={<GlobeIcon className="size-4" />}
-                  onClick={() => {
-                    setLangOpen(true);
-                  }}
-                />
-              </UserButton.MenuItems>
-            </UserButton>
-          </>
-        }
-      />
+      {/* aria-modal only promises the page behind is unreachable; inert is what delivers it */}
+      <div inert={pickerOpen || langOpen}>
+        <ShoppingList
+          key={listId}
+          listId={listId}
+          listName={listName}
+          onPickList={() => {
+            setPickerOpen(true);
+          }}
+          // Block gestures only on first connect (its initial sync can reshuffle the list under a
+          // finger); later reconnect blips shouldn't make swipe/reorder flap.
+          syncing={status === "connecting" && !everSynced}
+          headerRight={
+            <>
+              <SyncStatus status={status} />
+              <UserButton>
+                <UserButton.MenuItems>
+                  <UserButton.Action
+                    label={t("language")}
+                    labelIcon={<GlobeIcon className="size-4" />}
+                    onClick={() => {
+                      setLangOpen(true);
+                    }}
+                  />
+                </UserButton.MenuItems>
+              </UserButton>
+            </>
+          }
+        />
+      </div>
       {pickerOpen && (
         <ListPicker
           activeId={listId}

@@ -71,6 +71,9 @@ export const ListHeader = ({
         </h1>
         {headerRight && (
           <div
+            // `invisible` already prunes the slot from the a11y tree; inert makes the absence
+            // consistent so nothing here is reachable while it can't be seen.
+            inert={scrolled}
             className={`
               flex items-center justify-end gap-3 transition-[opacity,visibility] duration-300
               ease-out
