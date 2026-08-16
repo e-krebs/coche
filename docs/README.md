@@ -66,3 +66,5 @@ Architecture decision records sit outside the four quadrants as their own recogn
   store, one sync unit per user
 - [adr/0014-jsx-a11y-lint-rules.md](adr/0014-jsx-a11y-lint-rules.md) — A curated jsx-a11y rule set,
   with three rules off
+- [adr/0015-axe-e2e-gate.md](adr/0015-axe-e2e-gate.md) — axe-core as a gate on the local Playwright
+  tier

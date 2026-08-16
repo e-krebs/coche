@@ -60,6 +60,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@clerk/clerk-js": "5",
     "@clerk/testing": "^2.2.10",
     "@cloudflare/vitest-pool-workers": "^0.18.6",

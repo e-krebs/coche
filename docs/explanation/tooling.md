@@ -149,6 +149,10 @@ the Claude Code hook run on Node rather than in a browser or a Worker, so
 
 ## Pinned, not ranged
 
+`@axe-core/playwright` is pinned exact for a different reason than the rest: a floating minor ships
+new axe rules, so an unrelated install could fail a gate on an unchanged app. The pin makes ruleset
+changes an explicit, reviewable bump.
+
 `oxlint`, `oxfmt`, `oxlint-tsgolint`, and both jsPlugins are pinned to exact versions in
 [`../../package.json`](../../package.json) rather than given a `^` range. The Tailwind
 wrap-then-sort-then-format sequence is a fixpoint: `readable-tailwind`'s wrapping decides where the
