@@ -203,12 +203,25 @@ describe("ListPicker", () => {
       expect(ui.queryDialog(/^Delete/)).toBeNull();
     });
 
-    it("switches away when the deleted list was the active one", async () => {
-      const { onSelect, user } = setup({ lists: twoLists, activeId: "garden" });
+    // Switching remounts the view under the sheet, so closing is deliberate rather than a side effect
+    // that reads as a glitch.
+    it("switches away and closes when the deleted list was the active one", async () => {
+      const { onSelect, onClose, user } = setup({ lists: twoLists, activeId: "garden" });
       await user.click(ui.edit);
       await user.click(ui.del("Garden"));
       await user.click(ui.confirm);
       expect(onSelect).toHaveBeenCalledWith(DEFAULT_LIST_ID);
+      expect(onClose).toHaveBeenCalledOnce();
+    });
+
+    it("stays open when the deleted list was not the active one", async () => {
+      const { onSelect, onClose, user } = setup({ lists: twoLists });
+      await user.click(ui.edit);
+      await user.click(ui.del("Garden"));
+      await user.click(ui.confirm);
+      expect(onSelect).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+      expect(ui.del("Coche")).toBeDisabled();
     });
 
     // There is no zero-lists state, so the rule is enforced in the UI as well as in the store.

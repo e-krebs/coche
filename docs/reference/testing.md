@@ -91,7 +91,9 @@ vs. real-Clerk trade-off), see
 - Config: [../../playwright.config.ts](../../playwright.config.ts) — `testDir: "./e2e/local"`,
   `fullyParallel: true`, 2 retries in CI. `webServer` runs a production build + preview
   (`yarn build:e2e && yarn preview`) rather than the dev server, so the PWA service worker the
-  offline spec depends on is active. The mode-specific build scripts exist because `yarn build`
+  offline spec depends on is active. Run `offline.spec.ts` **first** after any routing change: it
+  reloads a deep `/lists/<id>` URL the service worker never precached, which only works because
+  `navigateFallback` has no denylist. The mode-specific build scripts exist because `yarn build`
   chains the CSP generator after `vite build`, so a trailing `--mode` would reach the generator
   instead of Vite.
 - Hermetic by design: [../../e2e/local/fixtures.ts](../../e2e/local/fixtures.ts) extends `context`

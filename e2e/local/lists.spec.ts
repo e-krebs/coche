@@ -33,6 +33,27 @@ test.describe("lists", () => {
     await expect.poll(async () => uncheckedNames(page)).toEqual(["Nails"]);
   });
 
+  // The URL is the active list, so a list is linkable; an id that no longer resolves falls back to
+  // the first list rather than a not-found screen.
+  test("deep-links a list, and falls back when the id is unknown", async ({ page }) => {
+    await gotoApp(page);
+    await addItem(page, "Milk");
+    await createList(page, "Hardware");
+    await addItem(page, "Nails");
+    const hardwareUrl = page.url();
+
+    await page.goto("/lists/list");
+    await expect(switchList(page)).toHaveText("Coche");
+    await expect.poll(async () => uncheckedNames(page)).toEqual(["Milk"]);
+
+    await page.goto(hardwareUrl);
+    await expect(switchList(page)).toHaveText("Hardware");
+
+    await page.goto("/lists/does-not-exist");
+    await expect(switchList(page)).toHaveText("Coche");
+    await expect(page).toHaveURL(/\/lists\/list$/);
+  });
+
   test("renaming a list retitles the header", async ({ page }) => {
     await gotoApp(page);
     await createList(page, "Garden");
@@ -64,13 +85,14 @@ test.describe("lists", () => {
     await expect(dialog).toContainText("Its 1 item goes with it.");
     await dialog.getByRole("button", { name: "Delete" }).click();
 
-    // The sheet stays open on delete — you may want to delete another — so assert in place: the row
-    // is gone, and the last remaining list can't follow it.
-    await expect(page.getByRole("button", { name: "Delete Hardware" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Delete Coche" })).toBeDisabled();
-
-    await page.keyboard.press("Escape");
+    // Deleting the active list switches away and closes the sheet.
     await expect(switchList(page)).toHaveText("Coche");
     await expect.poll(async () => uncheckedNames(page)).toEqual(["Milk"]);
+
+    // Gone for good, and the last remaining list can't follow it.
+    await switchList(page).click();
+    await expect(page.getByRole("radio", { name: /^Hardware,/ })).toHaveCount(0);
+    await page.getByRole("button", { name: "Edit lists" }).click();
+    await expect(page.getByRole("button", { name: "Delete Coche" })).toBeDisabled();
   });
 });

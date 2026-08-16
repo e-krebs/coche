@@ -253,8 +253,14 @@ export const ListPicker = ({
     if (!confirming) return;
     const { id } = confirming;
     const next = lists.find((l) => l.id !== id)?.id;
-    if (remove(id) && id === activeId && next) onSelect(next);
     setConfirming(null);
+    if (!remove(id)) return;
+    // Deleting the list you're standing on switches away, and that remounts this view — so close
+    // deliberately, rather than letting the remount do it and look like a glitch.
+    if (id === activeId && next) {
+      onSelect(next);
+      onClose();
+    }
   };
 
   return (

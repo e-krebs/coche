@@ -24,8 +24,10 @@ export const ConfirmDialog = ({
   useEffect(() => {
     const opener = document.activeElement;
     buttonsRef.current[0]?.focus(); // Cancel: the safe default under a stray Enter
+    // Only when the opener survived: confirming can tear down the sheet it lived in, and whatever
+    // replaced that sheet has the better claim on focus.
     return () => {
-      if (opener instanceof HTMLElement) opener.focus();
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
     };
   }, []);
 

@@ -20,6 +20,10 @@ test.describe("offline", () => {
       await expect(checkbox(page, "Milk")).toBeVisible();
       await expect(checkbox(page, "Bread")).toBeVisible();
 
+      // The reload below is of a deep list URL the service worker has never seen — covered by
+      // navigateFallback, and the reason this spec is the first one to run after a routing change.
+      await expect(page).toHaveURL(/\/lists\/[^/]+$/);
+
       await waitForServiceWorker(page);
       await context.setOffline(true);
       await page.reload();

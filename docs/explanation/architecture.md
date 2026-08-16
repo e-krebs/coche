@@ -58,11 +58,11 @@ flowchart TB
 
 | Component | Role | Location |
 |---|---|---|
-| SPA shell | Routing, auth UI, app shell. A pathless `_app` layout route sits between the root and the per-list routes: the cached-identity gate, `StoreProvider` and the single `useSync` call mount there, above the `/lists/$listId` boundary, so switching lists never remounts the store | [../../src/client/routes/__root.tsx](../../src/client/routes/__root.tsx), [../../src/client/routes/](../../src/client/routes/), [../../src/client/router.tsx](../../src/client/router.tsx) |
+| SPA shell | Routing, auth UI, app shell. A pathless `_app` layout route sits between the root and the per-list routes: the cached-identity gate, `StoreProvider`, the single `useSync` call and the roster-repair subscription mount there, above the `/lists/$listId` boundary, so switching lists never remounts the store or restarts the socket. `useSync`'s result reaches the list view through a context rather than the `Outlet` | [../../src/client/routes/__root.tsx](../../src/client/routes/__root.tsx), [../../src/client/routes/](../../src/client/routes/), [../../src/client/store/syncStatus.ts](../../src/client/store/syncStatus.ts), [../../src/client/router.tsx](../../src/client/router.tsx) |
 | Clerk (client) | Identity provider: `ClerkProvider` + `useAuth` | [../../src/client/routes/__root.tsx](../../src/client/routes/__root.tsx), [../../src/client/env.ts](../../src/client/env.ts) |
 | Cached identity gate | `{userId}` in localStorage; renders the app offline, independent of Clerk readiness | [../../src/client/store/identity.ts](../../src/client/store/identity.ts) |
 | Local store | TinyBase `MergeableStore` (CRDT) ⇄ a mergeable `IndexedDB` persister that preserves HLCs and tombstones across reload; DB `shopping-<userId>` | [../../src/client/store/schema.ts](../../src/client/store/schema.ts), [../../src/client/store/store.ts](../../src/client/store/store.ts), [../../src/client/store/persister.ts](../../src/client/store/persister.ts) |
-| Shopping list UI | The active list's items in two sections (unchecked/checked), search, rename, quantity, delete, drag-reorder | [../../src/client/components/ShoppingList/](../../src/client/components/ShoppingList/) |
+| Shopping list UI | The active list's items in two sections (unchecked/checked), search, rename, quantity, delete, drag-reorder — wrapped by a view that also carries the header's sync/account controls and the two dialogs | [../../src/client/components/ShoppingList/](../../src/client/components/ShoppingList/), [../../src/client/components/ListView.tsx](../../src/client/components/ListView.tsx) |
 | List picker | Bottom sheet over the header title: switch list, and an edit mode to create, rename, reorder and delete lists — mounted above the keyed `<ShoppingList>` so a switch can't unmount it mid-interaction | [../../src/client/components/ListPicker.tsx](../../src/client/components/ListPicker.tsx), [../../src/client/components/ConfirmDialog.tsx](../../src/client/components/ConfirmDialog.tsx) |
 | Lists roster | Virtual default row, the gated default-list migration, list CRUD, the orphan sweep and position backfill | [../../src/client/store/lists.ts](../../src/client/store/lists.ts) |
 | Sign-out teardown | Deletes the local IndexedDB replica and broadcasts to peer tabs on any signed-out transition | [../../src/client/store/teardown.ts](../../src/client/store/teardown.ts) |
@@ -89,12 +89,16 @@ Decisions that aren't obvious from the markup:
   The cost is a taller scrolled header. Each list shows its **unchecked** count only: the number
   you'd act on, so `0` reads as "nothing to do here". List management lives in the sheet's edit
   mode: an inline new-list field, tap-to-rename reusing the row's input, a drag handle for ordering,
-  and delete behind a confirmation nested inside the sheet, naming the count. The active list is URL
-  state (`/lists/$listId`, replacing rather than pushing so Back doesn't walk a switch history) plus
-  a device-local last-used hint for `/` — deliberately not a synced value, same seam as the locale
-  mirror. Switching resets the view: query cleared, any open editor closed, the checked section
-  collapsed, scrolled to top. Everything else about a switch is a client-side filter — one store per
-  user holds every list, so there is no request and no loading state
+  and delete behind a confirmation nested inside the sheet, naming every item the delete destroys —
+  checked included, which is why the roster carries both counts. Deleting the list you're standing on
+  switches away and closes the sheet; deleting any other leaves it open. The active list is URL state
+  (`/lists/$listId`, replacing rather than pushing so Back doesn't walk a switch history) plus a
+  device-local last-used hint for `/` — deliberately not a synced value, same seam as the locale
+  mirror. An id that no longer resolves redirects to the first list rather than a not-found screen.
+  Switching resets the view: query cleared, any open editor closed, the checked section collapsed,
+  scrolled to top — all of it from remounting the list on a `key`, not from a reset routine.
+  Everything else about a switch is a client-side filter — one store per user holds every list, so
+  there is no request and no loading state
   ([../adr/0013-multi-list-single-store.md](../adr/0013-multi-list-single-store.md)).
   [ListHeader.tsx](../../src/client/components/ShoppingList/ListHeader.tsx),
   [../../src/client/components/ShoppingList/](../../src/client/components/ShoppingList/).
