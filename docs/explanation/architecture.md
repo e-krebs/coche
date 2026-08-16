@@ -110,7 +110,11 @@ Decisions that aren't obvious from the markup:
   [../../src/client/components/ShoppingList/](../../src/client/components/ShoppingList/).
 - **Reorder** — dnd-kit, whole-row drag: press-and-hold on touch (220 ms activation delay so a
   vertical swipe still scrolls), 6 px on mouse, plus keyboard reorder; disabled while the
-  add/search input is focused. See [../adr/0008-dnd-kit-reorder.md](../adr/0008-dnd-kit-reorder.md).
+  add/search input is focused. The row is both the drag node and the registered **activator node**,
+  and registering it as the activator is what scopes the keyboard sensor to the row: the sensor only
+  compares a `Space`/`Enter` target against the activator when one exists, so without that
+  registration the same keypress on a nested control lifts the row and suppresses the control's own
+  click. See [../adr/0008-dnd-kit-reorder.md](../adr/0008-dnd-kit-reorder.md).
 - **Swipe-to-delete & undo** — on touch, a left-swipe reveals a growing red action pill that
   brightens past a one-third-width commit threshold. Only a finger-lift past the threshold commits;
   any `touchcancel` (edge back-swipe, shade pull, app-switch) springs back, so a destructive action

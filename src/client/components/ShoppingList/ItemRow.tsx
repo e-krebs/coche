@@ -1,6 +1,6 @@
 import { type CSSProperties, useCallback, useEffect, useRef } from "react";
 import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { CSS, useCombinedRefs } from "@dnd-kit/utilities";
 import { AddIcon, CheckIcon, DeleteIcon, MinusIcon } from "client/components/icons";
 import { useTranslation } from "client/i18n/useTranslation";
 import { focusDropped, prefersReducedMotion } from "./helpers";
@@ -62,13 +62,24 @@ export const SortableRow = ({
 }: Omit<ItemRowProps, "sortable"> & { dndDisabled: boolean }) => {
   // Also lock the row being renamed so a long-press on its input doesn't lift it.
   const disabled = dndDisabled || props.editing?.id === props.item.id;
-  const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
-    id: props.item.id,
-    disabled,
-  });
+  const {
+    setNodeRef,
+    setActivatorNodeRef,
+    attributes,
+    listeners,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: props.item.id, disabled });
+
+  // The row itself is the drag activator (ADR 0008), but the KeyboardSensor only enforces that when
+  // it has an activator node to compare the event target against. With none, its
+  // `event.target !== activator` guard never runs and Space/Enter on any child button lifts the row
+  // — preventDefault-ing the button's own click — instead of activating the button.
+  const setRowRef = useCombinedRefs(setNodeRef, setActivatorNodeRef);
 
   const sortable: SortableBag = {
-    setNodeRef,
+    setNodeRef: setRowRef,
     attributes,
     listeners,
     style: {
