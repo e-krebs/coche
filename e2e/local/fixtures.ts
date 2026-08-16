@@ -71,12 +71,17 @@ export const switchList = (page: Page) => page.locator("[data-list-trigger]");
  */
 export const sheet = (page: Page) => page.getByRole("dialog", { name: "Lists" });
 
-/** Creates a list from the picker's Edit mode and lands on it (creating switches and closes). */
+/**
+ * Creates a list from the picker's Edit mode and then switches to it. Creating deliberately stays in
+ * the sheet, so landing on the new list is a second, explicit step.
+ */
 export const createList = async (page: Page, name: string): Promise<void> => {
   await switchList(page).click();
   await page.getByRole("button", { name: "Edit lists" }).click();
   await page.getByLabel("New list name").fill(name);
   await page.getByRole("button", { name: "Create list" }).click();
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("menuitemradio", { name: new RegExp(`^${name},`) }).click();
   await expect(switchList(page)).toHaveText(name);
 };
 

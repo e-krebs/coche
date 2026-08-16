@@ -91,7 +91,9 @@ Decisions that aren't obvious from the markup:
   sync dot and the avatar — instead of collapsing to nothing, so the picker stays reachable at any
   offset. The cost is a taller scrolled header. Each list shows its **unchecked** count only: the
   number you'd act on, so `0` reads as "nothing to do here". List management lives in the sheet's edit
-  mode: an inline new-list field, tap-to-rename reusing the row's input, a drag handle for ordering,
+  mode, and every action there leaves the sheet open — creating a list neither switches to it nor
+  closes, so you can add several in one sitting: an inline new-list field, tap-to-rename reusing the
+  row's input, a drag handle for ordering,
   and delete behind a confirmation nested inside the sheet, naming every item the delete destroys —
   checked included, which is why the roster carries both counts. Deleting the list you're standing on
   switches away and closes the sheet; deleting any other leaves it open. The active list is URL state

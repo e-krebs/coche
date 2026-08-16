@@ -104,25 +104,41 @@ describe("ListPicker", () => {
     });
   });
 
+  // Creating is a management action, not navigation: switching away or closing would end the session
+  // after one list, so the sheet stays put and the field is ready for the next name.
   describe("when a list is created", () => {
-    it("trims the name, switches to the new list, and closes", async () => {
+    const named = (store: Store, name: string) =>
+      store.getRowIds("lists").find((l) => store.getCell("lists", l, "name") === name);
+
+    it("trims the name and stays open, on Enter and on the + button alike", async () => {
       const { store, onSelect, onClose, user } = setup({ lists: twoLists });
       await user.click(ui.edit);
-      await user.type(ui.newName, "  Hardware  ");
-      await user.click(ui.create);
 
-      const id = store
-        .getRowIds("lists")
-        .find((l) => store.getCell("lists", l, "name") === "Hardware");
-      expect(id).toBeDefined();
-      expect(onSelect).toHaveBeenCalledWith(id);
-      expect(onClose).toHaveBeenCalledOnce();
+      await user.type(ui.newName, "  Hardware  {Enter}");
+      expect(named(store, "Hardware")).toBeDefined();
+
+      await user.type(ui.newName, "Garden");
+      await user.click(ui.create);
+      expect(named(store, "Garden")).toBeDefined();
+
+      expect(onSelect).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    // The + button disables itself the moment the field clears, stranding focus on a dead control.
+    it("clears the field and keeps focus in it", async () => {
+      const { user } = setup({ lists: twoLists });
+      await user.click(ui.edit);
+      await user.type(ui.newName, "Hardware");
+      await user.click(ui.create);
+      expect(ui.newName).toHaveValue("");
+      expect(ui.newName).toHaveFocus();
     });
 
     it("rejects a blank name", async () => {
       const { store, user } = setup({ lists: twoLists });
       await user.click(ui.edit);
-      await user.type(ui.newName, "   ");
+      await user.type(ui.newName, "   {Enter}");
       expect(ui.create).toBeDisabled();
       expect(store.getRowCount("lists")).toBe(2);
     });

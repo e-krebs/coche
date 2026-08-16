@@ -190,6 +190,7 @@ export const ListPicker = ({
   const [dragging, setDragging] = useState(false);
   const [newName, setNewName] = useState("");
   const sheetRef = useRef<HTMLDivElement>(null);
+  const newNameRef = useRef<HTMLInputElement>(null);
 
   const nameOf = (list: ListSummary) => list.name ?? t("appTitle");
   // The roster is never empty, and there is no zero-lists state to fall into.
@@ -239,12 +240,13 @@ export const ListPicker = ({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  // Creating stays in the sheet, whether by Enter or by the + button: you are managing lists, and
+  // switching away would end the session after one. Focus returns to the field, which the + button
+  // otherwise leaves stranded on itself as it disables.
   const create = () => {
-    const id = add(newName);
-    if (!id) return;
+    if (!add(newName)) return;
     setNewName("");
-    onSelect(id); // a list you just made is a list you want to fill
-    onClose();
+    newNameRef.current?.focus();
   };
 
   const confirmDelete = () => {
@@ -362,6 +364,7 @@ export const ListPicker = ({
                 className="flex items-center gap-2 border-t border-hairline px-4 py-3"
               >
                 <input
+                  ref={newNameRef}
                   value={newName}
                   onChange={(e) => {
                     setNewName(e.target.value);

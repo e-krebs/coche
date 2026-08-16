@@ -139,6 +139,16 @@ describe("addList", () => {
     const id = addList({ store, name: "Garden" });
     expect(ids(store)).toEqual([DEFAULT_LIST_ID, id]);
   });
+
+  // The virtual default row shows while it is the whole roster, so a naive append made it vanish and
+  // the route redirected off it — closing the picker mid-session.
+  it("materializes a still-virtual list instead of evaporating it", () => {
+    const store = seed();
+    const id = addList({ store, name: "Garden" });
+    expect(ids(store)).toEqual([DEFAULT_LIST_ID, id]);
+    // createdAt only: freezing the roster must not out-clock a peer's rename or reorder.
+    expect(Object.keys(store.getRow("lists", DEFAULT_LIST_ID))).toEqual(["createdAt"]);
+  });
 });
 
 describe("renameList", () => {

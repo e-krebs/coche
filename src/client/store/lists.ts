@@ -126,10 +126,18 @@ export const addList = ({ store, name }: { store: ShoppingStore; name: string })
   const trimmed = name.trim();
   if (!trimmed) return null;
   const id = newItemId();
-  store.setRow("lists", id, {
-    name: trimmed,
-    position: generateKeyBetween(lastPosition(store), null),
-    createdAt: Date.now(),
+  store.transaction(() => {
+    // A virtual list is only in the roster while it *is* the roster or has items, so adding a real
+    // one can make it evaporate — dropping the user off the list they were viewing. Freeze what is on
+    // screen before appending.
+    rosterOf(store).forEach((list) => {
+      ensureList({ store, id: list.id });
+    });
+    store.setRow("lists", id, {
+      name: trimmed,
+      position: generateKeyBetween(lastPosition(store), null),
+      createdAt: Date.now(),
+    });
   });
   return id;
 };
