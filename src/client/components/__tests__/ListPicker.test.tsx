@@ -76,10 +76,30 @@ const ui = {
   get cancel() {
     return screen.getByRole("button", { name: "Cancel" });
   },
-  queryDialog: (name: RegExp) => screen.queryByRole("dialog", { name }),
+  // alertdialog, not dialog — Testing Library matches the exact role, not what it inherits from.
+  queryDialog: (name: RegExp) => screen.queryByRole("alertdialog", { name }),
+  get sheet() {
+    return screen.getByRole("dialog", { name: "Lists" });
+  },
 };
 
 describe("ListPicker", () => {
+  it("names the sheet from its visible heading", () => {
+    setup({ lists: twoLists });
+    expect(ui.sheet).toHaveAccessibleName("Lists");
+  });
+
+  // The label is the state, so it carries the mode change on its own. No aria-pressed alongside it:
+  // pairing a changing label with a pressed state announces "Done, toggle button, pressed".
+  it("renames the edit toggle rather than marking it pressed", async () => {
+    const { user } = setup({ lists: twoLists });
+    expect(ui.edit).not.toHaveAttribute("aria-pressed");
+    await user.click(ui.edit);
+    const done = screen.getByRole("button", { name: "Done" });
+    expect(done).toBeInTheDocument();
+    expect(done).not.toHaveAttribute("aria-pressed");
+  });
+
   // An absent lists.name is the default list, not missing data — the migration never writes that
   // cell, so the app title stands in.
   it("names a nameless list with the app title and counts its unchecked items", () => {
@@ -191,8 +211,10 @@ describe("ListPicker", () => {
       await user.click(ui.del("Garden"));
       const dialog = ui.queryDialog(/^Delete “Garden”\?$/);
       expect(dialog).not.toBeNull();
-      // Every item, checked included — that is what the delete destroys.
+      // Every item, checked included — that is what the delete destroys. Wired as the description, so
+      // assistive tech gets it on arrival rather than only if the user reads past the title.
       expect(dialog).toHaveTextContent("Its 2 items go with it.");
+      expect(dialog).toHaveAccessibleDescription(/Its 2 items go with it\./);
       expect(store.hasRow("lists", "garden")).toBe(true);
     });
 
@@ -302,6 +324,47 @@ describe("ListPicker", () => {
       ui.reorder("Garden").focus();
       await user.keyboard("{ }{ArrowUp}{Escape}");
       expect(onClose).not.toHaveBeenCalled();
+    });
+
+    // Closing the sheet would discard the half-typed name with it.
+    it("clears a half-typed new list name instead of closing", async () => {
+      const { onClose, user } = setup({ lists: twoLists });
+      await user.click(ui.edit);
+      await user.type(ui.newName, "Hardware{Escape}");
+      expect(ui.newName).toHaveValue("");
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("closes once the new list name is empty again", async () => {
+      const { onClose, user } = setup({ lists: twoLists });
+      await user.click(ui.edit);
+      await user.type(ui.newName, "Hardware{Escape}{Escape}");
+      expect(onClose).toHaveBeenCalledOnce();
+    });
+  });
+
+  // The sheet holds every other focusable in the test document, so native Tab would wrap inside it
+  // whether or not the trap works. `trigger()` puts a focusable after the sheet in DOM order — the
+  // only way an escape has somewhere to land.
+  describe("when Tab is pressed", () => {
+    it("stays inside the sheet", async () => {
+      const { user } = setup({ lists: twoLists });
+      const outside = trigger();
+      ui.radio("Coche").focus();
+      for (let i = 0; i < 10; i++) await user.tab();
+      expect(outside).not.toHaveFocus();
+      expect(ui.sheet.contains(document.activeElement)).toBe(true);
+    });
+
+    // The rename input owns Enter and Escape, but Tab has to reach the sheet's trap.
+    it("stays inside the sheet while renaming a list", async () => {
+      const { user } = setup({ lists: twoLists });
+      const outside = trigger();
+      await user.click(ui.edit);
+      await user.click(ui.name("Garden"));
+      for (let i = 0; i < 10; i++) await user.tab();
+      expect(outside).not.toHaveFocus();
+      expect(ui.sheet.contains(document.activeElement)).toBe(true);
     });
   });
 });

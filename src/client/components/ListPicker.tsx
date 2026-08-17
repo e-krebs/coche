@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -7,6 +7,8 @@ import {
   closestCenter,
   useSensor,
   useSensors,
+  type Announcements,
+  type UniqueIdentifier,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -19,15 +21,15 @@ import { useListRoster, type ListSummary } from "client/store/lists";
 import { useTranslation } from "client/i18n/useTranslation";
 import { AddIcon, CheckIcon, DeleteIcon, DragIcon } from "client/components/icons";
 import { ConfirmDialog } from "client/components/ConfirmDialog";
-import { useOpenerFocus } from "client/components/useOpenerFocus";
+import { useOpenerFocus } from "client/components/focus";
 import { prefersReducedMotion } from "./ShoppingList/helpers";
 
 const rowBase = `flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[15px]
-  outline-none
+  outline-hidden
   focus-visible:bg-canvas focus-visible:ring-2 focus-visible:ring-accent-text
   focus-visible:ring-inset`;
 
-const iconBtn = `grid size-8 flex-none place-items-center rounded-full text-faint outline-none
+const iconBtn = `grid size-8 flex-none place-items-center rounded-full text-muted outline-hidden
   focus-visible:ring-2 focus-visible:ring-accent-text`;
 
 const PickRow = ({
@@ -60,7 +62,7 @@ const PickRow = ({
       <span
         data-active={active || undefined}
         className={`
-          grid size-4.5 flex-none place-items-center rounded-full border-2 border-faint
+          grid size-4.5 flex-none place-items-center rounded-full border-2 border-muted
           text-transparent
           data-active:border-accent-text data-active:text-accent-text
         `}
@@ -68,7 +70,7 @@ const PickRow = ({
         <CheckIcon className="size-3" />
       </span>
       <span className="flex-1 truncate">{label}</span>
-      <span className="flex-none text-[14px] text-faint tabular-nums">{list.count}</span>
+      <span className="flex-none text-[14px] text-muted tabular-nums">{list.count}</span>
     </button>
   );
 };
@@ -94,6 +96,7 @@ const EditRow = ({
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: list.id,
     disabled: renaming,
+    attributes: { roleDescription: t("sortableList") },
   });
 
   return (
@@ -131,14 +134,18 @@ const EditRow = ({
             onRename(e.target.value);
           }}
           onKeyDown={(e) => {
-            // Both keys are the sheet's otherwise — Escape would close it, Enter submit nothing.
+            // Both keys are the sheet's otherwise — Escape would close it, Enter submit nothing. Only
+            // those two: Tab has to keep bubbling or the sheet's trap never sees it and focus walks
+            // out of the modal.
+            if (e.key !== "Enter" && e.key !== "Escape") return;
             e.stopPropagation();
             if (e.key === "Enter") onRename(e.currentTarget.value);
-            if (e.key === "Escape") onRename(null);
+            else onRename(null);
           }}
           className={`
-            flex-1 rounded-lg bg-accent-soft px-2.5 py-1.5 text-[15px] ring-2 ring-accent-text
-            outline-none ring-inset
+            flex-1 rounded-lg border border-accent-text bg-accent-soft px-2.5 py-1.5 text-[15px]
+            outline-hidden
+            focus:ring-2 focus:ring-accent-text focus:ring-inset
           `}
         />
       ) : (
@@ -191,6 +198,7 @@ export const ListPicker = ({
   const [newName, setNewName] = useState("");
   const sheetRef = useRef<HTMLDivElement>(null);
   const newNameRef = useRef<HTMLInputElement>(null);
+  const titleId = useId();
 
   const nameOf = (list: ListSummary) => list.name ?? t("appTitle");
   // The roster is never empty, and there is no zero-lists state to fall into.
@@ -201,6 +209,26 @@ export const ListPicker = ({
   useEffect(() => {
     sheetRef.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
   }, []);
+
+  const accessibility = useMemo(() => {
+    const nameOf = (id: UniqueIdentifier) =>
+      lists.find((l) => l.id === String(id))?.name ?? t("appTitle");
+    const posOf = (id: UniqueIdentifier) => lists.findIndex((l) => l.id === String(id)) + 1;
+    const total = lists.length;
+    const announcements: Announcements = {
+      onDragStart: ({ active }) => t("dragListStart", { name: nameOf(active.id) }),
+      onDragOver: ({ active, over }) =>
+        over
+          ? t("dragListOver", { name: nameOf(active.id), position: posOf(over.id), total })
+          : undefined,
+      onDragEnd: ({ active, over }) =>
+        over
+          ? t("dragListEnd", { name: nameOf(active.id), position: posOf(over.id), total })
+          : t("dragListCancel", { name: nameOf(active.id) }),
+      onDragCancel: ({ active }) => t("dragListCancel", { name: nameOf(active.id) }),
+    };
+    return { announcements, screenReaderInstructions: { draggable: t("dragListInstructions") } };
+  }, [t, lists]);
 
   const moveFocus = ({ delta, within }: { delta: number; within: string }) => {
     const els = [...(sheetRef.current?.querySelectorAll<HTMLElement>(within) ?? [])];
@@ -215,7 +243,15 @@ export const ListPicker = ({
     if (e.key === "Escape") {
       // dnd-kit cancels a keyboard drag on Escape; closing the sheet as well would take the whole
       // edit session with it.
-      if (!dragging) onClose();
+      if (dragging) return;
+      // Escape over a half-typed list name clears the field rather than discarding it with the sheet
+      // — only while that field is on screen, or a leftover name swallows the Escape that closes.
+      if (editing && newName) {
+        e.preventDefault();
+        setNewName("");
+        return;
+      }
+      onClose();
       return;
     }
     if (e.key === "Tab") {
@@ -269,7 +305,7 @@ export const ListPicker = ({
         className="fixed inset-0 z-40 flex items-end justify-center"
         role="dialog"
         aria-modal="true"
-        aria-label={t("lists")}
+        aria-labelledby={titleId}
         onKeyDown={onKeyDown}
       >
         <button
@@ -293,17 +329,19 @@ export const ListPicker = ({
               py-3
             `}
           >
-            <h2 className="text-[13px] font-medium tracking-wide text-muted uppercase">
+            <h2 id={titleId} className="text-[13px] font-medium tracking-wide text-muted uppercase">
               {t("lists")}
             </h2>
             <button
               type="button"
+              // No aria-pressed: the label itself carries the state ("Edit lists" / "Done"), and pairing
+              // a changing label with a pressed state announces "Done, toggle button, pressed".
               onClick={() => {
                 setEditing((v) => !v);
                 setRenaming(null);
               }}
               className={`
-                rounded-full px-2 py-1 text-[14px] font-medium text-accent-text outline-none
+                rounded-full px-2 py-1 text-[14px] font-medium text-accent-text outline-hidden
                 focus-visible:ring-2 focus-visible:ring-accent-text
               `}
             >
@@ -315,6 +353,7 @@ export const ListPicker = ({
             <>
               <DndContext
                 sensors={sensors}
+                accessibility={accessibility}
                 collisionDetection={closestCenter}
                 onDragStart={() => {
                   setDragging(true);
@@ -373,7 +412,7 @@ export const ListPicker = ({
                   aria-label={t("newList")}
                   autoComplete="off"
                   className={`
-                    flex-1 rounded-full bg-canvas px-4 py-2 text-[15px] outline-none
+                    flex-1 rounded-full bg-canvas px-4 py-2 text-[15px] outline-hidden
                     focus:ring-2 focus:ring-accent-text focus:ring-inset
                   `}
                 />
@@ -383,6 +422,8 @@ export const ListPicker = ({
                   aria-label={t("createList")}
                   className={`
                     grid size-9 flex-none place-items-center rounded-full bg-accent text-on-accent
+                    outline-hidden
+                    focus-visible:ring-2 focus-visible:ring-accent-text
                     disabled:bg-canvas disabled:text-faint
                   `}
                 >

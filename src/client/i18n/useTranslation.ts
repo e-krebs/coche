@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useStore, useValue } from "client/store/store";
 import { type Locale, type MessageKey, type Vars, isLocale, translate } from ".";
 import { getStoredLocale, storeLocale, usePersistedLocale } from "./localeStore";
@@ -9,9 +9,11 @@ import { getStoredLocale, storeLocale, usePersistedLocale } from "./localeStore"
  */
 export const useLocale = usePersistedLocale;
 
+// Stable across renders so a `t` in a dependency array means "the locale changed" rather than "we
+// rendered" — the drag-announcement objects are memoised on it.
 export const useTranslation = (): ((key: MessageKey, vars?: Vars) => string) => {
   const locale = usePersistedLocale();
-  return (key, vars) => translate({ locale, key, vars });
+  return useCallback((key: MessageKey, vars?: Vars) => translate({ locale, key, vars }), [locale]);
 };
 
 export const useSetLocale = (): ((locale: Locale) => void) => {

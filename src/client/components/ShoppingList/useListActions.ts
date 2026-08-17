@@ -5,6 +5,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { keyForPosition, sortedByPosition } from "client/store/reorder";
 import { ensureList, hasList } from "client/store/lists";
 import { newItemId, useStore } from "client/store/store";
+import { useTranslation } from "client/i18n/useTranslation";
 import { animate } from "./helpers";
 import type { Editing, ItemView } from "./types";
 
@@ -21,6 +22,10 @@ type StoredItem = z.infer<typeof itemSchema>;
 
 type Undo = { id: string; row: StoredItem } | null;
 
+// Long enough to reach by keyboard: the snackbar is last in the DOM, so it is several Tab presses
+// away, and the delete has just moved focus to a neighbouring row.
+const UNDO_MS = 10_000;
+
 /**
  * Store mutations for the list, each fail-closed behind a `hasRow` guard so a cross-tab/CRDT delete
  * between render and action can't resurrect a row. Owns the Undo buffer for deletes.
@@ -30,13 +35,16 @@ export const useListActions = ({
   items,
   setEditing,
   restoreFocus,
+  announce,
 }: {
   listId: string;
   items: ItemView[];
   setEditing: (e: Editing) => void;
-  restoreFocus: (id: string | undefined) => void;
+  restoreFocus: (id?: string) => void;
+  announce: (message: string) => void;
 }) => {
   const store = useStore();
+  const t = useTranslation();
   const [undo, setUndo] = useState<Undo>(null);
   const undoTimer = useRef<number | undefined>(undefined);
 
@@ -46,6 +54,22 @@ export const useListActions = ({
     },
     [],
   );
+
+  const startUndoTimer = () => {
+    window.clearTimeout(undoTimer.current);
+    undoTimer.current = window.setTimeout(() => {
+      setUndo(null);
+      // The snackbar may be holding focus as it expires; restoreFocus is a no-op unless it dropped.
+      restoreFocus();
+    }, UNDO_MS);
+  };
+  // Hovering or focusing the snackbar means the user is still deciding.
+  const pauseUndo = () => {
+    window.clearTimeout(undoTimer.current);
+  };
+  const resumeUndo = () => {
+    if (undo) startUndoTimer();
+  };
 
   const add = (name: string) => {
     if (!name || !store) return false;
@@ -94,29 +118,35 @@ export const useListActions = ({
     const row = parsed.data;
     const idx = items.findIndex((i) => i.id === id);
     const neighbor = items[idx + 1]?.id ?? items[idx - 1]?.id;
-    animate(() => {
-      store.transaction(() => {
-        // Removing the last item would otherwise drop a still-virtual list out of the roster, taking
-        // the Undo target with it.
-        ensureList({ store, id: row.listId });
-        store.delRow("items", id);
-      });
-    });
+    animate(
+      () => {
+        store.transaction(() => {
+          // Removing the last item would otherwise drop a still-virtual list out of the roster, taking
+          // the Undo target with it.
+          ensureList({ store, id: row.listId });
+          store.delRow("items", id);
+        });
+      },
+      () => {
+        restoreFocus(neighbor);
+      },
+    );
     setEditing(null);
     setUndo({ id, row });
-    window.clearTimeout(undoTimer.current);
-    undoTimer.current = window.setTimeout(() => {
-      setUndo(null);
-    }, 5000);
-    restoreFocus(neighbor);
+    startUndoTimer();
+    announce(t("deletedUndo", { name: row.name }));
   };
   const undoDelete = () => {
     window.clearTimeout(undoTimer.current);
-    // Its list can be deleted inside the 5s window; restoring the row would mint a phantom list the
+    // Its list can be deleted inside the Undo window; restoring the row would mint a phantom list the
     // orphan sweep then resurrects nameless.
     if (store && undo && hasList({ store, id: undo.row.listId })) {
-      animate(() => store.setRow("items", undo.id, undo.row));
-      restoreFocus(undo.id);
+      animate(
+        () => store.setRow("items", undo.id, undo.row),
+        () => {
+          restoreFocus(undo.id);
+        },
+      );
     }
     setUndo(null);
   };
@@ -126,15 +156,32 @@ export const useListActions = ({
     else store.setCell("items", id, "quantity", Math.max(1, quantity));
   };
   const clearChecked = () => {
-    animate(() =>
-      store?.transaction(() => {
-        ensureList({ store, id: listId }); // clearing everything must not drop a virtual list
-        store.getRowIds("items").forEach((id) => {
-          if (store.getCell("items", id, "listId") !== listId) return;
-          if (store.getCell("items", id, "checked")) store.delRow("items", id);
+    if (!store) return;
+    // Resolved before the mutation, not counted during it: animate() may defer the callback to a view
+    // transition, so anything tallied inside would still read zero by the time we announce.
+    const clearing = store
+      .getRowIds("items")
+      .filter(
+        (id) =>
+          store.getCell("items", id, "listId") === listId && store.getCell("items", id, "checked"),
+      );
+    // The section unmounts with its last checked row, taking the focused Clear button with it.
+    animate(
+      () => {
+        store.transaction(() => {
+          ensureList({ store, id: listId }); // clearing everything must not drop a virtual list
+          clearing.forEach((id) => {
+            // Re-read: a peer can uncheck a row between the resolve above and this mutation, and
+            // clearing what is now unchecked is data loss.
+            if (store.getCell("items", id, "checked")) store.delRow("items", id);
+          });
         });
-      }),
+      },
+      () => {
+        restoreFocus();
+      },
     );
+    announce(t("clearedChecked", { count: clearing.length }));
   };
   const reorder = ({ activeId, overId }: { activeId: string; overId: string }) => {
     if (!store || activeId === overId) return;
@@ -156,5 +203,17 @@ export const useListActions = ({
     if (key) store.setCell("items", activeId, "position", key);
   };
 
-  return { add, toggle, rename, remove, undoDelete, setQuantity, clearChecked, reorder, undo };
+  return {
+    add,
+    toggle,
+    rename,
+    remove,
+    undoDelete,
+    setQuantity,
+    clearChecked,
+    reorder,
+    undo,
+    pauseUndo,
+    resumeUndo,
+  };
 };

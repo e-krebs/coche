@@ -1,5 +1,6 @@
-import { useEffect, useRef, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, type KeyboardEvent } from "react";
 import { LOCALES, type Locale } from "client/i18n";
+import { useOpenerFocus } from "client/components/focus";
 import { useTranslation } from "client/i18n/useTranslation";
 
 /**
@@ -17,18 +18,19 @@ export const LanguageDialog = ({
 }) => {
   const t = useTranslation();
   const radiosRef = useRef<(HTMLButtonElement | null)[]>([]);
+  const groupRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
 
+  // The opener is a Clerk menu item that unmounts with its popover, so the captured node is normally
+  // detached by restore time — the header title is the fallback because it is the one control present
+  // and visible at any scroll offset.
+  useOpenerFocus({ fallbackSelector: "[data-list-trigger]" });
+  // Queried from the DOM rather than indexed off `locale`, so picking a language can't re-run this and
+  // fight the restore. https://react.dev/learn/synchronizing-with-effects
+  // oxlint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- post-render focus
   useEffect(() => {
-    const opener = document.activeElement;
-    const active = Math.max(
-      0,
-      LOCALES.findIndex((l) => l.code === locale),
-    );
-    radiosRef.current[active]?.focus();
-    return () => {
-      if (opener instanceof HTMLElement) opener.focus();
-    }; // restore focus to the opener
-  }, [locale]);
+    groupRef.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
+  }, []);
 
   const moveFocus = (delta: number) => {
     const els = radiosRef.current.filter((el): el is HTMLButtonElement => el != null);
@@ -60,7 +62,7 @@ export const LanguageDialog = ({
       className="fixed inset-0 z-40 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={t("language")}
+      aria-labelledby={titleId}
       onKeyDown={onKeyDown}
     >
       <button
@@ -77,6 +79,7 @@ export const LanguageDialog = ({
         `}
       >
         <h2
+          id={titleId}
           className={`
             border-b border-hairline px-4 py-3 text-[13px] font-medium tracking-wide text-muted
             uppercase
@@ -84,7 +87,7 @@ export const LanguageDialog = ({
         >
           {t("language")}
         </h2>
-        <div role="radiogroup" aria-label={t("language")} className="p-1.5">
+        <div ref={groupRef} role="radiogroup" aria-label={t("language")} className="p-1.5">
           {LOCALES.map((l, i) => {
             const active = l.code === locale;
             return (
@@ -102,7 +105,7 @@ export const LanguageDialog = ({
                 }}
                 className={`
                   flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[15px]
-                  outline-none
+                  outline-hidden
                   hover:bg-canvas
                   focus-visible:bg-canvas focus-visible:ring-2 focus-visible:ring-accent-text
                   focus-visible:ring-inset
@@ -111,7 +114,7 @@ export const LanguageDialog = ({
                 <span
                   data-active={active || undefined}
                   className={`
-                    grid size-4.5 flex-none place-items-center rounded-full border-2 border-faint
+                    grid size-4.5 flex-none place-items-center rounded-full border-2 border-muted
                     data-active:border-accent-text
                   `}
                 >

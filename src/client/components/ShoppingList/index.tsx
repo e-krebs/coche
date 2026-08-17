@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useRef, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -8,6 +8,8 @@ import {
   closestCenter,
   useSensor,
   useSensors,
+  type Announcements,
+  type UniqueIdentifier,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -17,7 +19,8 @@ import {
 import { sortedByPosition } from "client/store/reorder";
 import { useTable } from "client/store/store";
 import { useTranslation } from "client/i18n/useTranslation";
-import { focusDropped, prefersReducedMotion } from "./helpers";
+import { focusDropped } from "client/components/focus";
+import { prefersReducedMotion } from "./helpers";
 import { ItemRow, SortableRow } from "./ItemRow";
 import { ItemPreview } from "./ItemPreview";
 import { ListHeader } from "./ListHeader";
@@ -71,20 +74,32 @@ export const ShoppingList = ({
     else nameBtnRefs.current.delete(id);
   }, []);
   // Reclaim focus to a row only when it dropped to <body>, so we don't steal focus moved on purpose
-  // (button target = no soft keyboard).
-  const restoreFocus = (id: string | undefined) => {
-    if (!id) return;
+  // (button target = no soft keyboard). With no row to return to — the last item deleted, or a whole
+  // section cleared out from under the button that cleared it — the header trigger is the only button
+  // that always exists and stays visible at any scroll offset.
+  const restoreFocus = (id?: string) => {
     requestAnimationFrame(() => {
-      if (focusDropped()) nameBtnRefs.current.get(id)?.focus();
+      if (!focusDropped()) return;
+      const row = id === undefined ? undefined : nameBtnRefs.current.get(id);
+      row?.focus();
+      // The neighbour can be a collapsed checked row, and an inert subtree refuses focus silently.
+      if (focusDropped()) document.querySelector<HTMLElement>("[data-list-trigger]")?.focus();
     });
   };
 
-  const actions = useListActions({ listId, items, setEditing, restoreFocus });
+  // One permanently-mounted region, whose text is all that changes: a region and its content arriving
+  // in the same commit is the case VoiceOver and NVDA routinely miss.
+  const [announcement, setAnnouncement] = useState("");
+  const announce = (message: string) => {
+    setAnnouncement(message);
+  };
+
+  const actions = useListActions({ listId, items, setEditing, restoreFocus, announce });
 
   // Reorder only when the field is idle (its soft keyboard dismissing would kill dnd-kit's touch
   // drag).
-  // Sync blocks starting a drag, never one in progress — flipping an active sortable to disabled
-  // cancels it.
+  // Sync blocks starting a drag but never one in progress: `activeId === null` is what scopes that,
+  // since disabling a sortable only drops its listeners — the active sensor keeps its own listeners.
   const dndDisabled = inputFocused || (syncing && activeId === null);
 
   const q = query.trim().toLowerCase();
@@ -110,6 +125,31 @@ export const ShoppingList = ({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  // dnd-kit's defaults are hardcoded English and interpolate `active.id` — the opaque TinyBase row id.
+  // The item arrays are fresh each render, so this identity still churns; the memo keeps the shape in
+  // one place rather than pretending to stabilise it.
+  const announcements = useMemo<Announcements>(() => {
+    const nameOf = (id: UniqueIdentifier) => items.find((i) => i.id === String(id))?.name ?? "";
+    const posOf = (id: UniqueIdentifier) => unchecked.findIndex((i) => i.id === String(id)) + 1;
+    const total = unchecked.length;
+    return {
+      onDragStart: ({ active }) => t("dragStart", { name: nameOf(active.id) }),
+      onDragOver: ({ active, over }) =>
+        over
+          ? t("dragOver", { name: nameOf(active.id), position: posOf(over.id), total })
+          : undefined,
+      onDragEnd: ({ active, over }) =>
+        over
+          ? t("dragEnd", { name: nameOf(active.id), position: posOf(over.id), total })
+          : t("dragCancel", { name: nameOf(active.id) }),
+      onDragCancel: ({ active }) => t("dragCancel", { name: nameOf(active.id) }),
+    };
+  }, [t, items, unchecked]);
+  const accessibility = useMemo(
+    () => ({ announcements, screenReaderInstructions: { draggable: t("dragInstructions") } }),
+    [announcements, t],
+  );
+
   const rowProps: RowProps = {
     editing,
     onEdit: setEditing,
@@ -129,10 +169,14 @@ export const ShoppingList = ({
 
   const activeItem = activeId ? items.find((i) => i.id === activeId) : undefined;
 
-  const emptyClass = "py-8 text-center text-[14px] text-faint";
+  const emptyClass = "py-8 text-center text-[14px] text-muted";
 
   return (
     <div>
+      {/* marked so a test can tell it from dnd-kit's own role="status" region */}
+      <p data-announcer role="status" aria-live="polite" aria-atomic className="sr-only">
+        {announcement}
+      </p>
       <ListHeader
         listName={listName}
         onPickList={onPickList}
@@ -145,12 +189,16 @@ export const ShoppingList = ({
         onFocusChange={setInputFocused}
       />
 
-      <div className="px-4 pb-4">
+      {/* The header stays outside, so it keeps its banner role and the items get the main landmark */}
+      <main className="px-4 pb-4">
         {searching ? (
           matches.length === 0 ? (
             <p className={emptyClass}>{t("noMatches")}</p>
           ) : (
-            <ul className="flex flex-col">
+            <ul
+              aria-label={t("searchResults", { count: matches.length })}
+              className="flex flex-col"
+            >
               {matches.map((item) => (
                 <ItemRow
                   key={item.id}
@@ -180,6 +228,7 @@ export const ShoppingList = ({
             ) : (
               <DndContext
                 sensors={sensors}
+                accessibility={accessibility}
                 collisionDetection={closestCenter}
                 onDragStart={(e) => {
                   setActiveId(String(e.active.id));
@@ -198,7 +247,7 @@ export const ShoppingList = ({
                   items={unchecked.map((i) => i.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  <ul className="flex flex-col">
+                  <ul data-sortable-list className="flex flex-col">
                     {unchecked.map((item) => (
                       <SortableRow
                         key={item.id}
@@ -233,9 +282,16 @@ export const ShoppingList = ({
             )}
           </>
         )}
-      </div>
+      </main>
 
-      {actions.undo && <UndoSnackbar name={actions.undo.row.name} onUndo={actions.undoDelete} />}
+      {actions.undo && (
+        <UndoSnackbar
+          name={actions.undo.row.name}
+          onUndo={actions.undoDelete}
+          onPause={actions.pauseUndo}
+          onResume={actions.resumeUndo}
+        />
+      )}
     </div>
   );
 };

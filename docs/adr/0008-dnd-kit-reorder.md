@@ -47,7 +47,23 @@ Implemented in [../../src/client/components/ShoppingList/index.tsx](../../src/cl
   (check, rename, quantity, delete) inside a drag-button role — a compromise versus a dedicated
   focusable handle. Accepted for a personal single-user list; keyboard reorder still works via
   `KeyboardSensor`, and checked/search rows are non-draggable.
+- **The row must be registered as the activator node, not merely carry the listeners.** The keyboard
+  sensor scopes a lift to the activator by comparing the key event's target against it, and skips
+  that comparison entirely when no activator is registered — so listeners alone make every nested
+  button's `Space`/`Enter` lift the row and suppress its own click. A dedicated handle hides this,
+  because there the target is always the handle; whole-row activation is what makes the registration
+  load-bearing.
+- The nested-interactive markup this produces is invisible to static JSX linting, because the role
+  and `tabIndex` arrive through a spread — see
+  [0014-jsx-a11y-lint-rules.md](0014-jsx-a11y-lint-rules.md).
 - Drag applies to the **unchecked list only**; checked items and search results render as plain,
   non-sortable rows.
+- **The tradeoff is scoped to rows that are actually draggable.** dnd-kit returns its full attribute
+  set even for a disabled sortable — only the listeners are withheld — so the row's ARIA is narrowed
+  explicitly rather than passed through: a row that cannot be dragged right now (the add/search field
+  has focus, or the row is being renamed) drops the role, the `tabIndex` and `aria-disabled` together
+  and is a plain `listitem`. `aria-disabled` goes with them deliberately: it carries meaning only on a
+  widget, and it makes Playwright treat every control inside the row as unactionable, since
+  actionability inherits that state from ancestors.
 - Verified on-device: touch press-and-hold lift + reorder, and keyboard reorder. `MouseSensor`
   covers desktop pointer drag.

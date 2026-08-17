@@ -96,7 +96,12 @@ Decisions that aren't obvious from the markup:
   row's input, a drag handle for ordering,
   and delete behind a confirmation nested inside the sheet, naming every item the delete destroys —
   checked included, which is why the roster carries both counts. Deleting the list you're standing on
-  switches away and closes the sheet; deleting any other leaves it open. The active list is URL state
+  switches away and closes the sheet; deleting any other leaves it open. **Escape is decided in one
+  place**, the sheet's own handler, so it can weigh what is in flight: it cancels a keyboard drag
+  without closing (dnd-kit already reads Escape as cancel), it clears a half-typed list name rather
+  than discarding it along with the sheet, and only otherwise closes. The inline rename input is the
+  one exception, keeping `Enter` and `Escape` for itself — and only those two, so `Tab` still reaches
+  the sheet's trap rather than being decided by native tab order. The active list is URL state
   (`/lists/$listId`, replacing rather than pushing so Back doesn't walk a switch history) plus a
   device-local last-used hint for `/` — deliberately not a synced value, same seam as the locale
   mirror. An id that no longer resolves redirects to the first list rather than a not-found screen.
@@ -110,28 +115,130 @@ Decisions that aren't obvious from the markup:
   [../../src/client/components/ShoppingList/](../../src/client/components/ShoppingList/).
 - **Reorder** — dnd-kit, whole-row drag: press-and-hold on touch (220 ms activation delay so a
   vertical swipe still scrolls), 6 px on mouse, plus keyboard reorder; disabled while the
-  add/search input is focused. See [../adr/0008-dnd-kit-reorder.md](../adr/0008-dnd-kit-reorder.md).
+  add/search input is focused. The row is both the drag node and the registered **activator node**,
+  and registering it as the activator is what scopes the keyboard sensor to the row: the sensor only
+  compares a `Space`/`Enter` target against the activator when one exists, so without that
+  registration the same keypress on a nested control lifts the row and suppresses the control's own
+  click. A row that cannot currently be dragged carries none of the drag attributes at all and reverts
+  to a plain list item, so it is neither a tab stop that does nothing nor an element claiming a widget
+  state it has no role to hold; `data-draggable` is the signal that survives, for both styling and
+  tests. Both drag surfaces also replace dnd-kit's built-in screen-reader copy, which is hardcoded
+  English and interpolates the raw row id: the app supplies its own instructions, role description and
+  start/move/drop/cancel announcements from the same typed dictionary as everything else, naming the
+  **item or list** and its position. Items and lists get separate key sets rather than one with a noun
+  slot, because French genders the article and the interpolator has no grammar.
+  See [../adr/0008-dnd-kit-reorder.md](../adr/0008-dnd-kit-reorder.md).
 - **Swipe-to-delete & undo** — on touch, a left-swipe reveals a growing red action pill that
   brightens past a one-third-width commit threshold. Only a finger-lift past the threshold commits;
   any `touchcancel` (edge back-swipe, shade pull, app-switch) springs back, so a destructive action
-  never fires on an interrupted gesture. A commit slides the row off and shows a 5s Undo snackbar
-  (`role="status"`) that restores the item via `store.setRow` under the same rowId, preserving its
+  never fires on an interrupted gesture. The undo window is **ten seconds and pauses on hover or
+  focus**, because the snackbar is last in the DOM — several Tab presses away — and the delete has
+  just
+  moved focus onto a neighbouring row, so a short fixed window is unreachable by keyboard. If it does
+  expire while the Undo button holds focus, the same restore that covers a delete catches the fall.
+  A commit slides the row off and shows an Undo snackbar
+  that restores the item via `store.setRow` under the same rowId, preserving its
   `(position, id)` order. The gesture tracks a single `Touch.identifier`, is suppressed during a
   drag, and is blocked from starting (but never torn down) while syncing. Delete is also reachable
-  without touch via the row's edit mode.
+  without touch via the row's edit mode — the same path in every row variant, checked and search rows
+  included: activate the name to open the inline editor, then Tab to the Delete it reveals, which an
+  `onBlur` guard keeps alive precisely so that Tab works.
   [../../src/client/components/ShoppingList/useSwipeToDelete.ts](../../src/client/components/ShoppingList/useSwipeToDelete.ts),
   [UndoSnackbar.tsx](../../src/client/components/ShoppingList/UndoSnackbar.tsx).
+- **Announcements** — one polite `role="status"` region, mounted from the start and only ever swapping
+  its text. A region that appears in the same commit as its content is the case VoiceOver and NVDA
+  routinely miss, which is why it isn't rendered alongside the Undo snackbar it describes; the
+  snackbar
+  is the visual half only. It carries exactly two messages, both cases where the app moves focus
+  somewhere that doesn't explain what happened: a **delete**, because focus lands on the
+  *neighbouring*
+  row and nothing else says the item went or that Undo exists, and **clearing checked items**, because
+  the section vanishes and focus jumps to the header. Everything else is deliberately silent —
+  check/uncheck and quantity are announced by the focused control's own `aria-pressed` and text,
+  Undo's
+  restore is announced by the focus move onto the restored row, and adding leaves focus in the field
+  that just cleared. The search result count is the accessible **name of the results list** rather
+  than
+  an announcement: the field adds as well as finds, so someone typing a new item shouldn't hear match
+  counts read at them. Over-announcing is its own accessibility bug.
+- **Colour contrast** — the neutral ramp has a contract: `--color-faint` is for **decoration and
+  disabled state only** (the offline dot, whose meaning the adjacent label repeats, and `disabled:`
+  colours, which the minimums exempt as inactive), and `--color-muted` is the floor for anything a
+  user has to read, click, or read *state* from. `faint` cannot carry content — it measures about
+  2.4:1 on the canvas in light mode and 3.6:1 in dark, so it fails body text in both, and fails even
+  the 3:1 non-text bar for an icon button. That is why the empty and no-match copy, checked item
+  names, the quantity glyph, list counts, the picker's icon buttons and the **unselected** option
+  indicators all sit on `muted`. That last one is the subtle case and the reason the rule is drawn
+  around *state* rather than around text: an unselected radio's ring is the only thing distinguishing
+  it from a selected one, so it is a UI component boundary owing 3:1, not decoration — and no
+  automated gate here catches it, because axe measures text contrast only and has no non-text rule.
+  `--color-accent-text` is the accent's *text* form, distinct
+  from `--color-accent` (the butter-yellow fill, unchanged): it is tuned against the **canvas**, the
+  worse of its two backgrounds, not against white, since that is the binding constraint. It also
+  doubles as the focus-ring colour, so tuning it for text raises the ring's margin at the same time.
+- **Focus visibility** — one house pattern, applied to every interactive control:
+  `outline-hidden focus-visible:ring-2 focus-visible:ring-accent-text`, with `ring-inset` wherever the
+  element clips (the row, whose `overflow-hidden` would cut an outset ring) and plain `focus:` rather
+  than `focus-visible:` on text inputs, which should show focus however it arrived. `outline-hidden`
+  rather than `outline-none` is load-bearing: rings are box-shadows, forced-colors modes strip
+  box-shadows, and `outline-hidden` keeps a transparent outline that those modes repaint — so the
+  indicator survives without a hand-written `forced-colors` block. Inline editors are marked by their
+  background and a border, never by a permanent ring: the rename input deliberately keeps editing
+  alive while focus moves to the row's Delete, so a ring that never leaves would claim focus that has
+  gone elsewhere.
+- **Modal containment** — the dialogs are hand-rolled `role="dialog"` elements with their own
+  `keydown` Tab traps, not native `<dialog>`/`showModal()`: jsdom implements `HTMLDialogElement` as an
+  empty subclass, so going native would move containment and Escape out of unit-test reach (see
+  [../adr/0014-jsx-a11y-lint-rules.md](../adr/0014-jsx-a11y-lint-rules.md)). `aria-modal` alone only
+  *claims* the page behind is unreachable, and a keydown trap has a blind spot — with focus on
+  `<body>` there is no keydown to intercept. So the list is wrapped in an `inert` subtree whenever
+  either dialog is open, which is a property of the tree rather than of a handler, and the sheet
+  already does the same to itself while the nested confirmation is up. Focus restore survives it
+  because closing clears `inert` in the same commit that unmounts the dialog, one frame before the
+  deferred restore runs — the header trigger it reaches for lives inside that subtree.
+- **Dialog naming** — each dialog is named by `aria-labelledby` pointing at its own visible `<h2>`,
+  rather than an `aria-label` repeating the same words in a second place that can drift. The delete
+  confirmation is an `alertdialog`, and its body — the sentence naming every item the delete
+  destroys, and that it can't be undone — is wired as the accessible **description**, so it reaches
+  assistive tech on arrival instead of only when the user reads past the title. The checked disclosure
+  gets `aria-controls`, pointing at the panel it expands. Two state attributes are deliberately
+  **absent**, both for the same underlying reason — an attribute that duplicates or contradicts what
+  the element already says is worse than none. The picker trigger carries no `aria-expanded`:
+  `aria-haspopup="dialog"` already says a dialog opens, `aria-expanded` describes content that expands
+  in place, and while the sheet is open the trigger sits inside an `inert` subtree, so the value could
+  never be read as anything but `false`. The Edit-lists toggle carries no `aria-pressed`: its label
+  *is* the state, swapping between "Edit lists" and "Done", and a toggle button whose name changes
+  should not also report a pressed state — the pair announces "Done, toggle button, pressed".
+- **Landmarks & headings** — the items sit in a `<main>`, with the title band left outside it so it
+  keeps its `banner` role. Heading structure carries the two groups: the list name is the `<h1>` (and
+  the picker trigger), and the checked disclosure is an `<h2>`, so heading navigation can tell "still
+  to buy" from "already in the basket" without reading through. There is deliberately **no skip
+  link**: the add/find field lives inside the header, so skipping to the main landmark would jump past
+  the app's most-used control, and a landmark already satisfies bypass-blocks on a single-screen app.
+  There is nothing repeated across pages to bypass.
 - **Focus & keyboard** — mutations that unmount the focused control return focus to a button rather
   than dropping it to `<body>`: rename/quantity commits refocus the row, delete moves to a
-  neighbour, Undo returns to the restored item. Each only reclaims focus that was genuinely lost, so
-  it never steals focus the user moved on purpose, and always targets a button so it can't pop the
-  soft keyboard. The same rule holds through the picker's two nested layers: opening the sheet moves
+  neighbour, Undo returns to the restored item. When there is no row left to return to — the last
+  item deleted, or the checked section cleared out from under the button that cleared it — focus falls
+  back to the header title, the one button that always exists and stays visible at any scroll offset.
+  Each reclaim waits for the mutation to actually land rather than for the next frame: a view
+  transition defers the DOM change to a later frame, so a restore scheduled immediately still sees the
+  old tree, decides nothing was lost, and does nothing — the control then disappears with no second
+  attempt. jsdom has no View Transitions API, so this is a browser-only failure mode and the reason
+  the animation helper takes an after-callback instead of the caller guessing a delay. Each only
+  reclaims focus that was genuinely lost, so it never steals focus the user moved on purpose, and
+  always targets a button so it can't pop the soft keyboard. The same rule holds through the picker's
+  two nested layers: opening the sheet moves
   focus into it and closing returns it to the title trigger, and the delete confirmation — a dialog
   inside a dialog — returns focus to the row that opened it, not to whatever the DOM happened to
-  leave focused. Both dialogs restore on the frame *after* they unmount, not during cleanup: a switch
-  remounts the header in the same commit that closes them, so the captured opener is still connected
-  while cleanup runs and only dies afterwards — focusing it there would drop focus to `<body>`.
-  [useOpenerFocus.ts](../../src/client/components/useOpenerFocus.ts).
+  leave focused. All three dialogs share one hook for this, and restore on the frame *after* they
+  unmount rather than during cleanup: a switch remounts the header in the same commit that closes
+  them, so the captured opener is still connected while cleanup runs and only dies afterwards —
+  focusing it there would drop focus to `<body>`. The language chooser leans hardest on the fallback,
+  because its opener is a Clerk menu item that unmounts along with the menu, so the captured node is
+  normally detached by the time focus is handed back; the header title is the selector it falls back
+  to, being the one control present and visible at any scroll offset.
+  [focus.ts](../../src/client/components/focus.ts).
   [../../src/client/components/ShoppingList/useListActions.ts](../../src/client/components/ShoppingList/useListActions.ts),
   [ItemRow.tsx](../../src/client/components/ShoppingList/ItemRow.tsx).
 - **Internationalisation** — FR/EN via a typed dictionary

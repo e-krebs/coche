@@ -69,8 +69,10 @@ type-checking, not a test suite itself.
 
 - [../../src/client/__tests__/](../../src/client/__tests__/) — the global setup and shared MSW
   server above; not a suite itself.
-- [../../src/client/components/__tests__/](../../src/client/components/__tests__/) — the list picker:
-  pick, create, rename, delete-behind-confirmation, and the dialog's focus contract.
+- [../../src/client/components/__tests__/](../../src/client/components/__tests__/) — the list picker
+  (pick, create, rename, delete-behind-confirmation, the dialog's focus contract, Tab containment and
+  Escape's precedence), the language dialog (radio roving, opener restore including a destroyed
+  opener), and the sync indicator, whose suite pins that it is *not* a live region.
 - [../../src/client/components/ShoppingList/__tests__/](../../src/client/components/ShoppingList/__tests__/)
   — shopping-list components and hooks.
 - [../../src/client/i18n/__tests__/](../../src/client/i18n/__tests__/) — i18n resources/lookup.
@@ -109,6 +111,26 @@ vs. real-Clerk trade-off), see
   its accessible name is the active list's name), `sheet`, `pickList`, and `createList`.
   `uncheckedNames` takes the first `ul` that isn't `[data-checked-list]`: the unchecked section
   renders no `ul` at all when empty, so a bare `.first()` would silently return the *checked* names.
+- **`keyboard.spec.ts` and `motion.spec.ts` are the browser-only tier of the accessibility coverage.**
+  Three things are not computable in jsdom, so they can only be asserted here: `inert` (jsdom reflects
+  the attribute but implements none of its behaviour), sequential focus navigation with a real tab
+  order, and `:focus-visible` plus the `ring-*` box-shadow it reveals — the unit config sets
+  `css: false`, so a Tailwind class never becomes a computed style there. The division of labour is:
+  the unit tier asserts where focus *lands* (`toHaveFocus`), this tier asserts what the browser does
+  with it. `motion.spec.ts` emulates the preference in-test with
+  `page.emulateMedia({ reducedMotion: "reduce" })` rather than adding a second Playwright project, so
+  the config stays one project and `fullyParallel` still applies.
+- **`a11y.spec.ts`** runs `@axe-core/playwright` over nine DOM states — empty list, populated list,
+  the checked group collapsed and expanded, search results, no-match search, the picker in pick and
+  edit mode, and the delete confirmation — against the `wcag2a`/`wcag2aa`/`wcag21a`/`wcag21aa` tags. It emulates reduced
+  motion so each surface is fully painted when measured, and filters the two rules the whole-row drag
+  activator trips (`nested-interactive`, `list`) **per node** rather than per scan, so a new violation
+  of either elsewhere on the same screen still fails. `color-contrast` is never disabled. The language
+  chooser is out of reach here, because Clerk never initializes in the hermetic tier — see
+  [../adr/0015-axe-e2e-gate.md](../adr/0015-axe-e2e-gate.md).
+- Arrow-driven keyboard reorder stays out of this tier (see the note in
+  [../../e2e/local/reorder.spec.ts](../../e2e/local/reorder.spec.ts)); the lift-then-Escape case here
+  presses no arrow, so it has none of that timing sensitivity.
 - Type-checked independently via [../../e2e/local/tsconfig.json](../../e2e/local/tsconfig.json).
 
 ### Sync tier — `e2e/sync/`

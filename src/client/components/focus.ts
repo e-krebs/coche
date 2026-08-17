@@ -1,5 +1,13 @@
 import { useEffect, useRef } from "react";
-import { focusDropped } from "./ShoppingList/helpers";
+
+/**
+ * Focus dropped (body/nothing/detached) rather than moved to a live control — safe to reclaim
+ * without stealing.
+ */
+export const focusDropped = () => {
+  const el = document.activeElement;
+  return !el || el === document.body || !el.isConnected;
+};
 
 /**
  * Returns focus to whatever opened a dialog, on the frame *after* it unmounts. Deferred because a
@@ -21,7 +29,9 @@ export const useOpenerFocus = ({ fallbackSelector }: { fallbackSelector?: string
     return () => {
       requestAnimationFrame(() => {
         if (!focusDropped()) return; // focus moved on purpose — don't steal it back
-        if (captured instanceof HTMLElement && captured.isConnected) {
+        // Excluding <body>: a UA that blurs a focused descendant when an ancestor turns inert would
+        // capture it, and it passes both tests above while focusing nothing.
+        if (captured instanceof HTMLElement && captured.isConnected && captured !== document.body) {
           captured.focus();
           return;
         }

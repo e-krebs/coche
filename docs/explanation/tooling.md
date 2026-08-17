@@ -69,6 +69,34 @@ context, and Playwright's fixture API hands every fixture a callback literally n
 it has nothing to do with React, so the override boundary exists to keep that false positive out
 rather than to loosen the real rule.
 
+## Accessibility gets the cheap gate here and the real one in the browser
+
+`jsx-a11y` is scoped to `src/client/**` for the same reason the React rules are, and it is deliberately
+the weaker half of a pair. A linter reads JSX: it catches an invalid role, a misspelled `aria-*`
+attribute, a role missing its required properties, or an event handler on a static element, all at the
+moment they are typed. What it cannot do is read the accessibility tree that the markup produces — and
+in this codebase that gap is concrete rather than theoretical, because dnd-kit supplies `role`,
+`tabIndex` and `aria-describedby` through a JSX spread, which no static rule can see through. The
+runtime half of the pair is the axe pass on the Playwright tier; the two are layered on purpose, and
+[../adr/0014-jsx-a11y-lint-rules.md](../adr/0014-jsx-a11y-lint-rules.md) and
+[../adr/0015-axe-e2e-gate.md](../adr/0015-axe-e2e-gate.md) record what each one owns.
+
+`react/button-has-type` rides alongside it, in the same override and for a related reason. A `<button>`
+without an explicit `type` defaults to `submit`, which is inert outside a form and destructive inside
+one — so the failure mode is that moving a working button into a `<form>` silently turns it into a
+submit. That is exactly the kind of latent trap a linter should hold rather than a convention, and it
+costs one attribute per button.
+
+Three of the jsx-a11y plugin's rules are off, and the reasoning matters more than the list: in each
+case the rule's advice is wrong for this code rather than the code being wrong for the rule.
+`prefer-tag-over-role` wants native `<dialog>`, whose behaviour jsdom does not implement, so adopting
+it would move dialog containment and Escape behavior out of unit-test reach; `no-autofocus` objects
+to a focus move that *is* the interaction the user just requested; and
+`no-noninteractive-element-interactions` objects to a dialog container owning `Escape` and its Tab
+trap, which is exactly where that handler belongs. Because all ten of the plugin's pre-existing
+findings fall under those three rules, switching it on changed no application code — it is regression
+insurance, not a cleanup, and it is worth the ~4 lines of configuration on that basis alone.
+
 ## Type-aware rules on top of `tsgo`
 
 [`../../.oxlintrc.json`](../../.oxlintrc.json) turns on almost every `typescript-eslint`-style
@@ -120,6 +148,10 @@ the Claude Code hook run on Node rather than in a browser or a Worker, so
 `types: ["node"]` — the only view in which their `.ts` import specifiers and Node globals are correct.
 
 ## Pinned, not ranged
+
+`@axe-core/playwright` is pinned exact for a different reason than the rest: a floating minor ships
+new axe rules, so an unrelated install could fail a gate on an unchanged app. The pin makes ruleset
+changes an explicit, reviewable bump.
 
 `oxlint`, `oxfmt`, `oxlint-tsgolint`, and both jsPlugins are pinned to exact versions in
 [`../../package.json`](../../package.json) rather than given a `^` range. The Tailwind

@@ -53,7 +53,7 @@ export const ListHeader = ({
             data-list-trigger
             className={`
               flex max-w-full items-center gap-1 rounded-lg px-1 text-[22px] font-medium
-              tracking-tight transition-[font-size] duration-300 ease-out outline-none
+              tracking-tight outline-hidden transition-[font-size] duration-300 ease-out
               group-data-scrolled:text-[15px]
               focus-visible:ring-2 focus-visible:ring-accent-text
               motion-reduce:transition-none
@@ -71,6 +71,9 @@ export const ListHeader = ({
         </h1>
         {headerRight && (
           <div
+            // `invisible` already prunes the slot from the a11y tree; inert makes the absence
+            // consistent so nothing here is reachable while it can't be seen.
+            inert={scrolled}
             className={`
               flex items-center justify-end gap-3 transition-[opacity,visibility] duration-300
               ease-out
@@ -112,7 +115,7 @@ export const ListHeader = ({
             name="q"
             autoComplete="off"
             className={`
-              w-full rounded-full bg-canvas py-2.5 pr-9 pl-11 text-[15px] outline-none
+              w-full rounded-full bg-canvas py-2.5 pr-9 pl-11 text-[15px] outline-hidden
               focus:ring-2 focus:ring-accent-text focus:ring-inset
             `}
           />
@@ -124,7 +127,10 @@ export const ListHeader = ({
                 inputRef.current?.focus();
               }}
               aria-label={t("clear")}
-              className="absolute top-1/2 right-3 -translate-y-1/2 text-muted"
+              className={`
+                absolute top-1/2 right-3 -translate-y-1/2 rounded-full text-muted outline-hidden
+                focus-visible:ring-2 focus-visible:ring-accent-text
+              `}
             >
               <CloseIcon className="size-4.5" />
             </button>
@@ -136,6 +142,8 @@ export const ListHeader = ({
           aria-label={t("addItem")}
           className={`
             grid size-11 flex-none place-items-center rounded-full bg-accent text-on-accent
+            outline-hidden
+            focus-visible:ring-2 focus-visible:ring-accent-text
             disabled:bg-canvas disabled:text-faint
           `}
         >

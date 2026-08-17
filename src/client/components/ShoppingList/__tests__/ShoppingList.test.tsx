@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider, createShoppingStore } from "client/store/store";
 import { DEFAULT_LIST_ID } from "client/store/schema";
@@ -41,6 +41,31 @@ const ui = {
   },
   get switchList() {
     return screen.getByRole("button", { name: "Coche" });
+  },
+  get main() {
+    return screen.getByRole("main");
+  },
+  // Matched by attribute, not role: dnd-kit renders its own role="status" region alongside the
+  // sortable list, so a role lookup is ambiguous whenever there are unchecked items.
+  get status() {
+    const el = document.querySelector<HTMLElement>("[data-announcer]");
+    if (!el) throw new Error("No announcer region");
+    return el;
+  },
+  results: (name: string) => screen.getByRole("list", { name }),
+  /** dnd-kit's own live region, which it mounts inside the DndContext and names by id. */
+  get dndLiveRegion() {
+    const el = document.querySelector<HTMLElement>('[id^="DndLiveRegion"]');
+    if (!el) throw new Error("No dnd-kit live region");
+    return el;
+  },
+  row: (name: string) => {
+    const el = ui.checkoff(name).closest("li");
+    if (!el) throw new Error(`No row element for "${name}"`);
+    return el;
+  },
+  get checkedHeading() {
+    return screen.getByRole("heading", { level: 2, name: /Checked \(\d+\)/ });
   },
   checkoff: (name: string) => screen.getByRole("button", { name: `Check off ${name}` }),
   queryCheckoff: (name: string) => screen.queryByRole("button", { name: `Check off ${name}` }),
@@ -185,6 +210,96 @@ describe("ShoppingList", () => {
     });
   });
 
+  // One region, mounted from the start and only ever swapping text: a region that arrives with its
+  // content in the same commit is the case screen readers routinely miss.
+  describe("the status region", () => {
+    it("exists and is empty before anything happens", () => {
+      setup();
+      expect(ui.status).toHaveTextContent("");
+    });
+
+    it("keeps the same node while its text changes", async () => {
+      const { user } = setup();
+      const before = ui.status;
+      await user.type(ui.field, "Milk{Enter}");
+      await user.click(ui.name("Milk"));
+      await user.click(ui.del("Milk"));
+      expect(ui.status).toBe(before);
+      expect(ui.status).toHaveTextContent("Deleted “Milk”. Undo is available.");
+    });
+
+    // Focus lands on the neighbour, so nothing else says the row went or that Undo exists.
+    it("announces a delete and the undo window", async () => {
+      const { user } = setup();
+      await user.type(ui.field, "Milk{Enter}");
+      await user.type(ui.field, "Bread{Enter}");
+      await user.click(ui.name("Milk"));
+      await user.click(ui.del("Milk"));
+      expect(ui.status).toHaveTextContent("Deleted “Milk”. Undo is available.");
+    });
+
+    it("names the results list with its match count instead of announcing every keystroke", async () => {
+      const { user } = setup();
+      await user.type(ui.field, "Milk{Enter}");
+      await user.type(ui.field, "Mango{Enter}");
+      await user.type(ui.field, "m");
+      expect(ui.results("2 matches")).toBeInTheDocument();
+      expect(ui.status).toHaveTextContent("");
+    });
+  });
+
+  // dnd-kit's defaults are hardcoded English and interpolate the opaque TinyBase row id.
+  describe("keyboard reorder announcements", () => {
+    it("names the item and its position rather than its row id", async () => {
+      const { user } = setup();
+      await user.type(ui.field, "Milk{Enter}");
+      await user.type(ui.field, "Bread{Enter}");
+      ui.field.blur();
+      // A focused add field disables dnd, and re-enabling is a state update — the row is only a
+      // focusable drag target once that has landed.
+      await waitFor(() => {
+        expect(ui.row("Milk")).toHaveAttribute("tabindex", "0");
+      });
+      ui.row("Milk").focus();
+      await user.keyboard(" ");
+      await waitFor(() => {
+        expect(ui.dndLiveRegion).toHaveTextContent(/Milk/);
+      });
+      expect(ui.dndLiveRegion).not.toHaveTextContent(/draggable item/);
+      // Release the lift: an abandoned drag leaves dnd-kit holding document-level listeners, which
+      // breaks whichever test runs next.
+      await user.keyboard("{Escape}");
+    });
+  });
+
+  describe("landmarks and headings", () => {
+    it("puts the items in a main landmark, leaving the header its banner role", () => {
+      setup();
+      expect(ui.main).toBeInTheDocument();
+      expect(ui.main).not.toContainElement(ui.switchList);
+    });
+
+    it("heads the checked group with an h2 under the list's h1", async () => {
+      const { user } = setup();
+      await user.type(ui.field, "Milk{Enter}");
+      await user.click(ui.checkoff("Milk"));
+      expect(ui.listTitle).toHaveAccessibleName("Coche");
+      expect(ui.checkedHeading).toBeInTheDocument();
+    });
+
+    it("points the checked disclosure at the panel it expands", async () => {
+      const { user } = setup();
+      await user.type(ui.field, "Milk{Enter}");
+      await user.click(ui.checkoff("Milk"));
+      expect(ui.checkedToggle).toHaveAttribute("aria-expanded", "false");
+      const panelId = ui.checkedToggle.getAttribute("aria-controls");
+      expect(panelId).toBeTruthy();
+      expect(document.getElementById(panelId ?? "")).toBeInTheDocument();
+      await user.click(ui.checkedToggle);
+      expect(ui.checkedToggle).toHaveAttribute("aria-expanded", "true");
+    });
+  });
+
   describe("when an item is checked", () => {
     it("moves it to a folded section revealed on expand", async () => {
       const { user } = setup();
@@ -206,6 +321,32 @@ describe("ShoppingList", () => {
       await user.click(ui.checkedToggle);
       await user.click(ui.clearChecked);
       expect(names(store)).toEqual(["Bread"]);
+    });
+
+    // The section unmounts with its last checked row, taking the button that was just clicked, so
+    // there is no row to fall back to — focus would otherwise land on <body>.
+    it("returns focus to the header trigger", async () => {
+      const { user } = setup();
+      await user.type(ui.field, "Apples{Enter}");
+      await user.click(ui.checkoff("Apples"));
+      await user.click(ui.checkedToggle);
+      await user.click(ui.clearChecked);
+      await waitFor(() => {
+        expect(ui.switchList).toHaveFocus();
+      });
+    });
+  });
+
+  describe("when the only item is deleted", () => {
+    // There is no neighbour to move to, so the same fallback carries focus.
+    it("returns focus to the header trigger", async () => {
+      const { user } = setup();
+      await user.type(ui.field, "Milk{Enter}");
+      await user.click(ui.name("Milk"));
+      await user.click(ui.del("Milk"));
+      await waitFor(() => {
+        expect(ui.switchList).toHaveFocus();
+      });
     });
   });
 
