@@ -22,9 +22,11 @@ activator node was not a missing assertion; it was a whole failure mode nobody h
 ## Decision
 
 `@axe-core/playwright` runs as an ordinary spec on the hermetic local tier
-([../../e2e/local/a11y.spec.ts](../../e2e/local/a11y.spec.ts)), scanning eight DOM states: the empty
-list, a populated list, the expanded checked group, search results, a search with no matches, the
-picker in both pick and edit mode, and the delete confirmation.
+([../../e2e/local/a11y.spec.ts](../../e2e/local/a11y.spec.ts)), scanning nine DOM states: the empty
+list, a populated list, the checked group both collapsed and expanded, search results, a search with
+no matches, the picker in both pick and edit mode, and the delete confirmation. The collapsed checked
+group earns its own scan because it is the only place `inert` and `aria-hidden` wrap focusable
+content.
 
 - **Rides `yarn test:e2e`, not a new command or CI job.** It needs a real engine, the local tier
   already provides one hermetically, and a separate job would double the build for one spec file.
@@ -40,7 +42,11 @@ picker in both pick and edit mode, and the delete confirmation.
   *new* violation of either rule on the screen where most of the app lives. Filtering the known node
   signature keeps the rule live everywhere else.
 - **`color-contrast` is never disabled.** It is the highest-value rule against a hand-rolled theme,
-  and it is the one class of failure no amount of role-and-name testing would ever surface.
+  and no amount of role-and-name testing would surface a token that fails it. Its reach is narrower
+  than the name suggests, though: it measures **text** only. axe implements no non-text-contrast rule,
+  so a UI component boundary that fails 3:1 — an unselected radio's ring, an icon button's border —
+  passes this gate untouched and is checked by hand against the token contract in
+  [../explanation/architecture.md](../explanation/architecture.md) instead.
 - **Scans run under `prefers-reduced-motion: reduce`.** A dialog measured mid entrance animation is
   still partly transparent, so axe resolves the scrim behind it as the background and fails contrast
   on every element inside, including ones that comfortably pass. Emulating the preference makes each
@@ -49,8 +55,11 @@ picker in both pick and edit mode, and the delete confirmation.
 
 ## Consequences
 
-- Landmark structure, accessible names, ARIA validity, nesting and contrast are checked on every push
-  across all eight states, without anyone having to anticipate the specific failure.
+- Accessible names, ARIA validity, nesting and text contrast are checked on every push, without
+  anyone having to anticipate the specific failure. Coverage is not uniform across the nine, though:
+  the three dialog scans are scoped to the dialog subtree, because the full-bleed scrim otherwise sits
+  behind every measurement, so page-level findings like landmark structure come from the six full-page
+  scans only.
 - **The language chooser is not covered.** The local tier aborts non-localhost requests, so Clerk
   never initializes and the `UserButton` that opens the dialog never renders. Its semantics and focus
   behaviour are unit-covered instead; closing this gap needs a non-Clerk entry point to the chooser,

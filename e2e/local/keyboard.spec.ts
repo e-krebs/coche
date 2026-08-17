@@ -39,7 +39,7 @@ test.describe("keyboard", () => {
     await seed(page);
     await switchList(page).press("Enter");
     await expect(sheet(page)).toBeVisible();
-    // 20 presses is well past the sheet's control count, so an escape would have happened by now.
+    // 10 presses is well past the sheet's control count, so an escape would have happened by now.
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");

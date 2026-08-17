@@ -29,7 +29,9 @@ export const useOpenerFocus = ({ fallbackSelector }: { fallbackSelector?: string
     return () => {
       requestAnimationFrame(() => {
         if (!focusDropped()) return; // focus moved on purpose — don't steal it back
-        if (captured instanceof HTMLElement && captured.isConnected) {
+        // Excluding <body>: a UA that blurs a focused descendant when an ancestor turns inert would
+        // capture it, and it passes both tests above while focusing nothing.
+        if (captured instanceof HTMLElement && captured.isConnected && captured !== document.body) {
           captured.focus();
           return;
         }

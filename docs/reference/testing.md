@@ -120,9 +120,9 @@ vs. real-Clerk trade-off), see
   with it. `motion.spec.ts` emulates the preference in-test with
   `page.emulateMedia({ reducedMotion: "reduce" })` rather than adding a second Playwright project, so
   the config stays one project and `fullyParallel` still applies.
-- **`a11y.spec.ts`** runs `@axe-core/playwright` over eight DOM states — empty list, populated list,
-  expanded checked group, search results, no-match search, the picker in pick and edit mode, and the
-  delete confirmation — against the `wcag2a`/`wcag2aa`/`wcag21a`/`wcag21aa` tags. It emulates reduced
+- **`a11y.spec.ts`** runs `@axe-core/playwright` over nine DOM states — empty list, populated list,
+  the checked group collapsed and expanded, search results, no-match search, the picker in pick and
+  edit mode, and the delete confirmation — against the `wcag2a`/`wcag2aa`/`wcag21a`/`wcag21aa` tags. It emulates reduced
   motion so each surface is fully painted when measured, and filters the two rules the whole-row drag
   activator trips (`nested-interactive`, `list`) **per node** rather than per scan, so a new violation
   of either elsewhere on the same screen still fails. `color-contrast` is never disabled. The language

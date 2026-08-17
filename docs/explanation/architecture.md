@@ -132,7 +132,8 @@ Decisions that aren't obvious from the markup:
   brightens past a one-third-width commit threshold. Only a finger-lift past the threshold commits;
   any `touchcancel` (edge back-swipe, shade pull, app-switch) springs back, so a destructive action
   never fires on an interrupted gesture. The undo window is **ten seconds and pauses on hover or
-  focus**, because the snackbar is last in the DOM — several Tab presses away — and the delete has just
+  focus**, because the snackbar is last in the DOM — several Tab presses away — and the delete has
+  just
   moved focus onto a neighbouring row, so a short fixed window is unreachable by keyboard. If it does
   expire while the Undo button holds focus, the same restore that covers a delete catches the fall.
   A commit slides the row off and shows an Undo snackbar
@@ -146,23 +147,32 @@ Decisions that aren't obvious from the markup:
   [UndoSnackbar.tsx](../../src/client/components/ShoppingList/UndoSnackbar.tsx).
 - **Announcements** — one polite `role="status"` region, mounted from the start and only ever swapping
   its text. A region that appears in the same commit as its content is the case VoiceOver and NVDA
-  routinely miss, which is why it isn't rendered alongside the Undo snackbar it describes; the snackbar
+  routinely miss, which is why it isn't rendered alongside the Undo snackbar it describes; the
+  snackbar
   is the visual half only. It carries exactly two messages, both cases where the app moves focus
-  somewhere that doesn't explain what happened: a **delete**, because focus lands on the *neighbouring*
+  somewhere that doesn't explain what happened: a **delete**, because focus lands on the
+  *neighbouring*
   row and nothing else says the item went or that Undo exists, and **clearing checked items**, because
   the section vanishes and focus jumps to the header. Everything else is deliberately silent —
-  check/uncheck and quantity are announced by the focused control's own `aria-pressed` and text, Undo's
+  check/uncheck and quantity are announced by the focused control's own `aria-pressed` and text,
+  Undo's
   restore is announced by the focus move onto the restored row, and adding leaves focus in the field
-  that just cleared. The search result count is the accessible **name of the results list** rather than
+  that just cleared. The search result count is the accessible **name of the results list** rather
+  than
   an announcement: the field adds as well as finds, so someone typing a new item shouldn't hear match
   counts read at them. Over-announcing is its own accessibility bug.
 - **Colour contrast** — the neutral ramp has a contract: `--color-faint` is for **decoration and
-  disabled state only** (a radio outline, the offline dot, a `disabled:` colour, all of which the
-  contrast minimums exempt), and `--color-muted` is the floor for anything a user has to read or
-  click. `faint` cannot carry content — it measures about 2.4:1 on the canvas in light mode and 3.6:1
-  in dark, so it fails body text in both, and fails even the 3:1 non-text bar for an icon button. That
-  is why the empty and no-match copy, checked item names, the quantity glyph, list counts and the
-  picker's icon buttons all sit on `muted`. `--color-accent-text` is the accent's *text* form, distinct
+  disabled state only** (the offline dot, whose meaning the adjacent label repeats, and `disabled:`
+  colours, which the minimums exempt as inactive), and `--color-muted` is the floor for anything a
+  user has to read, click, or read *state* from. `faint` cannot carry content — it measures about
+  2.4:1 on the canvas in light mode and 3.6:1 in dark, so it fails body text in both, and fails even
+  the 3:1 non-text bar for an icon button. That is why the empty and no-match copy, checked item
+  names, the quantity glyph, list counts, the picker's icon buttons and the **unselected** option
+  indicators all sit on `muted`. That last one is the subtle case and the reason the rule is drawn
+  around *state* rather than around text: an unselected radio's ring is the only thing distinguishing
+  it from a selected one, so it is a UI component boundary owing 3:1, not decoration — and no
+  automated gate here catches it, because axe measures text contrast only and has no non-text rule.
+  `--color-accent-text` is the accent's *text* form, distinct
   from `--color-accent` (the butter-yellow fill, unchanged): it is tuned against the **canvas**, the
   worse of its two backgrounds, not against white, since that is the binding constraint. It also
   doubles as the focus-ring colour, so tuning it for text raises the ring's margin at the same time.
@@ -190,13 +200,15 @@ Decisions that aren't obvious from the markup:
   rather than an `aria-label` repeating the same words in a second place that can drift. The delete
   confirmation is an `alertdialog`, and its body — the sentence naming every item the delete
   destroys, and that it can't be undone — is wired as the accessible **description**, so it reaches
-  assistive tech on arrival instead of only when the user reads past the title. State that a label
-  change alone wouldn't announce is exposed too: `aria-pressed` on the Edit-lists toggle, which swaps
-  the sheet's body between a menu and a sortable roster, and `aria-controls` on the checked
-  disclosure. The picker trigger deliberately carries **no `aria-expanded`** — `aria-haspopup="dialog"`
-  already says a dialog opens, `aria-expanded` describes content that expands in place, and while the
-  sheet is open the trigger sits inside an `inert` subtree, so the value could never be read as
-  anything but `false`.
+  assistive tech on arrival instead of only when the user reads past the title. The checked disclosure
+  gets `aria-controls`, pointing at the panel it expands. Two state attributes are deliberately
+  **absent**, both for the same underlying reason — an attribute that duplicates or contradicts what
+  the element already says is worse than none. The picker trigger carries no `aria-expanded`:
+  `aria-haspopup="dialog"` already says a dialog opens, `aria-expanded` describes content that expands
+  in place, and while the sheet is open the trigger sits inside an `inert` subtree, so the value could
+  never be read as anything but `false`. The Edit-lists toggle carries no `aria-pressed`: its label
+  *is* the state, swapping between "Edit lists" and "Done", and a toggle button whose name changes
+  should not also report a pressed state — the pair announces "Done, toggle button, pressed".
 - **Landmarks & headings** — the items sit in a `<main>`, with the title band left outside it so it
   keeps its `banner` role. Heading structure carries the two groups: the list name is the `<h1>` (and
   the picker trigger), and the checked disclosure is an `<h2>`, so heading navigation can tell "still
@@ -212,10 +224,11 @@ Decisions that aren't obvious from the markup:
   Each reclaim waits for the mutation to actually land rather than for the next frame: a view
   transition defers the DOM change to a later frame, so a restore scheduled immediately still sees the
   old tree, decides nothing was lost, and does nothing — the control then disappears with no second
-  attempt. jsdom has no View Transitions API, so this is a browser-only failure mode and the reason the
-  animation helper takes an after-callback instead of the caller guessing a delay. Each only reclaims focus that was genuinely lost, so
-  it never steals focus the user moved on purpose, and always targets a button so it can't pop the
-  soft keyboard. The same rule holds through the picker's two nested layers: opening the sheet moves
+  attempt. jsdom has no View Transitions API, so this is a browser-only failure mode and the reason
+  the animation helper takes an after-callback instead of the caller guessing a delay. Each only
+  reclaims focus that was genuinely lost, so it never steals focus the user moved on purpose, and
+  always targets a button so it can't pop the soft keyboard. The same rule holds through the picker's
+  two nested layers: opening the sheet moves
   focus into it and closing returns it to the title trigger, and the delete confirmation — a dialog
   inside a dialog — returns focus to the row that opened it, not to whatever the DOM happened to
   leave focused. All three dialogs share one hook for this, and restore on the frame *after* they

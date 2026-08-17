@@ -11,7 +11,7 @@ const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
  */
 const ADR_0008_RULES = new Set(["nested-interactive", "list"]);
 const isSortableRow = (html: string) => html.includes("data-draggable");
-const isSortableList = (html: string) => html.startsWith('<ul class="flex flex-col"');
+const isSortableList = (html: string) => html.includes("data-sortable-list");
 
 const scan = async (page: Page, within?: string) => {
   let builder = new AxeBuilder({ page }).withTags(WCAG);
@@ -51,6 +51,17 @@ test.describe("axe", () => {
     await addItem(page, "Apples");
     await addItem(page, "Bread");
     await field(page).blur();
+    expect(await scan(page)).toEqual([]);
+  });
+
+  // The one place `inert` and `aria-hidden` wrap focusable content, so worth scanning folded as well
+  // as open.
+  test("a collapsed checked section has no violations", async ({ page }) => {
+    await gotoApp(page);
+    await addItem(page, "Apples");
+    await addItem(page, "Bread");
+    await checkbox(page, "Apples").click();
+    await expect(page.getByRole("button", { name: /^Checked \(1\)$/ })).toBeVisible();
     expect(await scan(page)).toEqual([]);
   });
 

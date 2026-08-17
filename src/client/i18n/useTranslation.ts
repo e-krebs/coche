@@ -9,8 +9,8 @@ import { getStoredLocale, storeLocale, usePersistedLocale } from "./localeStore"
  */
 export const useLocale = usePersistedLocale;
 
-// Stable across renders: dnd-kit memoises its announcement monitor on the object built from `t`, so a
-// fresh closure each render would re-subscribe it on every keystroke in the add/search field.
+// Stable across renders so a `t` in a dependency array means "the locale changed" rather than "we
+// rendered" — the drag-announcement objects are memoised on it.
 export const useTranslation = (): ((key: MessageKey, vars?: Vars) => string) => {
   const locale = usePersistedLocale();
   return useCallback((key: MessageKey, vars?: Vars) => translate({ locale, key, vars }), [locale]);

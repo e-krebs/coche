@@ -27,7 +27,12 @@ const trigger = () => {
   return el;
 };
 
+// Also clears any leftover fallback target: an earlier test's dialog schedules its restore on a frame
+// that lands inside this one, and it would focus that trigger instead of this opener.
 const opener = () => {
+  document.querySelectorAll("[data-list-trigger]").forEach((el) => {
+    el.remove();
+  });
   const el = document.createElement("button");
   document.body.append(el);
   el.focus();

@@ -114,7 +114,7 @@ export const LanguageDialog = ({
                 <span
                   data-active={active || undefined}
                   className={`
-                    grid size-4.5 flex-none place-items-center rounded-full border-2 border-faint
+                    grid size-4.5 flex-none place-items-center rounded-full border-2 border-muted
                     data-active:border-accent-text
                   `}
                 >

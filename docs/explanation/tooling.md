@@ -87,11 +87,11 @@ one — so the failure mode is that moving a working button into a `<form>` sile
 submit. That is exactly the kind of latent trap a linter should hold rather than a convention, and it
 costs one attribute per button.
 
-Three of the jsx-a11y plugin's rules are off, and the reasoning matters more than the list: in each case the
-rule's advice is wrong for this code rather than the code being wrong for the rule.
-`prefer-tag-over-role` wants native `<dialog>`, which jsdom does not implement at all, so adopting it
-would move dialog containment and Escape behavior out of unit-test reach; `no-autofocus` objects to a
-focus move that *is* the interaction the user just requested; and
+Three of the jsx-a11y plugin's rules are off, and the reasoning matters more than the list: in each
+case the rule's advice is wrong for this code rather than the code being wrong for the rule.
+`prefer-tag-over-role` wants native `<dialog>`, whose behaviour jsdom does not implement, so adopting
+it would move dialog containment and Escape behavior out of unit-test reach; `no-autofocus` objects
+to a focus move that *is* the interaction the user just requested; and
 `no-noninteractive-element-interactions` objects to a dialog container owning `Escape` and its Tab
 trap, which is exactly where that handler belongs. Because all ten of the plugin's pre-existing
 findings fall under those three rules, switching it on changed no application code — it is regression

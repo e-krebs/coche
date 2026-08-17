@@ -128,14 +128,14 @@ export const fr: Record<MessageKey, Message> = {
     other: "{count} éléments cochés supprimés.",
   },
   searchResults: { one: "{count} résultat", other: "{count} résultats" },
-  sortableRow: "élément réordonnable",
+  sortableRow: "élément déplaçable",
   dragInstructions:
     "Appuyez sur Espace pour saisir un élément, puis sur les flèches pour le déplacer. Espace le dépose, Échap annule.",
-  dragStart: "{name} saisi.",
+  dragStart: "Élément {name} saisi.",
   dragOver: "{name}, position {position} sur {total}.",
-  dragEnd: "{name} déposé en position {position} sur {total}.",
+  dragEnd: "Élément {name} déposé en position {position} sur {total}.",
   dragCancel: "Déplacement annulé. {name} a retrouvé sa position.",
-  sortableList: "liste réordonnable",
+  sortableList: "liste déplaçable",
   dragListInstructions:
     "Appuyez sur Espace pour saisir une liste, puis sur les flèches pour la déplacer. Espace la dépose, Échap annule.",
   dragListStart: "Liste {name} saisie.",

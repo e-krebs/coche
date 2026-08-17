@@ -138,7 +138,7 @@ export const useListActions = ({
   };
   const undoDelete = () => {
     window.clearTimeout(undoTimer.current);
-    // Its list can be deleted inside the 5s window; restoring the row would mint a phantom list the
+    // Its list can be deleted inside the Undo window; restoring the row would mint a phantom list the
     // orphan sweep then resurrects nameless.
     if (store && undo && hasList({ store, id: undo.row.listId })) {
       animate(
@@ -171,7 +171,9 @@ export const useListActions = ({
         store.transaction(() => {
           ensureList({ store, id: listId }); // clearing everything must not drop a virtual list
           clearing.forEach((id) => {
-            store.delRow("items", id);
+            // Re-read: a peer can uncheck a row between the resolve above and this mutation, and
+            // clearing what is now unchecked is data loss.
+            if (store.getCell("items", id, "checked")) store.delRow("items", id);
           });
         });
       },

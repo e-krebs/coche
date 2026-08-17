@@ -81,7 +81,9 @@ export const ShoppingList = ({
     requestAnimationFrame(() => {
       if (!focusDropped()) return;
       const row = id === undefined ? undefined : nameBtnRefs.current.get(id);
-      (row ?? document.querySelector<HTMLElement>("[data-list-trigger]"))?.focus();
+      row?.focus();
+      // The neighbour can be a collapsed checked row, and an inert subtree refuses focus silently.
+      if (focusDropped()) document.querySelector<HTMLElement>("[data-list-trigger]")?.focus();
     });
   };
 
@@ -96,8 +98,8 @@ export const ShoppingList = ({
 
   // Reorder only when the field is idle (its soft keyboard dismissing would kill dnd-kit's touch
   // drag).
-  // Sync blocks starting a drag, never one in progress — flipping an active sortable to disabled
-  // cancels it.
+  // Sync blocks starting a drag but never one in progress: `activeId === null` is what scopes that,
+  // since disabling a sortable only drops its listeners — the active sensor keeps its own listeners.
   const dndDisabled = inputFocused || (syncing && activeId === null);
 
   const q = query.trim().toLowerCase();
@@ -124,7 +126,8 @@ export const ShoppingList = ({
   );
 
   // dnd-kit's defaults are hardcoded English and interpolate `active.id` — the opaque TinyBase row id.
-  // Memoised because dnd-kit re-subscribes its announcement monitor whenever this object changes.
+  // The item arrays are fresh each render, so this identity still churns; the memo keeps the shape in
+  // one place rather than pretending to stabilise it.
   const announcements = useMemo<Announcements>(() => {
     const nameOf = (id: UniqueIdentifier) => items.find((i) => i.id === String(id))?.name ?? "";
     const posOf = (id: UniqueIdentifier) => unchecked.findIndex((i) => i.id === String(id)) + 1;
@@ -244,7 +247,7 @@ export const ShoppingList = ({
                   items={unchecked.map((i) => i.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  <ul className="flex flex-col">
+                  <ul data-sortable-list className="flex flex-col">
                     {unchecked.map((item) => (
                       <SortableRow
                         key={item.id}

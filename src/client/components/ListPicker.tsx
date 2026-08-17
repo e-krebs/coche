@@ -62,7 +62,7 @@ const PickRow = ({
       <span
         data-active={active || undefined}
         className={`
-          grid size-4.5 flex-none place-items-center rounded-full border-2 border-faint
+          grid size-4.5 flex-none place-items-center rounded-full border-2 border-muted
           text-transparent
           data-active:border-accent-text data-active:text-accent-text
         `}
@@ -244,8 +244,9 @@ export const ListPicker = ({
       // dnd-kit cancels a keyboard drag on Escape; closing the sheet as well would take the whole
       // edit session with it.
       if (dragging) return;
-      // Escape over a half-typed list name clears the field rather than discarding it with the sheet.
-      if (newName) {
+      // Escape over a half-typed list name clears the field rather than discarding it with the sheet
+      // — only while that field is on screen, or a leftover name swallows the Escape that closes.
+      if (editing && newName) {
         e.preventDefault();
         setNewName("");
         return;
@@ -333,9 +334,8 @@ export const ListPicker = ({
             </h2>
             <button
               type="button"
-              // A mode toggle, not a disclosure: it swaps the sheet's body between a menu of lists and
-              // a sortable roster, so the label change alone leaves the state unannounced.
-              aria-pressed={editing}
+              // No aria-pressed: the label itself carries the state ("Edit lists" / "Done"), and pairing
+              // a changing label with a pressed state announces "Done, toggle button, pressed".
               onClick={() => {
                 setEditing((v) => !v);
                 setRenaming(null);

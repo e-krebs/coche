@@ -89,13 +89,15 @@ describe("ListPicker", () => {
     expect(ui.sheet).toHaveAccessibleName("Lists");
   });
 
-  // The toggle swaps the body between a menu and a sortable roster, so the label change alone leaves
-  // the state unannounced.
-  it("reports edit mode as a pressed toggle", async () => {
+  // The label is the state, so it carries the mode change on its own. No aria-pressed alongside it:
+  // pairing a changing label with a pressed state announces "Done, toggle button, pressed".
+  it("renames the edit toggle rather than marking it pressed", async () => {
     const { user } = setup({ lists: twoLists });
-    expect(ui.edit).toHaveAttribute("aria-pressed", "false");
+    expect(ui.edit).not.toHaveAttribute("aria-pressed");
     await user.click(ui.edit);
-    expect(screen.getByRole("button", { name: "Done" })).toHaveAttribute("aria-pressed", "true");
+    const done = screen.getByRole("button", { name: "Done" });
+    expect(done).toBeInTheDocument();
+    expect(done).not.toHaveAttribute("aria-pressed");
   });
 
   // An absent lists.name is the default list, not missing data — the migration never writes that

@@ -20,6 +20,8 @@ export const animate = (mutate: () => void, after?: () => void) => {
       flushSync(mutate);
     });
     if (after) void transition.updateCallbackDone.then(after, after);
+    // An overlapping mutation skips this transition, which rejects `finished` — expected, not a fault.
+    void transition.finished.catch(() => undefined);
   } else {
     mutate();
     after?.();
