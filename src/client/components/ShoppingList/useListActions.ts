@@ -7,7 +7,7 @@ import { ensureList, hasList } from "client/store/lists";
 import { newItemId, useStore } from "client/store/store";
 import { useTranslation } from "client/i18n/useTranslation";
 import { animate } from "./helpers";
-import type { Editing, ItemView } from "./types";
+import type { Editing, ItemView, RestoreFocus } from "./types";
 
 /** Full row cells captured before a delete so an Undo toast can restore the item verbatim. */
 const itemSchema = z.object({
@@ -33,14 +33,17 @@ const UNDO_MS = 10_000;
 export const useListActions = ({
   listId,
   items,
+  searching,
   setEditing,
   restoreFocus,
   announce,
 }: {
   listId: string;
   items: ItemView[];
+  /** A filtered view is on screen, so the rendered rows are neither `items` nor in its order. */
+  searching: boolean;
   setEditing: (e: Editing) => void;
-  restoreFocus: (id?: string) => void;
+  restoreFocus: RestoreFocus;
   announce: (message: string) => void;
 }) => {
   const store = useStore();
@@ -100,10 +103,34 @@ export const useListActions = ({
   };
 
   const toggle = (id: string, isChecked: boolean) => {
-    animate(() => {
-      // setCell would recreate a row deleted between render and tap.
-      if (store?.hasRow("items", id)) store.setCell("items", id, "checked", isChecked);
-    });
+    const name = items.find((i) => i.id === id)?.name;
+    // Checking unmounts the row into the checked section — collapsed and inert in the common case —
+    // taking the focused button with it. The next unchecked row slides into the vacated slot, so Space
+    // walks straight down the list, and the row above is the target when there is none below.
+    const nextUnchecked = () => {
+      const unchecked = items.filter((i) => !i.checked);
+      const idx = unchecked.findIndex((i) => i.id === id);
+      // Absent means a peer checked it first: fail closed rather than aim at unchecked[0].
+      return idx < 0 ? undefined : (unchecked[idx + 1]?.id ?? unchecked[idx - 1]?.id);
+    };
+    // Neither the unchecked list nor a filtered one loses the row: unchecking remounts it further
+    // down, and a filter matches on the name rather than the checked flag, so the row only re-sorts.
+    // Either way it stays its own target — and the rendered order in a filtered view is not this one.
+    const target = isChecked && !searching ? nextUnchecked() : id;
+    animate(
+      () => {
+        // setCell would recreate a row deleted between render and tap.
+        if (!store?.hasRow("items", id)) return;
+        store.setCell("items", id, "checked", isChecked);
+        // Announced only where the button dies: it carries aria-pressed, so wherever the row survives
+        // — unchecking, or a filtered view — the flip is spoken twice. Inside the guard so a row a
+        // peer deleted in the view transition's frame isn't reported as checked off.
+        if (isChecked && !searching && name) announce(t("checkedOff", { name }));
+      },
+      () => {
+        restoreFocus({ id: target, control: "check" });
+      },
+    );
   };
   const rename = (id: string, name: string) => {
     const trimmed = name.trim();
@@ -128,7 +155,7 @@ export const useListActions = ({
         });
       },
       () => {
-        restoreFocus(neighbor);
+        restoreFocus({ id: neighbor });
       },
     );
     setEditing(null);
@@ -144,7 +171,7 @@ export const useListActions = ({
       animate(
         () => store.setRow("items", undo.id, undo.row),
         () => {
-          restoreFocus(undo.id);
+          restoreFocus({ id: undo.id });
         },
       );
     }

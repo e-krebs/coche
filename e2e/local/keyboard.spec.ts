@@ -1,4 +1,15 @@
-import { test, expect, gotoApp, addItem, field, row, sheet, switchList } from "./fixtures";
+import {
+  test,
+  expect,
+  announcer,
+  checkbox,
+  gotoApp,
+  addItem,
+  field,
+  row,
+  sheet,
+  switchList,
+} from "./fixtures";
 
 /**
  * The keyboard tier. Everything here needs a real engine: `inert`, sequential focus navigation and
@@ -22,6 +33,35 @@ test.describe("keyboard", () => {
     // same keypress lifted the row and swallowed the click.
     await expect(page.getByRole("button", { name: /^Checked \(1\)$/ })).toBeVisible();
     await expect(row(page, "Bread")).not.toHaveAttribute("aria-pressed", "true");
+  });
+
+  // The unit tier can't see this one: `animate` defers the mutation to a view transition, which jsdom
+  // has no implementation of, so a restore that fires against the pre-mutation tree passes there.
+  test("checking a row off hands focus to the next row, and says so", async ({ page }) => {
+    await seed(page);
+    await addItem(page, "Cheese");
+    await field(page).blur();
+    await checkbox(page, "Apples").focus();
+    await page.keyboard.press(" ");
+    await expect(checkbox(page, "Bread")).toBeFocused();
+    await expect(announcer(page)).toHaveText("Checked off “Apples”.");
+    // The point of the whole change: the same key again, with no re-focusing in between.
+    await page.keyboard.press(" ");
+    await expect(checkbox(page, "Cheese")).toBeFocused();
+  });
+
+  // A result row survives the toggle — search matches on the name, not the checked flag — so the row
+  // is only re-sorted and the browser keeps focus on it. Nothing to walk down to, and the button that
+  // states the change is still there, so the restore and the announcement both stand down.
+  test("checking a search result keeps focus on the row, silently", async ({ page }) => {
+    await seed(page);
+    await field(page).fill("read");
+    const checkoff = checkbox(page, "Bread");
+    await checkoff.focus();
+    await page.keyboard.press(" ");
+    await expect(checkoff).toHaveAttribute("aria-pressed", "true");
+    await expect(checkoff).toBeFocused();
+    await expect(announcer(page)).toHaveText("");
   });
 
   test("delete is reachable without a pointer", async ({ page }) => {

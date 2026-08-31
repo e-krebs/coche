@@ -311,6 +311,99 @@ describe("ShoppingList", () => {
     });
   });
 
+  // The row unmounts into the checked section, destroying the button that was just pressed — the most
+  // frequent keyboard action in the app, and the one place focus used to land on <body>.
+  describe("when an item is checked off", () => {
+    const seedThree = async (user: ReturnType<typeof userEvent.setup>) => {
+      const f = ui.field;
+      await user.type(f, "Milk{Enter}");
+      await user.type(f, "Bread{Enter}");
+      await user.type(f, "Eggs{Enter}");
+    };
+
+    // The next row slides into the vacated slot, so focus doesn't move on screen and Space walks down.
+    it("moves focus to the next unchecked row's check-off button", async () => {
+      const { user } = setup();
+      await seedThree(user);
+      await user.click(ui.checkoff("Bread"));
+      await waitFor(() => {
+        expect(ui.checkoff("Eggs")).toHaveFocus();
+      });
+    });
+
+    it("moves focus up when the last unchecked row is checked", async () => {
+      const { user } = setup();
+      await seedThree(user);
+      await user.click(ui.checkoff("Eggs"));
+      await waitFor(() => {
+        expect(ui.checkoff("Bread")).toHaveFocus();
+      });
+    });
+
+    // Nothing unchecked is left, and the row's new home is the collapsed section, which is inert.
+    it("falls back to the header trigger when no unchecked row remains", async () => {
+      const { user } = setup();
+      await user.type(ui.field, "Milk{Enter}");
+      await user.click(ui.checkoff("Milk"));
+      await waitFor(() => {
+        expect(ui.switchList).toHaveFocus();
+      });
+    });
+
+    // The button carrying aria-pressed is gone before the flip can be spoken, and focus lands on a
+    // different item — without this the change is inaudible.
+    it("announces which item was checked off", async () => {
+      const { user } = setup();
+      await seedThree(user);
+      await user.click(ui.checkoff("Bread"));
+      expect(ui.status).toHaveTextContent("Checked off “Bread”.");
+    });
+  });
+
+  describe("when an item is unchecked", () => {
+    // It remounts in the unchecked list, so the item itself is the target — and its refocused button
+    // states the change, which is why there is no announcement to match the check-off.
+    it("returns focus to the same item", async () => {
+      const { user } = setup();
+      await user.type(ui.field, "Milk{Enter}");
+      await user.click(ui.checkoff("Milk"));
+      await user.click(ui.checkedToggle);
+      await user.click(ui.checkoff("Milk"));
+      await waitFor(() => {
+        expect(ui.checkoff("Milk")).toHaveFocus();
+      });
+    });
+
+    // The region still names the *second* item, so nothing was said for the uncheck in between.
+    it("says nothing", async () => {
+      const { user } = setup();
+      await user.type(ui.field, "Milk{Enter}");
+      await user.type(ui.field, "Bread{Enter}");
+      await user.click(ui.checkoff("Milk"));
+      await user.click(ui.checkoff("Bread"));
+      await user.click(ui.checkedToggle);
+      await user.click(ui.checkoff("Milk"));
+      expect(ui.status).toHaveTextContent("Checked off “Bread”.");
+    });
+  });
+
+  // The rendered rows are the matches, in their own order, so the walk-down has nothing to walk; and
+  // the row survives the toggle, so its own button speaks the change.
+  describe("when a search result is checked off", () => {
+    it("neither retargets focus nor announces", async () => {
+      const { user } = setup();
+      const f = ui.field;
+      await user.type(f, "Milk{Enter}");
+      await user.type(f, "Bread{Enter}");
+      await user.type(f, "Breeze{Enter}");
+      await user.type(f, "bre");
+      await user.click(ui.checkoff("Bread"));
+      expect(ui.checkoff("Bread")).toHaveAttribute("aria-pressed", "true");
+      expect(ui.status).toHaveTextContent("");
+      expect(ui.switchList).not.toHaveFocus();
+    });
+  });
+
   describe("when clearing checked items", () => {
     it("removes only the checked items", async () => {
       const { store, user } = setup();

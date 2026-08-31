@@ -48,6 +48,12 @@ export const field = (page: Page) => page.getByLabel("Add or find an item");
 export const checkbox = (page: Page, name: string) =>
   page.locator(`button[aria-label="Check off ${name}"]`);
 
+/**
+ * The list's polite live region. Matched by attribute: dnd-kit mounts a `role="status"` region of its
+ * own alongside the sortable list, so a role lookup is ambiguous whenever there are unchecked items.
+ */
+export const announcer = (page: Page) => page.locator("[data-announcer]");
+
 export const gotoApp = async (page: Page): Promise<void> => {
   await page.goto("/");
   await expect(field(page)).toBeVisible();

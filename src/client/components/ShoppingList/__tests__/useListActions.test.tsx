@@ -13,7 +13,8 @@ type Store = ReturnType<typeof createShoppingStore>;
 const setup = ({
   items = [],
   listId = DEFAULT_LIST_ID,
-}: { items?: ItemView[]; listId?: string } = {}) => {
+  searching = false,
+}: { items?: ItemView[]; listId?: string; searching?: boolean } = {}) => {
   const store = createShoppingStore();
   const setEditing = vi.fn();
   const restoreFocus = vi.fn();
@@ -22,7 +23,7 @@ const setup = ({
     <Provider store={store}>{children}</Provider>
   );
   const { result } = renderHook(
-    () => useListActions({ listId, items, setEditing, restoreFocus, announce }),
+    () => useListActions({ listId, items, searching, setEditing, restoreFocus, announce }),
     { wrapper },
   );
   return { store, result, setEditing, restoreFocus, announce };
@@ -107,6 +108,7 @@ describe("useListActions", () => {
         useListActions({
           listId: DEFAULT_LIST_ID,
           items: [],
+          searching: false,
           setEditing: vi.fn(),
           restoreFocus: vi.fn(),
           announce: vi.fn(),
@@ -133,6 +135,20 @@ describe("useListActions", () => {
         result.current.setQuantity(id, 5);
       });
       expect(store.hasRow("items", id)).toBe(false);
+    });
+
+    // The announcement shares the guard rather than sitting beside it: a view transition defers the
+    // mutation by a frame, so a peer delete landing inside it would otherwise be read out as a
+    // check-off that never happened.
+    it("does not announce a check-off it refused to perform", () => {
+      const { store, result, announce } = setup({
+        items: [{ id: "gone", name: "Milk", checked: false, quantity: undefined }],
+      });
+      store.delRow("items", "gone");
+      act(() => {
+        result.current.toggle("gone", true);
+      });
+      expect(announce).not.toHaveBeenCalled();
     });
 
     // No phantom Undo — hasRow and the safeParse of the now-empty row both reject a gone row.

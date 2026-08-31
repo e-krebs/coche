@@ -122,6 +122,7 @@ export const ItemRow = ({
   onDelete,
   onSetQuantity,
   onRegisterNameBtn,
+  onRegisterCheckBtn,
 }: ItemRowProps) => {
   const t = useTranslation();
   const nameEditing = editing?.id === item.id && editing.mode === "name";
@@ -146,6 +147,12 @@ export const ItemRow = ({
       onRegisterNameBtn(item.id, el);
     },
     [item.id, onRegisterNameBtn],
+  );
+  const setCheckBtn = useCallback(
+    (el: HTMLButtonElement | null) => {
+      onRegisterCheckBtn(item.id, el);
+    },
+    [item.id, onRegisterCheckBtn],
   );
   // Reclaim focus to the row's control when an edit closes and focus fell to <body>; left alone if
   // moved on purpose. Runs after the render that unmounts the input — post-render focus/DOM
@@ -211,6 +218,7 @@ export const ItemRow = ({
       >
         <button
           type="button"
+          ref={setCheckBtn}
           aria-label={t("mark", { name: item.name })}
           aria-pressed={item.checked}
           data-checked={item.checked || undefined}

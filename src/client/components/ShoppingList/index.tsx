@@ -28,7 +28,7 @@ import { CheckedSection } from "./CheckedSection";
 import { UndoSnackbar } from "./UndoSnackbar";
 import { useHeaderCollapse } from "./useHeaderCollapse";
 import { useListActions } from "./useListActions";
-import type { Editing, ItemView, RowProps } from "./types";
+import type { Editing, ItemView, RestoreFocus, RowProps } from "./types";
 
 /** Mount with `key={listId}`: a switch resets query, edit mode, the checked fold and the Undo buffer. */
 export const ShoppingList = ({
@@ -69,20 +69,25 @@ export const ShoppingList = ({
   const scrolled = useHeaderCollapse({ listId, itemsLength: items.length });
   const inputRef = useRef<HTMLInputElement>(null);
   const nameBtnRefs = useRef(new Map<string, HTMLButtonElement>());
+  const checkBtnRefs = useRef(new Map<string, HTMLButtonElement>());
   const registerNameBtn = useCallback((id: string, el: HTMLButtonElement | null) => {
     if (el) nameBtnRefs.current.set(id, el);
     else nameBtnRefs.current.delete(id);
+  }, []);
+  const registerCheckBtn = useCallback((id: string, el: HTMLButtonElement | null) => {
+    if (el) checkBtnRefs.current.set(id, el);
+    else checkBtnRefs.current.delete(id);
   }, []);
   // Reclaim focus to a row only when it dropped to <body>, so we don't steal focus moved on purpose
   // (button target = no soft keyboard). With no row to return to — the last item deleted, or a whole
   // section cleared out from under the button that cleared it — the header trigger is the only button
   // that always exists and stays visible at any scroll offset.
-  const restoreFocus = (id?: string) => {
+  const restoreFocus: RestoreFocus = ({ id, control = "name" } = {}) => {
     requestAnimationFrame(() => {
       if (!focusDropped()) return;
-      const row = id === undefined ? undefined : nameBtnRefs.current.get(id);
-      row?.focus();
-      // The neighbour can be a collapsed checked row, and an inert subtree refuses focus silently.
+      const refs = control === "check" ? checkBtnRefs : nameBtnRefs;
+      if (id !== undefined) refs.current.get(id)?.focus();
+      // The target can be a collapsed checked row, and an inert subtree refuses focus silently.
       if (focusDropped()) document.querySelector<HTMLElement>("[data-list-trigger]")?.focus();
     });
   };
@@ -94,7 +99,10 @@ export const ShoppingList = ({
     setAnnouncement(message);
   };
 
-  const actions = useListActions({ listId, items, setEditing, restoreFocus, announce });
+  const q = query.trim().toLowerCase();
+  const searching = q.length > 0;
+
+  const actions = useListActions({ listId, items, searching, setEditing, restoreFocus, announce });
 
   // Reorder only when the field is idle (its soft keyboard dismissing would kill dnd-kit's touch
   // drag).
@@ -102,8 +110,6 @@ export const ShoppingList = ({
   // since disabling a sortable only drops its listeners — the active sensor keeps its own listeners.
   const dndDisabled = inputFocused || (syncing && activeId === null);
 
-  const q = query.trim().toLowerCase();
-  const searching = q.length > 0;
   const unchecked = items.filter((i) => !i.checked);
   const checked = items.filter((i) => i.checked);
   // Checked first, then within each bucket by earliest match position, then A→Z.
@@ -158,6 +164,7 @@ export const ShoppingList = ({
     onDelete: actions.remove,
     onSetQuantity: actions.setQuantity,
     onRegisterNameBtn: registerNameBtn,
+    onRegisterCheckBtn: registerCheckBtn,
   };
 
   const submit = () => {

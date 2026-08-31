@@ -106,16 +106,20 @@ vs. real-Clerk trade-off), see
   Clerk publishable key whose Frontend API host is unreachable, so `clerk-js` loads same-origin but
   can't reach the FAPI — Clerk never initializes and the seeded cached identity drives the app.
 - The fixtures module also exports the DOM helpers shared across local specs: `field`, `checkbox`,
-  `row`, `gotoApp`, `addItem`, `uncheckedNames`, `waitForServiceWorker`, `waitForDragShift`, plus
+  `row`, `announcer` (the list's polite live region, matched by `[data-announcer]` because dnd-kit
+  mounts a `role="status"` region of its own), `gotoApp`, `addItem`, `uncheckedNames`,
+  `waitForServiceWorker`, `waitForDragShift`, plus
   the list-picker helpers — `switchList` (the header title, matched by `[data-list-trigger]` because
   its accessible name is the active list's name), `sheet`, `pickList`, and `createList`.
   `uncheckedNames` takes the first `ul` that isn't `[data-checked-list]`: the unchecked section
   renders no `ul` at all when empty, so a bare `.first()` would silently return the *checked* names.
 - **`keyboard.spec.ts` and `motion.spec.ts` are the browser-only tier of the accessibility coverage.**
-  Three things are not computable in jsdom, so they can only be asserted here: `inert` (jsdom reflects
+  Four things are not computable in jsdom, so they can only be asserted here: `inert` (jsdom reflects
   the attribute but implements none of its behaviour), sequential focus navigation with a real tab
-  order, and `:focus-visible` plus the `ring-*` box-shadow it reveals — the unit config sets
-  `css: false`, so a Tailwind class never becomes a computed style there. The division of labour is:
+  order, `:focus-visible` plus the `ring-*` box-shadow it reveals — the unit config sets
+  `css: false`, so a Tailwind class never becomes a computed style there — and the View Transitions
+  API, which defers a mutation to a later frame and so is the one place a focus restore scheduled
+  against the pre-mutation tree actually fails. The division of labour is:
   the unit tier asserts where focus *lands* (`toHaveFocus`), this tier asserts what the browser does
   with it. `motion.spec.ts` emulates the preference in-test with
   `page.emulateMedia({ reducedMotion: "reduce" })` rather than adding a second Playwright project, so

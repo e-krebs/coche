@@ -43,6 +43,7 @@ export const en = {
   closeQuantity: "Close quantity editor for {name}, currently {count}",
   deleted: "Deleted “{name}”",
   undo: "Undo",
+  checkedOff: "Checked off “{name}”.",
   deletedUndo: "Deleted “{name}”. Undo is available.",
   clearedChecked: {
     one: "{count} checked item removed.",
@@ -122,6 +123,7 @@ export const fr: Record<MessageKey, Message> = {
   closeQuantity: "Fermer la modification de la quantité de {name}, actuellement {count}",
   deleted: "« {name} » supprimé",
   undo: "Annuler",
+  checkedOff: "« {name} » coché.",
   deletedUndo: "« {name} » supprimé. Vous pouvez annuler.",
   clearedChecked: {
     one: "{count} élément coché supprimé.",
