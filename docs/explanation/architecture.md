@@ -148,19 +148,23 @@ Decisions that aren't obvious from the markup:
 - **Announcements** — one polite `role="status"` region, mounted from the start and only ever swapping
   its text. A region that appears in the same commit as its content is the case VoiceOver and NVDA
   routinely miss, which is why it isn't rendered alongside the Undo snackbar it describes; the
-  snackbar
-  is the visual half only. It carries exactly two messages, both cases where the app moves focus
+  snackbar is the visual half only. It carries three messages, each a case where the app moves focus
   somewhere that doesn't explain what happened: a **delete**, because focus lands on the
-  *neighbouring*
-  row and nothing else says the item went or that Undo exists, and **clearing checked items**, because
-  the section vanishes and focus jumps to the header. Everything else is deliberately silent —
-  check/uncheck and quantity are announced by the focused control's own `aria-pressed` and text,
-  Undo's
-  restore is announced by the focus move onto the restored row, and adding leaves focus in the field
-  that just cleared. The search result count is the accessible **name of the results list** rather
-  than
-  an announcement: the field adds as well as finds, so someone typing a new item shouldn't hear match
-  counts read at them. Over-announcing is its own accessibility bug.
+  *neighbouring* row and nothing else says the item went or that Undo exists; **clearing checked
+  items**, because the section vanishes and focus jumps to the header; and **checking an item off**
+  from the unfiltered list, because the row unmounts into the checked section, destroying the button
+  whose `aria-pressed` carried the state before the flip can be spoken, while focus moves on to a
+  *different* item — silence there reads as the row having renamed itself. The two exceptions to that
+  last one are the same rule read backwards: **unchecking**, and checking off a **search result**,
+  both leave the row on screen with its own button still focused, so it states the change and a region
+  message on top would be double-speak. Each message is written inside the same `hasRow` guard as the
+  mutation it describes, not beside it — a view transition defers the write by a frame, and a row a
+  peer deletes inside that frame must not be announced as checked off.
+  Everything else is silent too — quantity is announced by
+  the focused control's own text, Undo's restore by the focus move onto the restored row, and adding
+  leaves focus in the field that just cleared. The search result count is the accessible **name of the
+  results list** rather than an announcement: the field adds as well as finds, so someone typing a new
+  item shouldn't hear match counts read at them. Over-announcing is its own accessibility bug.
 - **Colour contrast** — the neutral ramp has a contract: `--color-faint` is for **decoration and
   disabled state only** (the offline dot, whose meaning the adjacent label repeats, and `disabled:`
   colours, which the minimums exempt as inactive), and `--color-muted` is the floor for anything a
@@ -218,9 +222,21 @@ Decisions that aren't obvious from the markup:
   There is nothing repeated across pages to bypass.
 - **Focus & keyboard** — mutations that unmount the focused control return focus to a button rather
   than dropping it to `<body>`: rename/quantity commits refocus the row, delete moves to a
-  neighbour, Undo returns to the restored item. When there is no row left to return to — the last
-  item deleted, or the checked section cleared out from under the button that cleared it — focus falls
-  back to the header title, the one button that always exists and stays visible at any scroll offset.
+  neighbour, Undo returns to the restored item. **Checking an item off** is the frequent one, and it
+  aims at the *next* unchecked row's check-off button — the row that slides into the vacated slot, so
+  focus doesn't appear to move at all and Space walks straight down a list; the row above takes over
+  when the last one is checked. Following the item into the checked section would be the symmetric
+  choice and the wrong one: that section is collapsed and `inert` in the common case, so the focus
+  would be silently refused. Two cases keep the item as their own target instead, because it never
+  leaves the screen: **unchecking**, which remounts it further down the unchecked list, and a toggle
+  inside a **filtered view**, which matches on the name rather than the checked flag and so only
+  re-sorts the row — and whose rendered order isn't the list's order to walk down anyway.
+  A row therefore registers two controls by item id — its name button for the mutations that leave
+  the row in place, its check-off button for the one that walks down — and a restore names which of
+  the two it wants. When there is no row left to return to — the last item deleted, the last unchecked
+  item checked off, or the checked section cleared out from under the button that cleared it — focus
+  falls back to the header title, the one button that always exists and stays visible at any scroll
+  offset.
   Each reclaim waits for the mutation to actually land rather than for the next frame: a view
   transition defers the DOM change to a later frame, so a restore scheduled immediately still sees the
   old tree, decides nothing was lost, and does nothing — the control then disappears with no second

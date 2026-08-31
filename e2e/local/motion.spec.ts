@@ -27,11 +27,15 @@ test.describe("reduced motion", () => {
   });
 
   // The View Transitions wrapper is skipped entirely under reduced motion, so the mutation has to
-  // still land — that bypass is the one behavioural branch here, not just a style.
-  test("checking an item still updates the list", async ({ page }) => {
+  // still land — that bypass is the one behavioural branch here, not just a style. The after-callback
+  // it carries goes with it, so the focus restore has to survive the same branch.
+  test("checking an item still updates the list and moves focus", async ({ page }) => {
     await gotoApp(page);
     await addItem(page, "Bread");
-    await checkbox(page, "Bread").click();
+    await addItem(page, "Cheese");
+    await checkbox(page, "Bread").focus();
+    await page.keyboard.press(" ");
     await expect(page.getByRole("button", { name: /^Checked \(1\)$/ })).toBeVisible();
+    await expect(checkbox(page, "Cheese")).toBeFocused();
   });
 });

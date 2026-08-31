@@ -15,6 +15,7 @@ const makeHandlers = () => ({
   onDelete: vi.fn(),
   onSetQuantity: vi.fn(),
   onRegisterNameBtn: vi.fn(),
+  onRegisterCheckBtn: vi.fn(),
 });
 
 const renderRow = (overrides: { item?: Partial<ItemView>; editing?: Editing; q?: string } = {}) => {
