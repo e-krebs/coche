@@ -21,6 +21,14 @@ const OFFLINE_POLL_MS = 3000;
 export const reconnectDelay = ({ failures }: { failures: number }): number =>
   Math.min(RECONNECT_DELAY_MS * 2 ** failures, MAX_RECONNECT_DELAY_MS);
 
+/**
+ * A 401/403 or a null token is one attempt's verdict, not the truth: a token refresh that failed
+ * for want of a network says nothing about whether the reader is signed in, and only Clerk's own
+ * `isSignedIn` is authoritative. So the first refusal keeps quiet and lets the retry settle it.
+ */
+export const refusalStatus = ({ refusals }: { refusals: number }): SyncStatus =>
+  refusals > 1 ? "signin-required" : "connecting";
+
 export class SigninRequiredError extends Error {}
 
 const wsTicketSchema = z.object({ listId: z.string(), ticket: z.string() });
@@ -78,6 +86,7 @@ export const useSync = (store: Store<Schemas> | undefined): SyncStatus => {
     // (duplicate sockets, orphaned synchronizer, double-burnt ticket).
     let generation = 0;
     let failures = 0;
+    let refusals = 0;
 
     const cleanup = async () => {
       if (timer) clearTimeout(timer);
@@ -104,13 +113,21 @@ export const useSync = (store: Store<Schemas> | undefined): SyncStatus => {
       failures += 1;
     };
 
+    // Waiting on something that isn't an attempt's verdict — and so also clearing any auth-refusal
+    // strike: a refusal from before an offline gap or a spell in the background is not consecutive
+    // with one after it.
+    const schedulePoll = () => {
+      refusals = 0;
+      scheduleReconnect(OFFLINE_POLL_MS);
+    };
+
     const connect = async () => {
       // A hidden tab must not mint tickets, but it re-arms rather than stopping: the loop has to
       // survive being backgrounded, and onVisible only shortens the wait. The first attempt runs
       // regardless, so a tab that cold-boots in the background still syncs. Ahead of cleanup(), so
       // a tick while hidden can never tear a live socket down.
       if (document.hidden && generation > 0) {
-        scheduleReconnect(OFFLINE_POLL_MS);
+        schedulePoll();
         return;
       }
       const gen = ++generation;
@@ -121,7 +138,7 @@ export const useSync = (store: Store<Schemas> | undefined): SyncStatus => {
         setStatus("offline");
         // Keep polling rather than waiting on a single `online` event, which the browser doesn't
         // always fire when the network returns. Costs no network, so no backoff.
-        scheduleReconnect(OFFLINE_POLL_MS);
+        schedulePoll();
         return;
       }
       // Clerk still resolving — don't flash "signed out" prematurely.
@@ -146,6 +163,7 @@ export const useSync = (store: Store<Schemas> | undefined): SyncStatus => {
         socket.addEventListener("close", () => {
           if (stale()) return; // a superseded socket closing must not schedule a reconnect
           setStatus(navigator.onLine ? "connecting" : "offline");
+          refusals = 0; // a socket that opened is proof this token was accepted
           scheduleBackoff();
         });
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- see this hook's JSDoc
@@ -168,14 +186,17 @@ export const useSync = (store: Store<Schemas> | undefined): SyncStatus => {
         // backoff — its imminent close event schedules the retry.
         if (socket.readyState !== WebSocket.OPEN) return;
         failures = 0;
+        refusals = 0;
         setStatus("synced");
       } catch (err) {
         if (stale()) return;
         if (err instanceof SigninRequiredError) {
-          setStatus("signin-required");
-          return;
+          refusals += 1;
+          setStatus(refusalStatus({ refusals }));
+        } else {
+          refusals = 0; // consecutive has to mean consecutive
+          setStatus("offline");
         }
-        setStatus("offline");
         scheduleBackoff();
       }
     };
@@ -190,7 +211,7 @@ export const useSync = (store: Store<Schemas> | undefined): SyncStatus => {
       setStatus("offline");
       // The socket may never fire `close` when the network vanishes, leaving a zombie that reads
       // OPEN and makes reconnectIfIdle skip — this poll is then the loop's only anchor.
-      scheduleReconnect(OFFLINE_POLL_MS);
+      schedulePoll();
     };
     const onVisible = () => {
       if (document.hidden) return;

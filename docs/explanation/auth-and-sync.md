@@ -105,13 +105,19 @@ URL/ticket). Every reconnect, including the first, calls `/ws-ticket` with a fre
 (`getToken()`) to mint a fresh single-use ticket, then builds a new `WebSocket` +
 `createWsSynchronizer`. A ticket is never replayed past its first connection attempt.
 
-Every path into `offline` arms the next attempt, so the retry loop cannot die: the socket's `close`
-event, a failed attempt, the browser `offline` event, and `connect()`'s own `navigator.onLine` check
-all schedule one. The two kinds of wait are priced differently, because they cost different things.
-A failed attempt reaches the Worker and mints a ticket, so consecutive failures back off
-(`reconnectDelay` doubles `RECONNECT_DELAY_MS` = 3s up to a 30s cap, reset once a connection syncs).
-Waiting for the network to return only re-reads `navigator.onLine`, so it polls flat at
-`OFFLINE_POLL_MS` = 3s.
+Every failed attempt arms the next one, so the retry loop cannot die: the socket's `close` event, a
+failed ticket fetch, a refused one, the browser `offline` event, and `connect()`'s own
+`navigator.onLine` check all schedule one. The exceptions are the states that aren't failures and
+that the effect's own dependencies carry: Clerk still loading, and Clerk reporting no session. The
+two kinds of wait are priced differently, because they cost different things. A failed attempt
+reaches the Worker and mints a ticket, so consecutive failures back off (`reconnectDelay` doubles
+`RECONNECT_DELAY_MS` = 3s up to a 30s cap, reset once a connection syncs). Waiting for the network to
+return only re-reads `navigator.onLine`, so it polls flat at `OFFLINE_POLL_MS` = 3s.
+
+One wait is nobody's timer: `getToken()` has Clerk's own retry behind it (~8 attempts, growing
+delays), so when Clerk throws rather than returning null the call can stay pending for minutes with
+nothing of ours armed. The attempt is in flight rather than lost, and `online` / `visibilitychange`
+still interrupt it, but the status sits at `connecting` throughout.
 
 Recovery therefore doesn't hang on a single `online` event. That event still short-circuits the wait
 (immediate, but skipped when a live socket is already open, so a spurious `online` doesn't tear down
@@ -129,6 +135,20 @@ listener only shortens the wait when the reader comes back). The check sits ahea
 effect run's first attempt — a tab that cold-boots in the background, or whose Clerk state resolves
 while it sits there, still syncs.
 
+An authorization refusal — a 401/403 from `/ws-ticket`, or `getToken()` handing back no token — is
+retried on the same ladder, and stays quiet the first time. Neither says the reader is signed out: a
+token refresh that failed for want of a network looks identical to a revoked session, and Clerk
+swallows offline network errors by default. So the first refusal shows `connecting` and only a second
+consecutive one (`refusalStatus`) surfaces `signin-required`. Consecutive means consecutive: any
+outcome that isn't a refusal clears the count, including a socket that opened, an offline wait and a
+spell in the background — a refusal from before a gap says nothing about the one after it. The
+verdict taken at face value is Clerk's own `isSignedIn`: it schedules nothing, because `useSync`'s
+effect lists it as a dependency, so signing in re-runs the whole lifecycle. The cost of retrying the
+rest is a 401 per tab per 30s while a genuinely revoked session waits for Clerk's client to notice —
+a request the Worker refuses without minting anything. A 403 is not really an auth state at all
+(`/ws-ticket` only answers it for a disallowed `Origin`, a deployment misconfiguration), so it
+retries forever behind a sign-in link that can't fix it.
+
 Sync status:
 
 | Status | Meaning |
@@ -137,7 +157,7 @@ Sync status:
 | `offline` | `navigator.onLine` is false, or the last connect attempt failed |
 | `connecting` | Fetching a ticket / opening the socket, or waiting out a retry (up to 30s) |
 | `synced` | `WsSynchronizer.startSync()` resolved on an open socket |
-| `signin-required` | `/ws-ticket` returned 401/403, or no Clerk token is available |
+| `signin-required` | Clerk reports no session, or two refusals in a row (401/403, or no token) |
 
 Two surfaces carry it, split by whether the reader has anything to do about it.
 
