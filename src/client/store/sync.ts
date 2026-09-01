@@ -10,6 +10,16 @@ import { wsUrl, type WsTicket } from "shared/contract";
 export type SyncStatus = "disabled" | "offline" | "connecting" | "synced" | "signin-required";
 
 const RECONNECT_DELAY_MS = 3000;
+const MAX_RECONNECT_DELAY_MS = 30_000;
+/** An offline wait only re-reads `navigator.onLine`, so it costs nothing and never backs off. */
+const OFFLINE_POLL_MS = 3000;
+
+/**
+ * Every attempt mints a fresh single-use ticket, so a server that keeps refusing must not be
+ * re-ticketed every 3s. `failures` counts consecutive ones and resets once a connection syncs.
+ */
+export const reconnectDelay = ({ failures }: { failures: number }): number =>
+  Math.min(RECONNECT_DELAY_MS * 2 ** failures, MAX_RECONNECT_DELAY_MS);
 
 export class SigninRequiredError extends Error {}
 
@@ -67,6 +77,7 @@ export const useSync = (store: Store<Schemas> | undefined): SyncStatus => {
     // Bumped per connect() so a superseded slow attempt bails instead of racing the winner
     // (duplicate sockets, orphaned synchronizer, double-burnt ticket).
     let generation = 0;
+    let failures = 0;
 
     const cleanup = async () => {
       if (timer) clearTimeout(timer);
@@ -82,19 +93,35 @@ export const useSync = (store: Store<Schemas> | undefined): SyncStatus => {
       } catch {}
     };
 
-    const scheduleReconnect = () => {
+    const scheduleReconnect = (delayMs: number) => {
       if (cancelled) return;
       if (timer) clearTimeout(timer); // a close handler + a failed connect must not stack timers
-      timer = setTimeout(() => void connect(), RECONNECT_DELAY_MS);
+      timer = setTimeout(() => void connect(), delayMs);
+    };
+
+    const scheduleBackoff = () => {
+      scheduleReconnect(reconnectDelay({ failures }));
+      failures += 1;
     };
 
     const connect = async () => {
+      // A hidden tab must not mint tickets, but it re-arms rather than stopping: the loop has to
+      // survive being backgrounded, and onVisible only shortens the wait. The first attempt runs
+      // regardless, so a tab that cold-boots in the background still syncs. Ahead of cleanup(), so
+      // a tick while hidden can never tear a live socket down.
+      if (document.hidden && generation > 0) {
+        scheduleReconnect(OFFLINE_POLL_MS);
+        return;
+      }
       const gen = ++generation;
       const stale = () => cancelled || gen !== generation;
       await cleanup();
       if (stale()) return;
       if (!navigator.onLine) {
         setStatus("offline");
+        // Keep polling rather than waiting on a single `online` event, which the browser doesn't
+        // always fire when the network returns. Costs no network, so no backoff.
+        scheduleReconnect(OFFLINE_POLL_MS);
         return;
       }
       // Clerk still resolving — don't flash "signed out" prematurely.
@@ -119,7 +146,7 @@ export const useSync = (store: Store<Schemas> | undefined): SyncStatus => {
         socket.addEventListener("close", () => {
           if (stale()) return; // a superseded socket closing must not schedule a reconnect
           setStatus(navigator.onLine ? "connecting" : "offline");
-          scheduleReconnect();
+          scheduleBackoff();
         });
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- see this hook's JSDoc
         const sync = await createWsSynchronizer(store as MergeableStore<Schemas>, socket);
@@ -136,6 +163,11 @@ export const useSync = (store: Store<Schemas> | undefined): SyncStatus => {
         synchronizer = sync;
         await sync.startSync();
         if (stale()) return;
+        // startSync() resolves over a socket that never opened (TinyBase resolves on `error` and
+        // swallows the failed send), so a refused upgrade must not pass for a success and reset the
+        // backoff — its imminent close event schedules the retry.
+        if (socket.readyState !== WebSocket.OPEN) return;
+        failures = 0;
         setStatus("synced");
       } catch (err) {
         if (stale()) return;
@@ -144,27 +176,36 @@ export const useSync = (store: Store<Schemas> | undefined): SyncStatus => {
           return;
         }
         setStatus("offline");
-        scheduleReconnect();
+        scheduleBackoff();
       }
     };
 
-    const onOnline = () => {
-      // A spurious online event must not tear down a healthy socket and burn a ticket — reconnect
-      // only when none is live.
+    // A spurious online/visible event must not tear down a healthy socket and burn a ticket —
+    // reconnect only when none is live.
+    const reconnectIfIdle = () => {
       if (ws?.readyState === WebSocket.OPEN) return;
       void connect();
     };
     const onOffline = () => {
       setStatus("offline");
+      // The socket may never fire `close` when the network vanishes, leaving a zombie that reads
+      // OPEN and makes reconnectIfIdle skip — this poll is then the loop's only anchor.
+      scheduleReconnect(OFFLINE_POLL_MS);
     };
-    window.addEventListener("online", onOnline);
+    const onVisible = () => {
+      if (document.hidden) return;
+      reconnectIfIdle();
+    };
+    window.addEventListener("online", reconnectIfIdle);
     window.addEventListener("offline", onOffline);
+    document.addEventListener("visibilitychange", onVisible);
     void connect();
 
     return () => {
       cancelled = true;
-      window.removeEventListener("online", onOnline);
+      window.removeEventListener("online", reconnectIfIdle);
       window.removeEventListener("offline", onOffline);
+      document.removeEventListener("visibilitychange", onVisible);
       void cleanup();
     };
   }, [store, isSignedIn, isLoaded]);

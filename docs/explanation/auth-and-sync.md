@@ -103,10 +103,31 @@ burn-state is colocated with the data it protects, EU-resident.
 lifecycle rather than trusting TinyBase's built-in reconnect (which would replay a stale
 URL/ticket). Every reconnect, including the first, calls `/ws-ticket` with a fresh Clerk JWT
 (`getToken()`) to mint a fresh single-use ticket, then builds a new `WebSocket` +
-`createWsSynchronizer`. A ticket is never replayed past its first connection attempt. Reconnection
-triggers on the socket's `close` event (after `RECONNECT_DELAY_MS` = 3s) and on the browser `online`
-event (immediate, but skipped when a live socket is already open so a spurious `online` doesn't tear
-down a healthy connection).
+`createWsSynchronizer`. A ticket is never replayed past its first connection attempt.
+
+Every path into `offline` arms the next attempt, so the retry loop cannot die: the socket's `close`
+event, a failed attempt, the browser `offline` event, and `connect()`'s own `navigator.onLine` check
+all schedule one. The two kinds of wait are priced differently, because they cost different things.
+A failed attempt reaches the Worker and mints a ticket, so consecutive failures back off
+(`reconnectDelay` doubles `RECONNECT_DELAY_MS` = 3s up to a 30s cap, reset once a connection syncs).
+Waiting for the network to return only re-reads `navigator.onLine`, so it polls flat at
+`OFFLINE_POLL_MS` = 3s.
+
+Recovery therefore doesn't hang on a single `online` event. That event still short-circuits the wait
+(immediate, but skipped when a live socket is already open, so a spurious `online` doesn't tear down
+a healthy connection) — it is an optimisation, not the mechanism. The distinction matters because a
+socket whose network vanishes may never fire `close` at all: it lingers reading `OPEN`, which is
+exactly the state that makes the `online` handler skip. The `offline` event's poll is then the only
+thing still trying, and its `connect()` destroys the stale socket before re-ticketing. The price is
+that a blip which leaves the socket genuinely alive still re-tickets once, three seconds later — a
+network change that keeps a socket usable is rare enough to pay for zombie recovery.
+
+A hidden tab mints no tickets: while `document.hidden`, an attempt is skipped and simply re-armed,
+so the loop survives being backgrounded instead of relying on `visibilitychange` firing (that
+listener only shortens the wait when the reader comes back). The check sits ahead of the teardown
+`connect()` starts with, so a tick while hidden can never close a live socket, and it exempts each
+effect run's first attempt — a tab that cold-boots in the background, or whose Clerk state resolves
+while it sits there, still syncs.
 
 Sync status:
 
@@ -114,7 +135,7 @@ Sync status:
 |---|---|
 | `disabled` | No `VITE_SYNC_URL` — local-only, sync never attempted |
 | `offline` | `navigator.onLine` is false, or the last connect attempt failed |
-| `connecting` | Fetching a ticket / opening the socket |
+| `connecting` | Fetching a ticket / opening the socket, or waiting out a retry (up to 30s) |
 | `synced` | `WsSynchronizer.startSync()` resolved on an open socket |
 | `signin-required` | `/ws-ticket` returned 401/403, or no Clerk token is available |
 
