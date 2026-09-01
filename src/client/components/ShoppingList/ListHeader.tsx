@@ -5,11 +5,16 @@ import { AddIcon, CloseIcon, ExpandIcon, SearchIcon } from "client/components/ic
 /**
  * Band 1 (title + headerRight) shrinks rather than collapses on scroll: it carries the list
  * switcher, and the hysteresis floor means a vanished band only comes back at the very top.
+ *
+ * Its side columns are fixed at one avatar wide, not `1fr`: anything that resized them — the avatar
+ * arriving, a longer sync label — used to drag the centred title sideways. `notice` sits outside the
+ * shrinking band so a state that needs a response survives the collapse.
  */
 export const ListHeader = ({
   listName,
   onPickList,
   headerRight,
+  notice,
   scrolled,
   query,
   setQuery,
@@ -20,6 +25,7 @@ export const ListHeader = ({
   listName: string;
   onPickList: () => void;
   headerRight?: ReactNode;
+  notice?: ReactNode;
   scrolled: boolean;
   query: string;
   setQuery: (v: string) => void;
@@ -38,8 +44,8 @@ export const ListHeader = ({
       <div
         data-scrolled={scrolled || undefined}
         className={`
-          group grid grid-cols-[1fr_auto_1fr] items-center pt-3 pb-1 transition-[padding]
-          duration-300 ease-out
+          group grid grid-cols-[--spacing(7)_minmax(0,1fr)_--spacing(7)] items-center pt-3 pb-1
+          transition-[padding] duration-300 ease-out
           data-scrolled:pt-1.5 data-scrolled:pb-0.5
           motion-reduce:transition-none
         `}
@@ -52,7 +58,7 @@ export const ListHeader = ({
             aria-haspopup="dialog"
             data-list-trigger
             className={`
-              flex max-w-full items-center gap-1 rounded-lg px-1 text-[22px] font-medium
+              mx-auto flex max-w-full items-center gap-1 rounded-lg px-1 text-[22px] font-medium
               tracking-tight outline-hidden transition-[font-size] duration-300 ease-out
               group-data-scrolled:text-[15px]
               focus-visible:ring-2 focus-visible:ring-accent-text
@@ -75,8 +81,7 @@ export const ListHeader = ({
             // consistent so nothing here is reachable while it can't be seen.
             inert={scrolled}
             className={`
-              flex items-center justify-end gap-3 transition-[opacity,visibility] duration-300
-              ease-out
+              flex items-center justify-end transition-[opacity,visibility] duration-300 ease-out
               group-data-scrolled:invisible group-data-scrolled:opacity-0
               motion-reduce:transition-none
             `}
@@ -150,6 +155,7 @@ export const ListHeader = ({
           <AddIcon className="size-6" />
         </button>
       </form>
+      {notice}
     </header>
   );
 };
