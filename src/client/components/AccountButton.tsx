@@ -4,14 +4,20 @@ import { useTranslation } from "client/i18n/useTranslation";
 import { SyncStatus } from "client/components/SyncStatus";
 import { GlobeIcon, PersonIcon } from "client/components/icons";
 
-/** Must stay the seat's own size below: a smaller avatar leaves the dashed placeholder peeking. */
-const AVATAR_BOX = "size-7";
+/**
+ * The size must stay the seat's own below: a smaller avatar leaves the dashed placeholder peeking.
+ * The fade-in is a keyframe, not a transition: Clerk mounts this box only once its user resolves, so
+ * there is no from-state to transition out of.
+ */
+const AVATAR_BOX = "size-7 animate-avatar-in";
 
 /**
  * Holds the avatar's seat from the first paint: Clerk renders nothing until its user data resolves,
  * and an elastic slot here is what used to shove the centred list title on every cold load. The
  * placeholder overlays Clerk (so it can fade away rather than be covered) and is
- * `pointer-events-none`, so taps reach Clerk's button throughout.
+ * `pointer-events-none`, so taps reach Clerk's button throughout. The two cross-fade over the same
+ * 250ms — the avatar rising as the placeholder drops — because an avatar landing at full opacity
+ * over a still-visible glyph reads as a broken layer through any alpha in the photo.
  */
 export const AccountButton = ({
   status,
