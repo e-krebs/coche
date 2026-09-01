@@ -63,6 +63,7 @@ flowchart TB
 | Cached identity gate | `{userId}` in localStorage; renders the app offline, independent of Clerk readiness | [../../src/client/store/identity.ts](../../src/client/store/identity.ts) |
 | Local store | TinyBase `MergeableStore` (CRDT) ⇄ a mergeable `IndexedDB` persister that preserves HLCs and tombstones across reload; DB `shopping-<userId>` | [../../src/client/store/schema.ts](../../src/client/store/schema.ts), [../../src/client/store/store.ts](../../src/client/store/store.ts), [../../src/client/store/persister.ts](../../src/client/store/persister.ts) |
 | Shopping list UI | The active list's items in two sections (unchecked/checked), search, rename, quantity, delete, drag-reorder — wrapped by a view that also carries the header's sync/account controls and the two dialogs | [../../src/client/components/ShoppingList/](../../src/client/components/ShoppingList/), [../../src/client/components/ListView.tsx](../../src/client/components/ListView.tsx) |
+| Account button | The avatar's fixed seat in the header: Clerk's `UserButton` (carrying the language action), the dashed placeholder that holds the seat until Clerk resolves, and the sync badge pinned to its corner | [../../src/client/components/AccountButton.tsx](../../src/client/components/AccountButton.tsx), [../../src/client/components/SyncStatus.tsx](../../src/client/components/SyncStatus.tsx) |
 | List picker | Bottom sheet over the header title: switch list, and an edit mode to create, rename, reorder and delete lists — mounted above the keyed `<ShoppingList>` so a switch can't unmount it mid-interaction | [../../src/client/components/ListPicker.tsx](../../src/client/components/ListPicker.tsx), [../../src/client/components/ConfirmDialog.tsx](../../src/client/components/ConfirmDialog.tsx) |
 | Lists roster | Virtual default row, the gated default-list migration, list CRUD, the orphan sweep and position backfill | [../../src/client/store/lists.ts](../../src/client/store/lists.ts) |
 | Sign-out teardown | Deletes the local IndexedDB replica and broadcasts to peer tabs on any signed-out transition | [../../src/client/store/teardown.ts](../../src/client/store/teardown.ts) |
@@ -88,9 +89,12 @@ Decisions that aren't obvious from the markup:
   arrow press would end the interaction. The trigger carries **no `aria-label`** — the list name has
   to be the `<h1>`'s accessible name, or heading navigation and voice control both lose it. Because
   the trigger lives in the title band, that band **shrinks** on scroll — a shorter band, dropping the
-  sync dot and the avatar — instead of collapsing to nothing, so the picker stays reachable at any
-  offset. The cost is a taller scrolled header. Each list shows its **unchecked** count only: the
-  number you'd act on, so `0` reads as "nothing to do here". List management lives in the sheet's edit
+  account button and its sync badge — instead of collapsing to nothing, so the picker stays reachable
+  at any offset. The cost is a taller scrolled header. That band's side columns are **fixed at one
+  avatar wide**, not `1fr`: with elastic columns, anything that changes the right cluster's width —
+  the avatar arriving, a longer sync label — moves the centred title, a shift on every cold load and
+  every reconnect. Each list shows its **unchecked** count only: the number you'd act on, so `0`
+  reads as "nothing to do here". List management lives in the sheet's edit
   mode, and every action there leaves the sheet open — creating a list neither switches to it nor
   closes, so you can add several in one sitting: an inline new-list field, tap-to-rename reusing the
   row's input, a drag handle for ordering,
@@ -280,8 +284,12 @@ Decisions that aren't obvious from the markup:
   transition on the same scrolled flag — sized down to a shorter band rather than to zero, so the
   picker trigger is never unmounted mid-scroll. Swipe-to-delete tracks the finger with a CSS
   transform and springs back with a CSS transition, and crossing the delete threshold plays a short
-  CSS keyframe pulse. Motion is CSS-driven (no hand-rolled JS animation) and
-  all of it is gated on `prefers-reduced-motion`.
+  CSS keyframe pulse. The sync badge breathes while connecting — a keyframe on scale alone, because
+  it rides the avatar's corner: translating it reads as a piece coming loose, and fading it over a
+  photo reads as a rendering glitch. The placeholder that holds the avatar's seat cross-fades out
+  once Clerk resolves, which is why it overlays Clerk's own DOM (`pointer-events-none`) rather than
+  sitting behind it — a placeholder that is merely covered can't fade. Motion is CSS-driven (no
+  hand-rolled JS animation) and all of it is gated on `prefers-reduced-motion`.
   [../../src/client/components/ShoppingList/helpers.ts](../../src/client/components/ShoppingList/helpers.ts),
   [ItemRow.tsx](../../src/client/components/ShoppingList/ItemRow.tsx).
 - **Scroll restoration** — page-level scroll under a sticky header; the offset is persisted to

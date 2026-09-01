@@ -132,6 +132,11 @@ vs. real-Clerk trade-off), see
   of either elsewhere on the same screen still fails. `color-contrast` is never disabled. The language
   chooser is out of reach here, because Clerk never initializes in the hermetic tier — see
   [../adr/0015-axe-e2e-gate.md](../adr/0015-axe-e2e-gate.md).
+- **`header.spec.ts`** measures the list title's centre against the header's, both on load and after
+  switching to a longer list name. It belongs in this tier precisely because Clerk is unreachable
+  here: the avatar never arrives, which is the cold-load shape the header's fixed side columns exist
+  to survive. A layout regression is invisible to the unit tier, where no Tailwind class becomes a
+  computed style.
 - Arrow-driven keyboard reorder stays out of this tier (see the note in
   [../../e2e/local/reorder.spec.ts](../../e2e/local/reorder.spec.ts)); the lift-then-Escape case here
   presses no arrow, so it has none of that timing sensitivity.
@@ -158,6 +163,13 @@ vs. real-Clerk trade-off), see
 - Env: the real `CLERK_SECRET_KEY` comes from a gitignored `.dev.vars` locally or the
   `CLERK_SECRET_KEY` repo secret in CI; [../../.env.e2e-sync](../../.env.e2e-sync) commits the
   matching public `VITE_CLERK_PUBLISHABLE_KEY` and `VITE_SYNC_URL=http://localhost:8787`.
+- **`account-seat.spec.ts`** measures Clerk's rendered avatar against the seat that holds its place.
+  The two sizes are set from the same value on opposite sides of a dependency, so a Clerk release that
+  changed its own sizing scale would leave the dashed placeholder visible behind the avatar — this is
+  the only tier with a real avatar to compare against.
+- **`notice.spec.ts`** is the only place a loud sync state is reachable: the local tier runs with no
+  sync URL, so it is permanently `disabled`. It drives `context.setOffline(true)` on a signed-in page
+  and asserts the header notice names the state and that the list stays writable underneath.
 - Type-checked independently via [../../e2e/sync/tsconfig.json](../../e2e/sync/tsconfig.json).
 
 ## CI
