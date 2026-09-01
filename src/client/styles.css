@@ -66,15 +66,18 @@ html {
   overflow-x: clip;
 }
 
-/* syncing indicator — a single dot that bounces continuously with gravity-like easing (no floor dwell) */
-@keyframes bounce-sync {
-  0% { transform: translateY(0); animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1); }
-  50% { transform: translateY(-5px); animation-timing-function: cubic-bezier(0.32, 0, 0.67, 0); }
-  100% { transform: translateY(0); }
+/* syncing indicator — the badge rides the avatar's corner, so it breathes in place rather than
+   bouncing (a 5px hop read as a piece coming loose). Scale only: an opacity fade over a photo reads
+   as a rendering glitch, not as activity. */
+@keyframes pulse-sync {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.55); }
 }
-.animate-bounce-sync { animation: bounce-sync 0.6s infinite; }
+.animate-pulse-sync { animation: pulse-sync 1.2s ease-in-out infinite; }
+/* Frozen mid-pulse rather than simply stilled: size is then the non-colour cue separating
+   `connecting` from `synced`, which motion carries for everyone else (WCAG 1.4.1). */
 @media (prefers-reduced-motion: reduce) {
-  .animate-bounce-sync { animation: none; }
+  .animate-pulse-sync { animation: none; transform: scale(0.6); }
 }
 
 /* bottom sheet entrance — a mount can't be a transition, so it's a keyframe like snackbar-in */
