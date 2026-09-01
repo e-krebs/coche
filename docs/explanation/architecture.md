@@ -288,8 +288,12 @@ Decisions that aren't obvious from the markup:
   it rides the avatar's corner: translating it reads as a piece coming loose, and fading it over a
   photo reads as a rendering glitch. The placeholder that holds the avatar's seat cross-fades out
   once Clerk resolves, which is why it overlays Clerk's own DOM (`pointer-events-none`) rather than
-  sitting behind it — a placeholder that is merely covered can't fade. Motion is CSS-driven (no
-  hand-rolled JS animation) and all of it is gated on `prefers-reduced-motion`.
+  sitting behind it — a placeholder that is merely covered can't fade. The avatar fades *in* over
+  the same 250ms, as a keyframe rather than a transition (Clerk mounts the box only once its user
+  resolves, so there is no from-state): a photo landing at full opacity over a glyph that is still
+  on screen shows the glyph through any alpha it carries, and reads as a broken layer rather than
+  as a transition. Motion is CSS-driven (no hand-rolled JS animation) and all of it is gated on
+  `prefers-reduced-motion`.
   [../../src/client/components/ShoppingList/helpers.ts](../../src/client/components/ShoppingList/helpers.ts),
   [ItemRow.tsx](../../src/client/components/ShoppingList/ItemRow.tsx).
 - **Scroll restoration** — page-level scroll under a sticky header; the offset is persisted to

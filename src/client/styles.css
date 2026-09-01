@@ -80,6 +80,18 @@ html {
   .animate-pulse-sync { animation: none; transform: scale(0.6); }
 }
 
+/* avatar arrival — the other half of the placeholder's fade-out, so the two dissolve into each other
+   instead of the photo landing at full opacity over a glyph that is still on screen. A mount can't
+   be a transition: Clerk renders this box only once its user resolves. */
+@keyframes avatar-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-avatar-in { animation: avatar-in 0.25s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-avatar-in { animation: none; }
+}
+
 /* bottom sheet entrance — a mount can't be a transition, so it's a keyframe like snackbar-in */
 @keyframes sheet-in {
   from { transform: translateY(100%); }

@@ -21,4 +21,19 @@ test.describe("account seat", () => {
     expect(Math.abs(avatarBox.width - seatBox.width)).toBeLessThanOrEqual(0.5);
     expect(Math.abs(avatarBox.height - seatBox.height)).toBeLessThanOrEqual(0.5);
   });
+
+  /**
+   * The avatar's half of the cross-fade rides on a class handed to Clerk through `appearance`, and
+   * Clerk injects its own styles after the app's: a release that animates the box itself would win
+   * the cascade and silently drop the fade, putting the placeholder's glyph back under a photo at
+   * full opacity.
+   */
+  test("Clerk leaves the avatar's fade-in in place", async ({ page, makeUser }) => {
+    await signIn(page, await makeUser());
+
+    const box = page.locator(".cl-userButtonAvatarBox").first();
+    await expect(box).toBeVisible();
+
+    expect(await box.evaluate((el) => getComputedStyle(el).animationName)).toBe("avatar-in");
+  });
 });
