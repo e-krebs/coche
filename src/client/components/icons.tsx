@@ -27,4 +27,5 @@ export const ChevronIcon = make("chevron");
 export const CloseIcon = make("close");
 export const AddIcon = make("add");
 export const MinusIcon = make("minus");
+export const PersonIcon = make("person");
 export const DeleteIcon = make("delete");

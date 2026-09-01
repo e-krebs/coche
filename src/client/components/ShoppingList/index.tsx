@@ -36,12 +36,14 @@ export const ShoppingList = ({
   listName,
   onPickList,
   headerRight,
+  notice,
   syncing = false,
 }: {
   listId: string;
   listName: string;
   onPickList: () => void;
   headerRight?: ReactNode;
+  notice?: ReactNode;
   syncing?: boolean;
 }) => {
   const t = useTranslation();
@@ -188,6 +190,7 @@ export const ShoppingList = ({
         listName={listName}
         onPickList={onPickList}
         headerRight={headerRight}
+        notice={notice}
         scrolled={scrolled}
         query={query}
         setQuery={setQuery}

@@ -108,8 +108,7 @@ triggers on the socket's `close` event (after `RECONNECT_DELAY_MS` = 3s) and on 
 event (immediate, but skipped when a live socket is already open so a spurious `online` doesn't tear
 down a healthy connection).
 
-Sync status, surfaced in
-[../../src/client/components/SyncStatus.tsx](../../src/client/components/SyncStatus.tsx):
+Sync status:
 
 | Status | Meaning |
 |---|---|
@@ -118,6 +117,28 @@ Sync status, surfaced in
 | `connecting` | Fetching a ticket / opening the socket |
 | `synced` | `WsSynchronizer.startSync()` resolved on an open socket |
 | `signin-required` | `/ws-ticket` returned 401/403, or no Clerk token is available |
+
+Two surfaces carry it, split by whether the reader has anything to do about it.
+
+[../../src/client/components/SyncStatus.tsx](../../src/client/components/SyncStatus.tsx) is a badge
+on the account avatar: a coloured dot for every status, plus the label as `sr-only` text and as an
+out-of-flow pill on hover or keyboard focus. Neither the badge nor the pill occupies layout width —
+an in-flow label resizes on every reconnect, which drags the centred list title sideways. `disabled`
+draws as an opaque ring rather than a transparent outline, so it stays legible over an avatar and
+stays distinguishable from `offline`'s solid grey by shape, not tone. `connecting` pulses (scale
+only, no opacity) since a corner badge that translates reads as coming loose; under
+`prefers-reduced-motion` it freezes mid-pulse rather than still, so its smaller size — not its hue
+alone — is what separates it from `synced`. There is deliberately no live region: the status flips on
+every socket reconnect, so announcing it would be chatter.
+
+[../../src/client/components/SyncNotice.tsx](../../src/client/components/SyncNotice.tsx) names the
+two states that need a response — `offline` and `signin-required` — in a strip inside the sticky
+header, with a link to `/sign-in` when signed out. It renders in its own row below the search band,
+outside the band that collapses on scroll, so it survives the collapse and never resizes a header
+column. A 10px badge is the wrong instrument for something to act on, and hover is no channel on a
+touch device. Appearing and disappearing does change the header's height, pushing the list down — an
+accepted cost, since a state the reader has to act on earns the interruption, and the alternative is
+reserving a row that is empty almost always.
 
 ## Offline identity
 

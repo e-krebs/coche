@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { UserButton } from "@clerk/clerk-react";
 import { useSyncState } from "client/store/syncStatus";
-import { useLocale, useSetLocale, useTranslation } from "client/i18n/useTranslation";
+import { useLocale, useSetLocale } from "client/i18n/useTranslation";
 import { ShoppingList } from "client/components/ShoppingList";
-import { SyncStatus } from "client/components/SyncStatus";
+import { AccountButton } from "client/components/AccountButton";
+import { SyncNotice } from "client/components/SyncNotice";
 import { LanguageDialog } from "client/components/LanguageDialog";
 import { ListPicker } from "client/components/ListPicker";
-import { GlobeIcon } from "client/components/icons";
 
 /**
  * One list on screen. The picker sits outside the keyed `<ShoppingList>`, whose remount is what
@@ -24,7 +23,6 @@ export const ListView = ({
   const { status, everSynced } = useSyncState();
   const locale = useLocale();
   const setLocale = useSetLocale();
-  const t = useTranslation();
   const [langOpen, setLangOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -43,21 +41,14 @@ export const ListView = ({
           // finger); later reconnect blips shouldn't make swipe/reorder flap.
           syncing={status === "connecting" && !everSynced}
           headerRight={
-            <>
-              <SyncStatus status={status} />
-              <UserButton>
-                <UserButton.MenuItems>
-                  <UserButton.Action
-                    label={t("language")}
-                    labelIcon={<GlobeIcon className="size-4" />}
-                    onClick={() => {
-                      setLangOpen(true);
-                    }}
-                  />
-                </UserButton.MenuItems>
-              </UserButton>
-            </>
+            <AccountButton
+              status={status}
+              onLanguage={() => {
+                setLangOpen(true);
+              }}
+            />
           }
+          notice={<SyncNotice status={status} />}
         />
       </div>
       {pickerOpen && (
