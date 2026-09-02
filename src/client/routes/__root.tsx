@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Outlet, createRootRoute, useRouter } from "@tanstack/react-router";
 import { ClerkProvider } from "@clerk/clerk-react";
 import { dark as darkTheme } from "@clerk/themes";
 import { enUS, frFR } from "@clerk/localizations";
 import { env } from "client/env";
+import { useMediaQuery } from "client/components/media";
 import { useSignOutTeardown } from "client/store/teardown";
 import { usePersistedLocale } from "client/i18n/localeStore";
 
@@ -12,23 +13,7 @@ import { usePersistedLocale } from "client/i18n/localeStore";
 const CLERK_JS_URL = "/clerk-js/clerk.browser.js";
 
 /** Follow prefers-color-scheme so Clerk's menu/sign-in aren't a white card on a dark app. */
-const usePrefersDark = (): boolean => {
-  const [isDark, setIsDark] = useState(
-    () => typeof matchMedia === "function" && matchMedia("(prefers-color-scheme: dark)").matches,
-  );
-  useEffect(() => {
-    if (typeof matchMedia !== "function") return undefined;
-    const mq = matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => {
-      setIsDark(mq.matches);
-    };
-    mq.addEventListener("change", onChange);
-    return () => {
-      mq.removeEventListener("change", onChange);
-    };
-  }, []);
-  return isDark;
-};
+const PREFERS_DARK = "(prefers-color-scheme: dark)";
 
 const TeardownWatcher = () => {
   useSignOutTeardown();
@@ -37,7 +22,7 @@ const TeardownWatcher = () => {
 
 const RootComponent = () => {
   const router = useRouter();
-  const prefersDark = usePrefersDark();
+  const prefersDark = useMediaQuery(PREFERS_DARK);
   const locale = usePersistedLocale();
 
   // At the root so every screen gets the right lang, not just the list; main.tsx seeds it before
