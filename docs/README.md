@@ -68,3 +68,5 @@ Architecture decision records sit outside the four quadrants as their own recogn
   with three rules off
 - [adr/0015-axe-e2e-gate.md](adr/0015-axe-e2e-gate.md) — axe-core as a gate on the local Playwright
   tier
+- [adr/0016-roster-two-homes-by-width.md](adr/0016-roster-two-homes-by-width.md) — The roster has two
+  homes, chosen by width
