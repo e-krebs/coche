@@ -24,4 +24,9 @@ export interface RowProps {
   onSetQuantity: (id: string, quantity: number | null) => void;
   onRegisterNameBtn: (id: string, el: HTMLButtonElement | null) => void;
   onRegisterCheckBtn: (id: string, el: HTMLButtonElement | null) => void;
+  /**
+   * A precise pointer, so the row can offer Delete on hover — swipe's replacement where there is no
+   * swipe. Injected rather than read from `matchMedia` in the row, so both branches are testable.
+   */
+  hoverActions?: boolean;
 }

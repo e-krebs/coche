@@ -143,6 +143,7 @@ dist
 
 # local working notes, deliberately not published
 /BACKLOG.md
+/BACKLOG-*.html
 
 # yarn v2
 .yarn/cache

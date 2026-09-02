@@ -302,7 +302,10 @@ export const ListPicker = ({
   return (
     <>
       <div
-        className="fixed inset-0 z-40 flex items-end justify-center"
+        className={`
+          fixed inset-0 z-40 flex items-end justify-center
+          sm:items-center
+        `}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -317,10 +320,14 @@ export const ListPicker = ({
         />
         <div
           ref={sheetRef}
+          // The dialog role sits on the full-screen wrapper, so a test measuring the panel itself
+          // has nothing to aim at without this.
+          data-sheet
           inert={confirming !== null}
           className={`
-            animate-sheet-in relative z-10 max-h-[80dvh] w-full max-w-md overflow-y-auto
+            relative z-10 max-h-[80dvh] w-full max-w-md animate-sheet-in overflow-y-auto
             rounded-t-2xl bg-header shadow-xl
+            sm:animate-snackbar-in sm:rounded-2xl
           `}
         >
           <div

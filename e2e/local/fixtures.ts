@@ -71,6 +71,31 @@ export const addItem = async (page: Page, name: string): Promise<void> => {
  */
 export const switchList = (page: Page) => page.locator("[data-list-trigger]");
 
+/** The header's first band, which carries `data-scrolled` once the header has shrunk. */
+export const titleBand = (page: Page) => page.locator("header > div").first();
+
+/**
+ * The picker's panel. `sheet` matches the `role="dialog"` wrapper, whose box is the whole viewport
+ * at every breakpoint — so anything measuring where the panel sits needs this instead.
+ */
+export const sheetPanel = (page: Page) => page.locator("[data-sheet]");
+
+/**
+ * Enough rows that the document outgrows either project's viewport — a page that can't scroll
+ * leaves `scrollY` at 0 and makes any assertion about the header's collapse vacuous. Submits
+ * without waiting on each row, then waits once for the last.
+ */
+export const fillScreen = async (page: Page): Promise<void> => {
+  for (let i = 0; i < 24; i += 1) {
+    await field(page).fill(`Item ${i}`);
+    await field(page).press("Enter");
+  }
+  await expect(checkbox(page, "Item 23")).toBeVisible();
+  await expect
+    .poll(async () => page.evaluate(() => document.body.scrollHeight - window.innerHeight))
+    .toBeGreaterThan(200);
+};
+
 /**
  * The open picker. Scope list-row lookups to it: the header trigger's accessible name is the active
  * list's name, so an unscoped `{ name: "Garden" }` matches it too.

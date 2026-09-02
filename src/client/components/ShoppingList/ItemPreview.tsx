@@ -1,8 +1,9 @@
 import type { ItemView } from "./types";
 
 /** The drag overlay's contents: a visual copy of the row being dragged, so it duplicates the source
- * row's text and is hidden from assistive tech. */
-export const ItemPreview = ({ item }: { item: ItemView }) => {
+ * row's text and is hidden from assistive tech. `hoverActions` has to match the row's, or the
+ * quantity badge jumps by the width of the Delete slot the instant the lift commits. */
+export const ItemPreview = ({ item, hoverActions }: { item: ItemView; hoverActions?: boolean }) => {
   return (
     <div
       aria-hidden
@@ -23,6 +24,7 @@ export const ItemPreview = ({ item }: { item: ItemView }) => {
           {item.quantity}
         </span>
       ) : null}
+      {hoverActions ? <span className="size-7.5 flex-none" /> : null}
     </div>
   );
 };

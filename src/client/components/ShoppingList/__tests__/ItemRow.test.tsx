@@ -18,11 +18,25 @@ const makeHandlers = () => ({
   onRegisterCheckBtn: vi.fn(),
 });
 
-const renderRow = (overrides: { item?: Partial<ItemView>; editing?: Editing; q?: string } = {}) => {
+const renderRow = (
+  overrides: {
+    item?: Partial<ItemView>;
+    editing?: Editing;
+    q?: string;
+    /** A precise pointer. Injected, because jsdom has no `matchMedia` to read it from. */
+    hoverActions?: boolean;
+  } = {},
+) => {
   const handlers = makeHandlers();
   const item = { ...baseItem, ...overrides.item };
   render(
-    <ItemRow item={item} q={overrides.q ?? ""} editing={overrides.editing ?? null} {...handlers} />,
+    <ItemRow
+      item={item}
+      q={overrides.q ?? ""}
+      editing={overrides.editing ?? null}
+      hoverActions={overrides.hoverActions}
+      {...handlers}
+    />,
   );
   return { ...handlers, item, user: userEvent.setup() };
 };
@@ -87,6 +101,7 @@ const ui = {
   name: (name: string) => screen.getByRole("button", { name }),
   rename: (name: string) => screen.getByLabelText(`Rename ${name}`),
   del: (name: string) => screen.getByLabelText(`Delete ${name}`),
+  queryDel: (name: string) => screen.queryByLabelText(`Delete ${name}`),
   text: (content: string) => screen.getByText(content),
   /** The <li> drag activator, reached from a child — it has no accessible name of its own. */
   rowOf: (name: string) => {
@@ -218,6 +233,34 @@ describe("ItemRow", () => {
       const { onDelete, user } = renderRow({ editing: editingName });
       await user.click(ui.del("Milk"));
       expect(onDelete).toHaveBeenCalledWith("1");
+    });
+  });
+
+  // A mouse can't swipe, so on a precise pointer the row carries the Delete swipe stands in for —
+  // revealed on hover by CSS, and deliberately not a tab stop: the keyboard path is the editor's
+  // Delete, which is why it only takes focus while the row is being renamed.
+  describe("when the pointer is precise", () => {
+    const editingName: Editing = { id: "1", mode: "name" };
+
+    it("carries a Delete the keyboard skips over", () => {
+      renderRow({ hoverActions: true });
+      expect(ui.del("Milk")).toHaveAttribute("tabindex", "-1");
+    });
+
+    it("hands that same Delete to the keyboard once the row is being renamed", () => {
+      renderRow({ hoverActions: true, editing: editingName });
+      expect(ui.del("Milk")).toHaveAttribute("tabindex", "0");
+    });
+
+    it("still deletes the item when clicked outside edit mode", async () => {
+      const { onDelete, user } = renderRow({ hoverActions: true });
+      await user.click(ui.del("Milk"));
+      expect(onDelete).toHaveBeenCalledWith("1");
+    });
+
+    it("is absent on a coarse pointer, where the swipe is the path", () => {
+      renderRow();
+      expect(ui.queryDel("Milk")).toBeNull();
     });
   });
 

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoApp, createList, switchList } from "./fixtures";
+import { test, expect, gotoApp, createList, fillScreen, switchList, titleBand } from "./fixtures";
 
 /**
  * Clerk is unreachable in this tier (the fixtures abort every non-localhost request), so the avatar
@@ -30,5 +30,17 @@ test.describe("header", () => {
     await createList(page, "A considerably longer list name that keeps going");
     const long = await titleOffset(page);
     expect(Math.abs(long - short)).toBeLessThanOrEqual(CENTRE_TOLERANCE);
+  });
+
+  // The other half of the pair in desktop.spec.ts: a phone still reclaims the vertical room, which
+  // is what makes freezing the shrink above md a deliberate choice rather than a lost feature. The
+  // centring tests above hold at every width and deliberately keep running in both projects — the
+  // drift they guard against is a property of the band's fixed side columns, not of its height.
+  test("shrinks the title band once the page scrolls past the fold", async ({ page, viewport }) => {
+    test.skip((viewport?.width ?? 0) >= 768, "the shrink is frozen above md");
+    await gotoApp(page);
+    await fillScreen(page);
+    await page.mouse.wheel(0, 400);
+    await expect(titleBand(page)).toHaveAttribute("data-scrolled");
   });
 });

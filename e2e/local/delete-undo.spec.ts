@@ -6,7 +6,8 @@ test.describe("delete + undo", () => {
     await addItem(page, "Butter");
     await field(page).blur(); // a focused add field disables dnd on the sortable rows
 
-    // Delete is revealed only in edit mode: tap the name, then the Delete action.
+    // The path a finger has besides swiping: tap the name, then the Delete the editor reveals. On a
+    // precise pointer the same button is also on the resting row, revealed by hover.
     await page.getByRole("button", { name: "Butter", exact: true }).click();
     await page.getByLabel("Delete Butter").click();
     await expect.poll(async () => uncheckedNames(page)).toEqual([]);

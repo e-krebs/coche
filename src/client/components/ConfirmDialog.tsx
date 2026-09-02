@@ -73,7 +73,7 @@ export const ConfirmDialog = ({
       />
       <div
         className={`
-          animate-snackbar-in relative z-10 w-full max-w-xs rounded-2xl bg-header p-5 shadow-xl
+          relative z-10 w-full max-w-xs animate-snackbar-in rounded-2xl bg-header p-5 shadow-xl
         `}
       >
         <h2 id={titleId} className="text-[17px] font-medium">
