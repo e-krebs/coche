@@ -13,6 +13,11 @@ const RECONNECT_DELAY_MS = 3000;
 const MAX_RECONNECT_DELAY_MS = 30_000;
 /** An offline wait only re-reads `navigator.onLine`, so it costs nothing and never backs off. */
 const OFFLINE_POLL_MS = 3000;
+/**
+ * Bounds each of an attempt's two waits no other timer covers. Well above a healthy attempt, and
+ * half the backoff cap, so a deadline never outlasts the longest wait it can arm.
+ */
+const ATTEMPT_TIMEOUT_MS = 15_000;
 
 /**
  * Every attempt mints a fresh single-use ticket, so a server that keeps refusing must not be
@@ -29,6 +34,53 @@ export const reconnectDelay = ({ failures }: { failures: number }): number =>
 export const refusalStatus = ({ refusals }: { refusals: number }): SyncStatus =>
   refusals > 1 ? "signin-required" : "connecting";
 
+/**
+ * Rejects once `ms` elapses; `promise` keeps running, so a late result isn't lost — the next
+ * attempt re-awaits the same shared request. Nothing branches on the error — the catch reads it as
+ * the non-auth failure it is.
+ */
+export const withTimeout = async <T>({
+  promise,
+  ms,
+}: {
+  promise: Promise<T>;
+  ms: number;
+}): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(`timed out after ${ms}ms`));
+        }, ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
+
+/**
+ * One in-flight token request, shared. Clerk retries a failed fetch behind our back (~8 attempts,
+ * growing to 50s apart), so a retry that outlived our deadline re-awaits the call still working
+ * instead of racing a second ladder against it. The slot clears as soon as the call settles, so the
+ * next attempt asks again rather than replaying a stale token.
+ */
+export const createTokenRequest = ({
+  getToken,
+}: {
+  getToken: () => Promise<string | null>;
+}): (() => Promise<string | null>) => {
+  let pending: Promise<string | null> | undefined;
+  return async () => {
+    pending ??= getToken().finally(() => {
+      pending = undefined;
+    });
+    return pending;
+  };
+};
+
 export class SigninRequiredError extends Error {}
 
 const wsTicketSchema = z.object({ listId: z.string(), ticket: z.string() });
@@ -36,13 +88,18 @@ const wsTicketSchema = z.object({ listId: z.string(), ticket: z.string() });
 export const fetchWsTicket = async ({
   syncUrl,
   token,
+  timeoutMs = ATTEMPT_TIMEOUT_MS,
 }: {
   syncUrl: string;
   token: string;
+  timeoutMs?: number;
 }): Promise<WsTicket> => {
   const res = await fetch(`${syncUrl}/ws-ticket`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
+    // `fetch` has no default timeout, so a stalled POST would hang with no retry armed. Aborting
+    // cancels the request rather than merely abandoning it.
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (res.status === 401 || res.status === 403) throw new SigninRequiredError();
   if (!res.ok) throw new Error(`ws-ticket failed: ${res.status}`);
@@ -87,6 +144,9 @@ export const useSync = (store: Store<Schemas> | undefined): SyncStatus => {
     let generation = 0;
     let failures = 0;
     let refusals = 0;
+    // Through the ref, so a retry picks up the latest getToken rather than the one this run began
+    // with.
+    const requestToken = createTokenRequest({ getToken: async () => getTokenRef.current() });
 
     const cleanup = async () => {
       if (timer) clearTimeout(timer);
@@ -152,7 +212,7 @@ export const useSync = (store: Store<Schemas> | undefined): SyncStatus => {
       }
       setStatus("connecting");
       try {
-        const token = await getTokenRef.current();
+        const token = await withTimeout({ promise: requestToken(), ms: ATTEMPT_TIMEOUT_MS });
         if (stale()) return;
         if (!token) throw new SigninRequiredError();
         const { listId, ticket } = await fetchWsTicket({ syncUrl, token });

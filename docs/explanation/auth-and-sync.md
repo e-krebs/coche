@@ -106,20 +106,34 @@ URL/ticket). Every reconnect, including the first, calls `/ws-ticket` with a fre
 `createWsSynchronizer`. A ticket is never replayed past its first connection attempt.
 
 Every failed attempt arms the next one, so the retry loop cannot die: the socket's `close` event, a
-failed ticket fetch, a refused one, the browser `offline` event, and `connect()`'s own
-`navigator.onLine` check all schedule one. The exceptions are the states that aren't failures and
-that the effect's own dependencies carry: Clerk still loading, and Clerk reporting no session. The
-two kinds of wait are priced differently, because they cost different things. A failed attempt
-reaches the Worker and mints a ticket, so consecutive failures back off (`reconnectDelay` doubles
-`RECONNECT_DELAY_MS` = 3s up to a 30s cap, reset once a connection syncs). Waiting for the network to
-return only re-reads `navigator.onLine`, so it polls flat at `OFFLINE_POLL_MS` = 3s.
+failed ticket fetch, a refused one, a step that outran its deadline, the browser `offline` event, and
+`connect()`'s own `navigator.onLine` check all schedule one. The exceptions are the states that
+aren't failures and that the effect's own dependencies carry: Clerk still loading, and Clerk
+reporting no session. The two kinds of wait are priced differently, because they cost different
+things. A failed attempt can reach the Worker and mint a ticket, so consecutive failures back off
+(`reconnectDelay` doubles `RECONNECT_DELAY_MS` = 3s up to a 30s cap, reset once a connection syncs)
+— one price for every kind of failure, since an attempt that died before the ticket call is rare
+enough not to deserve a cadence of its own.
+Waiting for the network to return only re-reads `navigator.onLine`, so it polls flat at
+`OFFLINE_POLL_MS` = 3s.
 
-One wait is nobody's timer: `getToken()` has Clerk's own retry behind it (~8 attempts, growing
-delays), so when Clerk throws rather than returning null the call can stay pending for minutes with
-nothing of ours armed. The attempt is in flight rather than lost, and `online` / `visibilitychange`
-still interrupt it, but the status sits at `connecting` throughout.
+No wait is nobody's timer. Two of an attempt's steps would otherwise hang with no ceiling of their
+own: `getToken()` sits behind Clerk's own retry (~8 attempts, its delays growing to 50s apart), and a
+stalled `/ws-ticket` POST would wait forever, since `fetch` has no default timeout. Each carries a
+15s deadline (`ATTEMPT_TIMEOUT_MS`, half the backoff cap, so a deadline never outlasts the longest
+wait it can arm): the ticket fetch passes an `AbortSignal.timeout`, which genuinely cancels the
+request — body included — while the token call is raced by `withTimeout`, which can only stop
+waiting on it. Either way the ladder gets its verdict and arms the next attempt. The socket step
+needs no deadline: its `close` listener is attached *before* the await, so a handshake that stalls
+out schedules a retry whether or not `createWsSynchronizer` ever resolves, and the sync handshake
+behind it is bounded by TinyBase's own per-request timeout.
 
-Recovery therefore doesn't hang on a single `online` event. That event still short-circuits the wait
+A timed-out token call is re-awaited, not re-issued — Clerk is still retrying behind it, and a second
+call would race a second ladder against the first. So a hung token fetch can read `offline` for as
+long as Clerk keeps trying; its early delays (3s, 4.7s, 7.2s …) are as prompt as ours would be, and
+only its tail is slower than a fresh call.
+
+Recovery doesn't hang on a single `online` event. That event still short-circuits the wait
 (immediate, but skipped when a live socket is already open, so a spurious `online` doesn't tear down
 a healthy connection) — it is an optimisation, not the mechanism. The distinction matters because a
 socket whose network vanishes may never fire `close` at all: it lingers reading `OPEN`, which is
@@ -155,7 +169,7 @@ Sync status:
 |---|---|
 | `disabled` | No `VITE_SYNC_URL` — local-only, sync never attempted |
 | `offline` | `navigator.onLine` is false, or the last connect attempt failed |
-| `connecting` | Fetching a ticket / opening the socket, or waiting out a retry (up to 30s) |
+| `connecting` | Fetching a token or ticket (15s deadline each), opening the socket, or waiting out a retry |
 | `synced` | `WsSynchronizer.startSync()` resolved on an open socket |
 | `signin-required` | Clerk reports no session, or two refusals in a row (401/403, or no token) |
 
