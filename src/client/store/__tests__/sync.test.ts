@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "client/__tests__/msw";
-import { SigninRequiredError, fetchWsTicket, reconnectDelay } from "client/store/sync";
+import {
+  SigninRequiredError,
+  fetchWsTicket,
+  reconnectDelay,
+  refusalStatus,
+} from "client/store/sync";
 import { wsUrl } from "shared/contract";
 
 const ARGS = { syncUrl: "http://x", token: "tok" };
@@ -39,6 +44,15 @@ describe("reconnectDelay", () => {
     // Capped, not unbounded: a server down for an hour is still retried on the reader's return.
     expect(reconnectDelay({ failures: 4 })).toBe(30_000);
     expect(reconnectDelay({ failures: 40 })).toBe(30_000);
+  });
+});
+
+describe("refusalStatus", () => {
+  it("waits for a second refusal before naming the reader signed out", () => {
+    // A lost token refresh must not accuse a signed-in reader — the retry settles it 3s later.
+    expect(refusalStatus({ refusals: 1 })).toBe("connecting");
+    expect(refusalStatus({ refusals: 2 })).toBe("signin-required");
+    expect(refusalStatus({ refusals: 9 })).toBe("signin-required");
   });
 });
 
