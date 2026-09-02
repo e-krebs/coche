@@ -19,61 +19,14 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useListRoster, type ListSummary } from "client/store/lists";
 import { useTranslation } from "client/i18n/useTranslation";
-import { AddIcon, CheckIcon, DeleteIcon, DragIcon } from "client/components/icons";
+import { AddIcon, DeleteIcon, DragIcon } from "client/components/icons";
 import { ConfirmDialog } from "client/components/ConfirmDialog";
 import { useOpenerFocus } from "client/components/focus";
+import { RosterRows, rowBase } from "client/components/RosterRows";
 import { prefersReducedMotion } from "./ShoppingList/helpers";
-
-const rowBase = `flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[15px]
-  outline-hidden
-  focus-visible:bg-canvas focus-visible:ring-2 focus-visible:ring-accent-text
-  focus-visible:ring-inset`;
 
 const iconBtn = `grid size-8 flex-none place-items-center rounded-full text-muted outline-hidden
   focus-visible:ring-2 focus-visible:ring-accent-text`;
-
-const PickRow = ({
-  list,
-  label,
-  active,
-  onSelect,
-}: {
-  list: ListSummary;
-  label: string;
-  active: boolean;
-  onSelect: () => void;
-}) => {
-  const t = useTranslation();
-  return (
-    <button
-      type="button"
-      // A menu, not a radiogroup: arrows rove without selecting, because selecting switches list and
-      // closes the sheet — so the first arrow press would end the interaction.
-      role="menuitemradio"
-      aria-checked={active}
-      aria-label={t("listWithCount", { name: label, count: list.count })}
-      tabIndex={active ? 0 : -1}
-      onClick={onSelect}
-      className={`
-        ${rowBase}
-        hover:bg-canvas
-      `}
-    >
-      <span
-        data-active={active || undefined}
-        className={`
-          grid size-4.5 flex-none place-items-center rounded-full border-2 border-muted
-          text-transparent
-          data-active:border-accent-text data-active:text-accent-text
-        `}
-      >
-        <CheckIcon className="size-3" />
-      </span>
-      <span className="flex-1 truncate">{label}</span>
-      <span className="flex-none text-[14px] text-muted tabular-nums">{list.count}</span>
-    </button>
-  );
-};
 
 const EditRow = ({
   list,
@@ -439,20 +392,14 @@ export const ListPicker = ({
               </form>
             </>
           ) : (
-            <div role="menu" aria-label={t("lists")} className="p-1.5">
-              {lists.map((list) => (
-                <PickRow
-                  key={list.id}
-                  list={list}
-                  label={nameOf(list)}
-                  active={list.id === activeId}
-                  onSelect={() => {
-                    onSelect(list.id);
-                    onClose();
-                  }}
-                />
-              ))}
-            </div>
+            <RosterRows
+              lists={lists}
+              activeId={activeId}
+              onSelect={(id) => {
+                onSelect(id);
+                onClose();
+              }}
+            />
           )}
         </div>
       </div>
