@@ -123,6 +123,7 @@ export const ItemRow = ({
   onSetQuantity,
   onRegisterNameBtn,
   onRegisterCheckBtn,
+  hoverActions,
 }: ItemRowProps) => {
   const t = useTranslation();
   const nameEditing = editing?.id === item.id && editing.mode === "name";
@@ -181,7 +182,7 @@ export const ItemRow = ({
       data-collapsed={collapsed || undefined}
       className={`
         ${focusRing}
-        relative overflow-hidden rounded-[10px]
+        group/row relative overflow-hidden rounded-[10px]
         focus-visible:ring-inset
         data-collapsed:opacity-0
         data-draggable:cursor-grab data-draggable:active:cursor-grabbing
@@ -371,19 +372,35 @@ export const ItemRow = ({
           </button>
         )}
 
-        {nameEditing && (
+        {(nameEditing || hoverActions) && (
           <button
             type="button"
             aria-label={t("delete", { name: item.name })}
+            // Outside edit mode this is a pointer affordance only — swipe's stand-in where there is
+            // no swipe. Keyboard delete stays the documented path (activate the name, Tab to the
+            // Delete the editor reveals), so this doesn't add a tab stop to every row.
+            tabIndex={nameEditing ? 0 : -1}
+            data-editing={nameEditing || undefined}
+            // Not `stopDrag`: this one also needs preventDefault, which that helper doesn't carry.
             onMouseDown={(e) => {
-              e.preventDefault();
+              // Keep focus in this row's own editor, so its blur can't close edit mode first —
+              // scoped to it, because swallowing another row's blur discards the rename it holds.
+              if (nameEditing) e.preventDefault();
+              e.stopPropagation(); // and don't arm the row's drag sensor
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation();
             }}
             onClick={() => {
               onDelete(item.id);
             }}
             className={`
               ${focusRing}
-              grid size-7.5 flex-none place-items-center rounded-full text-muted
+              grid size-7.5 flex-none place-items-center rounded-full text-muted opacity-0
+              transition-opacity duration-150 ease-out
+              group-hover/row:opacity-100
+              data-editing:opacity-100
+              motion-reduce:transition-none
             `}
           >
             <DeleteIcon className="size-4.5" />

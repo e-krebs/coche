@@ -20,6 +20,7 @@ import { sortedByPosition } from "client/store/reorder";
 import { useTable } from "client/store/store";
 import { useTranslation } from "client/i18n/useTranslation";
 import { focusDropped } from "client/components/focus";
+import { PRECISE, WIDE_AND_PRECISE, useMediaQuery } from "client/components/media";
 import { prefersReducedMotion } from "./helpers";
 import { ItemRow, SortableRow } from "./ItemRow";
 import { ItemPreview } from "./ItemPreview";
@@ -68,7 +69,12 @@ export const ShoppingList = ({
   const [showChecked, setShowChecked] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [inputFocused, setInputFocused] = useState(false);
-  const scrolled = useHeaderCollapse({ listId, itemsLength: items.length });
+  // The shrink buys vertical room a desktop never ran out of, and there is no soft keyboard coming
+  // to take a third of the viewport. Frozen at the one source of `data-scrolled`, so every shrink
+  // class in ListHeader stays as it is.
+  const shrinkFrozen = useMediaQuery(WIDE_AND_PRECISE);
+  const scrolled = useHeaderCollapse({ listId, itemsLength: items.length }) && !shrinkFrozen;
+  const hoverActions = useMediaQuery(PRECISE);
   const inputRef = useRef<HTMLInputElement>(null);
   const nameBtnRefs = useRef(new Map<string, HTMLButtonElement>());
   const checkBtnRefs = useRef(new Map<string, HTMLButtonElement>());
@@ -167,6 +173,7 @@ export const ShoppingList = ({
     onSetQuantity: actions.setQuantity,
     onRegisterNameBtn: registerNameBtn,
     onRegisterCheckBtn: registerCheckBtn,
+    hoverActions,
   };
 
   const submit = () => {
@@ -272,7 +279,9 @@ export const ShoppingList = ({
                   </ul>
                 </SortableContext>
                 <DragOverlay dropAnimation={prefersReducedMotion() ? null : undefined}>
-                  {activeItem ? <ItemPreview item={activeItem} /> : null}
+                  {activeItem ? (
+                    <ItemPreview item={activeItem} hoverActions={hoverActions} />
+                  ) : null}
                 </DragOverlay>
               </DndContext>
             )}
