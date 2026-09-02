@@ -6,6 +6,8 @@ import { AccountButton } from "client/components/AccountButton";
 import { SyncNotice } from "client/components/SyncNotice";
 import { LanguageDialog } from "client/components/LanguageDialog";
 import { ListPicker } from "client/components/ListPicker";
+import { ListSidebar } from "client/components/ListSidebar";
+import { WIDE, useMediaQuery } from "client/components/media";
 
 /**
  * One list on screen. The picker sits outside the keyed `<ShoppingList>`, whose remount is what
@@ -25,22 +27,56 @@ export const ListView = ({
   const setLocale = useSetLocale();
   const [langOpen, setLangOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerEditing, setPickerEditing] = useState(false);
+  // One source for both halves of the switch, so the sidebar and the title can't disagree about who
+  // owns picking. `useSyncExternalStore` has the answer on the first render, so there is no
+  // phone-shaped flash to hide with a CSS-only sidebar — and at phone width the roster is then
+  // genuinely absent from the DOM rather than merely hidden.
+  const wide = useMediaQuery(WIDE);
+
+  const openPicker = (editing: boolean) => {
+    setPickerEditing(editing);
+    setPickerOpen(true);
+  };
 
   return (
     <div
+      data-wide={wide || undefined}
       className={`
-        mx-auto min-h-dvh max-w-md
-        md:max-w-2xl
+        min-h-dvh
+        data-wide:grid data-wide:grid-cols-[17rem_minmax(0,1fr)]
       `}
     >
+      {wide && (
+        <div inert={pickerOpen || langOpen}>
+          <ListSidebar
+            activeId={listId}
+            onSelect={onSelectList}
+            onEdit={() => {
+              openPicker(true);
+            }}
+          />
+        </div>
+      )}
       {/* aria-modal only promises the page behind is unreachable; inert is what delivers it */}
-      <div inert={pickerOpen || langOpen}>
+      <div
+        inert={pickerOpen || langOpen}
+        // `data-narrow`, not `data-wide:max-w-none`: the cap and the override would be the same
+        // property under two different variant families, and the sorter decides which wins.
+        data-narrow={!wide || undefined}
+        className={`
+          mx-auto w-full min-w-0
+          data-narrow:max-w-md
+          md:data-narrow:max-w-2xl
+        `}
+      >
         <ShoppingList
           key={listId}
           listId={listId}
           listName={listName}
+          wide={wide}
           onPickList={() => {
-            setPickerOpen(true);
+            openPicker(false);
           }}
           // Block gestures only on first connect (its initial sync can reshuffle the list under a
           // finger); later reconnect blips shouldn't make swipe/reorder flap.
@@ -59,6 +95,7 @@ export const ListView = ({
       {pickerOpen && (
         <ListPicker
           activeId={listId}
+          initialEditing={pickerEditing}
           onSelect={onSelectList}
           onClose={() => {
             setPickerOpen(false);

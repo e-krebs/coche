@@ -105,6 +105,7 @@ const EditRow = ({
         <button
           type="button"
           onClick={onStartRename}
+          data-rename-row
           className={`
             ${rowBase}
             flex-1 py-2.5
@@ -135,16 +136,19 @@ const EditRow = ({
  */
 export const ListPicker = ({
   activeId,
+  initialEditing = false,
   onSelect,
   onClose,
 }: {
   activeId: string;
+  /** Open straight into edit mode — the sidebar's own Edit has nothing else to offer. */
+  initialEditing?: boolean;
   onSelect: (id: string) => void;
   onClose: () => void;
 }) => {
   const t = useTranslation();
   const { lists, add, rename, remove, reorder } = useListRoster();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(initialEditing);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<ListSummary | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -158,9 +162,18 @@ export const ListPicker = ({
   const canDelete = lists.length > 1;
 
   useOpenerFocus({ fallbackSelector: "[data-list-trigger]" });
+  // The active row while picking. Opened straight into edit mode there is no checked row to aim at,
+  // and leaving focus on the sidebar button that opened the sheet would put it outside the modal —
+  // so Escape and the Tab trap, both handlers on the dialog, would never see a key. The first
+  // rename row, not the header toggle that is first in document order: that one now reads "Done",
+  // and answering a request to edit with the control that exits editing is a strange place to land.
   // oxlint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- post-render focus
   useEffect(() => {
-    sheetRef.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
+    const sheet = sheetRef.current;
+    const target =
+      sheet?.querySelector<HTMLElement>('[aria-checked="true"]') ??
+      sheet?.querySelector<HTMLElement>("[data-rename-row]");
+    target?.focus();
   }, []);
 
   const accessibility = useMemo(() => {
@@ -395,6 +408,7 @@ export const ListPicker = ({
             <RosterRows
               lists={lists}
               activeId={activeId}
+              semantics="menu"
               onSelect={(id) => {
                 onSelect(id);
                 onClose();
