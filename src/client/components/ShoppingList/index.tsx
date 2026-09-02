@@ -47,8 +47,8 @@ export const ShoppingList = ({
   headerRight?: ReactNode;
   notice?: ReactNode;
   syncing?: boolean;
-  /** The sidebar is on screen: the title stops being the switcher, and the pane centres its own
-   * content instead of the header spanning only as far as the list. */
+  /** The sidebar is on screen: the title stops being the switcher, and the header's scroll shrink
+   * freezes. */
   wide?: boolean;
 }) => {
   const t = useTranslation();
@@ -215,12 +215,11 @@ export const ShoppingList = ({
 
       {/* The header stays outside, so it keeps its banner role and the items get the main landmark */}
       <main
-        data-wide={wide || undefined}
-        // `2xl`, not the header band's `160`: this cap includes the padding below, and 42rem is what
-        // keeps the item column the same width as the band above it and as the `md` tier.
+        // `md`/`2xl`, not the header's `104`/`160`: these caps include the `px-4` below, so the item
+        // column lands the same width as the band above it.
         className={`
-          mx-auto w-full px-4 pb-4
-          data-wide:max-w-2xl
+          mx-auto w-full max-w-md px-4 pb-4
+          md:max-w-2xl
         `}
       >
         {searching ? (

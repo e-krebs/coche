@@ -113,8 +113,9 @@ vs. real-Clerk trade-off), see
   coarse-pointer paths — swipe to delete, the header's scroll reclaim — untested everywhere.
   `desktop.spec.ts` covers the wide-screen half: the wider column, the frozen shrink, the
   hover-revealed row Delete and its absence from the tab order, the sidebar and the edit sheet it
-  opens. The centred picker lives between `sm` and `lg`, which is neither project's width, so it
-  gets a fixed 900 px viewport of its own and runs once.
+  opens. Two cases sit between `sm` and `lg`, which is neither project's width: the centred picker,
+  and the header bar running edge to edge while its own content stays in the item column. They share
+  a fixed 900 px viewport and run once.
 - Hermetic by design: [../../e2e/local/fixtures.ts](../../e2e/local/fixtures.ts) extends `context`
   to seed `localStorage["shopping:userId"]` with a fixed test user via `addInitScript`, and to abort
   every non-localhost request via `context.route` — the app boots offline-only, with no sync Worker

@@ -86,9 +86,14 @@ Decisions that aren't obvious from the markup:
 
 - **Responsive tiers** — the app is a single column, capped at `28rem` on a phone and `42rem` above
   `md`; at `lg` the roster comes out of its modal and stands beside it as a sidebar
-  ([../adr/0016-roster-two-homes-by-width.md](../adr/0016-roster-two-homes-by-width.md)). The
-  phone-shaped compromises inside that column are conditional rather than universal. Three
-  properties decide, and all are read through `useMediaQuery`
+  ([../adr/0016-roster-two-homes-by-width.md](../adr/0016-roster-two-homes-by-width.md)). The cap is
+  on the **content**, never on the chrome: the sticky header's background, hairline and shadow reach
+  the pane's edges at every width — the viewport below `lg`, the grid column beside the sidebar —
+  while its title band, add/find field and sync notice sit in the same capped column as the items
+  below them. A cap on the wrapper the two share would stop the bar where the list stops, leaving a
+  floating card wherever the window is wider than the column. The phone-shaped compromises inside
+  that column are conditional rather than universal. Three properties decide, and all are read
+  through `useMediaQuery`
   ([../../src/client/components/media.ts](../../src/client/components/media.ts)): room for the
   sidebar (`lg`), a precise **pointer**, and the two together (`md` and precise) for the header's
   scroll reclaim. Pointer, not width alone, because a tablet in landscape is as

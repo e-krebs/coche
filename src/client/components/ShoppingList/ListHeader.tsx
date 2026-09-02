@@ -2,6 +2,14 @@ import { type ReactNode, type RefObject } from "react";
 import { useTranslation } from "client/i18n/useTranslation";
 import { AddIcon, CloseIcon, ExpandIcon, SearchIcon } from "client/components/icons";
 
+// The item column, less the header's own `px-4` — what holds every row of a full-bleed bar in the
+// same column as the items below it.
+const BAND = `
+  mx-auto w-full
+  max-w-104
+  md:max-w-160
+`;
+
 /**
  * Band 1 (title + headerRight) shrinks rather than collapses on scroll: it carries the list
  * switcher, and the hysteresis floor means a vanished band only comes back at the very top.
@@ -9,6 +17,9 @@ import { AddIcon, CloseIcon, ExpandIcon, SearchIcon } from "client/components/ic
  * Its side columns are fixed at one avatar wide, not `1fr`: anything that resized them — the avatar
  * arriving, a longer sync label — used to drag the centred title sideways. `notice` sits outside the
  * shrinking band so a state that needs a response survives the collapse.
+ *
+ * The bar is full-bleed at every width — background, hairline and shadow reach the pane's edges —
+ * with `BAND` doing the capping the pane used to do.
  */
 export const ListHeader = ({
   listName,
@@ -48,10 +59,11 @@ export const ListHeader = ({
         data-scrolled={scrolled || undefined}
         data-wide={wide || undefined}
         className={`
-          group mx-auto grid w-full grid-cols-[--spacing(7)_minmax(0,1fr)_--spacing(7)] items-center
-          pt-3 pb-1 transition-[padding] duration-300 ease-out
+          group grid grid-cols-[--spacing(7)_minmax(0,1fr)_--spacing(7)] items-center pt-3 pb-1
+          transition-[padding] duration-300 ease-out
+          ${BAND}
           data-scrolled:pt-1.5 data-scrolled:pb-0.5
-          data-wide:max-w-160 data-wide:grid-cols-[minmax(0,1fr)_--spacing(7)]
+          data-wide:grid-cols-[minmax(0,1fr)_--spacing(7)]
           motion-reduce:transition-none
         `}
       >
@@ -107,10 +119,9 @@ export const ListHeader = ({
           e.preventDefault();
           onSubmit();
         }}
-        data-wide={wide || undefined}
         className={`
-          mx-auto flex w-full items-center gap-2 py-2
-          data-wide:max-w-160
+          flex items-center gap-2 py-2
+          ${BAND}
         `}
       >
         <div className="relative flex-1">
@@ -171,7 +182,7 @@ export const ListHeader = ({
           <AddIcon className="size-6" />
         </button>
       </form>
-      {notice}
+      <div className={BAND}>{notice}</div>
     </header>
   );
 };

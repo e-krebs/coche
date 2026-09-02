@@ -61,14 +61,9 @@ export const ListView = ({
       {/* aria-modal only promises the page behind is unreachable; inert is what delivers it */}
       <div
         inert={pickerOpen || langOpen}
-        // `data-narrow`, not `data-wide:max-w-none`: the cap and the override would be the same
-        // property under two different variant families, and the sorter decides which wins.
-        data-narrow={!wide || undefined}
-        className={`
-          mx-auto w-full min-w-0
-          data-narrow:max-w-md
-          md:data-narrow:max-w-2xl
-        `}
+        // Uncapped on purpose: the header's background and hairline have to reach this pane's edges
+        // at every width, so the column cap lives on the header's bands and on `<main>` instead.
+        className="w-full min-w-0"
       >
         <ShoppingList
           key={listId}

@@ -174,6 +174,42 @@ test.describe("large tablet layout", () => {
 test.describe("tablet layout", () => {
   test.use({ viewport: { width: 900, height: 800 } });
 
+  // The tier where a capped bar is visible as a floating card: wide enough to outgrow the column,
+  // too narrow for the sidebar to be the thing holding the header in. Checked at both caps — the
+  // phone one binds from `sm` to `md`, a range neither project's viewport reaches.
+  test("runs the header bar edge to edge, with its content still in the column", async ({
+    page,
+  }) => {
+    test.skip(test.info().project.name !== "desktop", "both projects share this fixed viewport");
+    await gotoApp(page);
+
+    const measure = async (width: number) => {
+      await page.setViewportSize({ width, height: 800 });
+      const bar = await page.locator("header").boundingBox();
+      const band = await titleBand(page).boundingBox();
+      if (!bar || !band) throw new Error(`header not laid out at ${width}`);
+      // The item column's content box, so a padding tweak moves both edges together instead of
+      // failing here.
+      const column = await page.locator("main").evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        const style = getComputedStyle(el);
+        return {
+          left: box.left + parseFloat(style.paddingLeft),
+          right: box.right - parseFloat(style.paddingRight),
+        };
+      });
+      return { bar, band, column };
+    };
+
+    for (const width of [600, 900]) {
+      const { bar, band, column } = await measure(width);
+      expect({ x: bar.x, width: bar.width }, `bar at ${width}`).toEqual({ x: 0, width });
+      expect(band.width, `band capped at ${width}`).toBeLessThan(bar.width);
+      expect(band.x, `band left at ${width}`).toBeCloseTo(column.left, 0);
+      expect(band.x + band.width, `band right at ${width}`).toBeCloseTo(column.right, 0);
+    }
+  });
+
   test("centres the list picker instead of sliding it off the bottom edge", async ({ page }) => {
     test.skip(test.info().project.name !== "desktop", "both projects share this fixed viewport");
     await gotoApp(page);
