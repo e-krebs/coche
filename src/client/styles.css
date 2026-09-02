@@ -92,23 +92,30 @@ html {
   .animate-avatar-in { animation: none; }
 }
 
-/* bottom sheet entrance — a mount can't be a transition, so it's a keyframe like snackbar-in */
+/* bottom sheet entrance — a mount can't be a transition, so it's a keyframe like snackbar-in.
+   @utility rather than a plain class: the list picker is a sheet on a phone and a centred dialog
+   above sm, so this one has to accept a breakpoint variant. The reduced-motion guard nests inside,
+   or the variant would leave it behind. */
 @keyframes sheet-in {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
 }
-.animate-sheet-in { animation: sheet-in 0.25s cubic-bezier(0.32, 0.72, 0, 1); }
-@media (prefers-reduced-motion: reduce) {
-  .animate-sheet-in { animation: none; }
+@utility animate-sheet-in {
+  animation: sheet-in 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 }
 
 @keyframes snackbar-in {
   from { transform: translateY(1rem); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
-.animate-snackbar-in { animation: snackbar-in 0.2s ease-out; }
-@media (prefers-reduced-motion: reduce) {
-  .animate-snackbar-in { animation: none; }
+@utility animate-snackbar-in {
+  animation: snackbar-in 0.2s ease-out;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 }
 
 /* delete-icon pulse as a swipe crosses the commit threshold — a one-shot scale bump can't be a

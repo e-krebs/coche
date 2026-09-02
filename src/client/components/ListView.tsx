@@ -27,7 +27,12 @@ export const ListView = ({
   const [pickerOpen, setPickerOpen] = useState(false);
 
   return (
-    <div className="mx-auto min-h-dvh max-w-md">
+    <div
+      className={`
+        mx-auto min-h-dvh max-w-md
+        md:max-w-2xl
+      `}
+    >
       {/* aria-modal only promises the page behind is unreachable; inert is what delivers it */}
       <div inert={pickerOpen || langOpen}>
         <ShoppingList

@@ -24,7 +24,7 @@ export const UndoSnackbar = ({
         onMouseEnter={onPause}
         onMouseLeave={onResume}
         className={`
-          animate-snackbar-in flex items-center gap-3 rounded-xl bg-[#323232] py-2.5 pr-2 pl-4
+          flex animate-snackbar-in items-center gap-3 rounded-xl bg-[#323232] py-2.5 pr-2 pl-4
           text-white shadow-lg
         `}
       >

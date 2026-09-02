@@ -74,7 +74,7 @@ export const LanguageDialog = ({
       />
       <div
         className={`
-          animate-snackbar-in relative z-10 w-full max-w-xs overflow-hidden rounded-2xl bg-header
+          relative z-10 w-full max-w-xs animate-snackbar-in overflow-hidden rounded-2xl bg-header
           shadow-xl
         `}
       >
