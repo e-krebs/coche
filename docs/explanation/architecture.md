@@ -258,7 +258,15 @@ Decisions that aren't obvious from the markup:
   because its opener is a Clerk menu item that unmounts along with the menu, so the captured node is
   normally detached by the time focus is handed back; the header title is the selector it falls back
   to, being the one control present and visible at any scroll offset.
-  [focus.ts](../../src/client/components/focus.ts).
+  The header's sign-in link is the case where the control vanishes on its own schedule rather than on
+  a reader's action: it renders only while sync reports `signin-required`, so a recovery mid-Tab would
+  take focus with it. The rescue runs from the other end of the lifecycle — a *layout* effect's
+  cleanup, the last moment the node is still connected and still focused, since a passive cleanup
+  sees it detached and can't tell that from focus having moved on purpose. That makes the link a
+  component of its own: the strip around it stays mounted through every status, so a hook inside the
+  strip would never clean up.
+  [focus.ts](../../src/client/components/focus.ts),
+  [SyncNotice.tsx](../../src/client/components/SyncNotice.tsx).
   [../../src/client/components/ShoppingList/useListActions.ts](../../src/client/components/ShoppingList/useListActions.ts),
   [ItemRow.tsx](../../src/client/components/ShoppingList/ItemRow.tsx).
 - **Internationalisation** — FR/EN via a typed dictionary

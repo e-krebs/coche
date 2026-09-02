@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { type SyncStatus as Status } from "client/store/sync";
+import { useVanishingFocus } from "client/components/focus";
 import { type MessageKey } from "client/i18n";
 import { useTranslation } from "client/i18n/useTranslation";
 
@@ -10,6 +11,28 @@ import { useTranslation } from "client/i18n/useTranslation";
 const NOTICE: Partial<Record<Status, MessageKey>> = {
   offline: "syncOfflineNotice",
   "signin-required": "syncSignedOutNotice",
+};
+
+/**
+ * Its own component so that the *link* unmounting is what triggers the focus rescue: the strip
+ * itself stays mounted across every status, rendering nothing for the quiet ones.
+ */
+const SignInLink = () => {
+  const t = useTranslation();
+  const rescue = useVanishingFocus<HTMLAnchorElement>({ fallbackSelector: "[data-list-trigger]" });
+
+  return (
+    <Link
+      to="/sign-in"
+      ref={rescue}
+      className={`
+        ml-auto rounded-md px-1 font-medium text-accent-text outline-hidden
+        focus-visible:ring-2 focus-visible:ring-accent-text
+      `}
+    >
+      {t("signIn")}
+    </Link>
+  );
 };
 
 /** The header strip for a sync state the reader has to answer; silent for the rest. */
@@ -29,17 +52,7 @@ export const SyncNotice = ({ status }: { status: Status }) => {
       `}
     >
       {t(message)}
-      {status === "signin-required" && (
-        <Link
-          to="/sign-in"
-          className={`
-            ml-auto rounded-md px-1 font-medium text-accent-text outline-hidden
-            focus-visible:ring-2 focus-visible:ring-accent-text
-          `}
-        >
-          {t("signIn")}
-        </Link>
-      )}
+      {status === "signin-required" && <SignInLink />}
     </p>
   );
 };
