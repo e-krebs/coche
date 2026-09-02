@@ -101,16 +101,20 @@ vs. real-Clerk trade-off), see
 - **Two projects, one per shape the app has.** `phone` is 390 × 844 with `hasTouch`, which Chromium
   reports as `pointer: coarse` / `hover: none`; `desktop` is Playwright's Desktop Chrome, 1280 × 720,
   `pointer: fine` / `hover: hover`. **Every spec runs in both.** Where a case only holds at one
-  width it skips itself on the other — `header.spec.ts`'s shrink case above `md`, `desktop.spec.ts`
-  below it — rather than a whole file being excluded in the config, which would have quietly
-  narrowed the title-centring guard to one width. The pair is the whole runtime coverage of the
+  width it skips itself on the other — rather than a whole file being excluded in the config, which
+  would quietly narrow a guard to one width. Skipped above `lg`: all of `header.spec.ts` (the
+  sidebar leaves no centred title to measure) and the pick sheet's Tab-trap, Escape, focus-restore
+  and axe cases, which have no entry point up there. Skipped below `md`: `desktop.spec.ts`, whose
+  phone run is the control it changes from. **No case is skipped in both projects.** The pair is the
+  whole runtime coverage of the
   responsive tiers: `matchMedia` is absent under jsdom, so no unit
   test can reach a width- or pointer-gated branch. `viewports.spec.ts` asserts what each project
   actually reports, so a config edit can't quietly turn `phone` into a second desktop and leave the
   coarse-pointer paths — swipe to delete, the header's scroll reclaim — untested everywhere.
   `desktop.spec.ts` covers the wide-screen half: the wider column, the frozen shrink, the
-  hover-revealed row Delete and its absence from the tab order, and the centred picker. It skips
-  itself on the phone project, whose run is the control it changes from.
+  hover-revealed row Delete and its absence from the tab order, the sidebar and the edit sheet it
+  opens. The centred picker lives between `sm` and `lg`, which is neither project's width, so it
+  gets a fixed 900 px viewport of its own and runs once.
 - Hermetic by design: [../../e2e/local/fixtures.ts](../../e2e/local/fixtures.ts) extends `context`
   to seed `localStorage["shopping:userId"]` with a fixed test user via `addInitScript`, and to abort
   every non-localhost request via `context.route` — the app boots offline-only, with no sync Worker
@@ -122,15 +126,23 @@ vs. real-Clerk trade-off), see
   `row`, `announcer` (the list's polite live region, matched by `[data-announcer]` because dnd-kit
   mounts a `role="status"` region of its own), `gotoApp`, `addItem`, `uncheckedNames`,
   `waitForServiceWorker`, `waitForDragShift`, plus
-  the list-picker helpers — `switchList` (the header title, matched by `[data-list-trigger]` because
-  its accessible name is the active list's name), `sheet`, `pickList`, and `createList`. `titleBand`
+  the list-picker helpers — `switchList`, `listTitle`, `sidebar`, `sheet`, `pickList`,
+  `openListEditor` and `createList`. Three of those are **layout-aware**, because the roster has two
+  homes ([../adr/0016-roster-two-homes-by-width.md](../adr/0016-roster-two-homes-by-width.md)):
+  `pickList` clicks a sidebar row or opens the sheet's menu, `openListEditor` uses the sidebar's own
+  Edit or opens the sheet and flips it, and `createList` is built on the second. `switchList`
+  resolves at both widths — the header title and the sidebar's current row both carry
+  `[data-list-trigger]`, the anchor a focus restore falls back to — but only the phone's opens the
+  picker, so it is no longer the way to switch. Assertions about the *title text* use `listTitle`
+  (the `<h1>`), since the sidebar row's text carries its count too. `titleBand`
   matches the header's first band, whose `data-scrolled` attribute is the shrink's single source, and
   `fillScreen` adds enough rows to outgrow either project's viewport — a page that cannot scroll
   leaves `scrollY` at 0 and makes any assertion about the collapse vacuous. `sheetPanel` matches the
   picker's panel (`[data-sheet]`), which `sheet` cannot: that one matches the `role="dialog"`
   wrapper, whose box is the whole viewport at every breakpoint.
-  `uncheckedNames` takes the first `ul` that isn't `[data-checked-list]`: the unchecked section
-  renders no `ul` at all when empty, so a bare `.first()` would silently return the *checked* names.
+  `uncheckedNames` takes the first `ul` inside `main` that isn't `[data-checked-list]`: the
+  unchecked section renders no `ul` at all when empty, so a bare `.first()` would silently return
+  the *checked* names, and the sidebar's roster comes earlier in the DOM than either.
 - **`keyboard.spec.ts` and `motion.spec.ts` are the browser-only tier of the accessibility coverage.**
   Four things are not computable in jsdom, so they can only be asserted here: `inert` (jsdom reflects
   the attribute but implements none of its behaviour), sequential focus navigation with a real tab

@@ -39,6 +39,7 @@ export const ShoppingList = ({
   headerRight,
   notice,
   syncing = false,
+  wide = false,
 }: {
   listId: string;
   listName: string;
@@ -46,6 +47,9 @@ export const ShoppingList = ({
   headerRight?: ReactNode;
   notice?: ReactNode;
   syncing?: boolean;
+  /** The sidebar is on screen: the title stops being the switcher, and the pane centres its own
+   * content instead of the header spanning only as far as the list. */
+  wide?: boolean;
 }) => {
   const t = useTranslation();
   const table = useTable("items");
@@ -71,8 +75,10 @@ export const ShoppingList = ({
   const [inputFocused, setInputFocused] = useState(false);
   // The shrink buys vertical room a desktop never ran out of, and there is no soft keyboard coming
   // to take a third of the viewport. Frozen at the one source of `data-scrolled`, so every shrink
-  // class in ListHeader stays as it is.
-  const shrinkFrozen = useMediaQuery(WIDE_AND_PRECISE);
+  // class in ListHeader stays as it is. `wide` freezes it too: a screen with room for the sidebar
+  // has room for the header, and up there the title is a plain heading with no shrunk size to go
+  // to — so scrolling would drop the account button and buy back almost nothing.
+  const shrinkFrozen = useMediaQuery(WIDE_AND_PRECISE) || wide;
   const scrolled = useHeaderCollapse({ listId, itemsLength: items.length }) && !shrinkFrozen;
   const hoverActions = useMediaQuery(PRECISE);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -88,8 +94,8 @@ export const ShoppingList = ({
   }, []);
   // Reclaim focus to a row only when it dropped to <body>, so we don't steal focus moved on purpose
   // (button target = no soft keyboard). With no row to return to — the last item deleted, or a whole
-  // section cleared out from under the button that cleared it — the header trigger is the only button
-  // that always exists and stays visible at any scroll offset.
+  // section cleared out from under the button that cleared it — `[data-list-trigger]` is the only
+  // button that always exists and stays visible at any scroll offset, whichever surface holds it.
   const restoreFocus: RestoreFocus = ({ id, control = "name" } = {}) => {
     requestAnimationFrame(() => {
       if (!focusDropped()) return;
@@ -199,6 +205,7 @@ export const ShoppingList = ({
         headerRight={headerRight}
         notice={notice}
         scrolled={scrolled}
+        wide={wide}
         query={query}
         setQuery={setQuery}
         inputRef={inputRef}
@@ -207,7 +214,15 @@ export const ShoppingList = ({
       />
 
       {/* The header stays outside, so it keeps its banner role and the items get the main landmark */}
-      <main className="px-4 pb-4">
+      <main
+        data-wide={wide || undefined}
+        // `2xl`, not the header band's `160`: this cap includes the padding below, and 42rem is what
+        // keeps the item column the same width as the band above it and as the `md` tier.
+        className={`
+          mx-auto w-full px-4 pb-4
+          data-wide:max-w-2xl
+        `}
+      >
         {searching ? (
           matches.length === 0 ? (
             <p className={emptyClass}>{t("noMatches")}</p>

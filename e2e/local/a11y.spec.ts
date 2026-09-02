@@ -1,6 +1,16 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoApp, addItem, checkbox, field, switchList, sheet } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoApp,
+  addItem,
+  checkbox,
+  field,
+  openListEditor,
+  switchList,
+  sheet,
+} from "./fixtures";
 
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 
@@ -88,7 +98,10 @@ test.describe("axe", () => {
     expect(await scan(page)).toEqual([]);
   });
 
-  test("the picker has no violations while picking", async ({ page }) => {
+  // Picking is the sidebar's job above `lg`, so the pick sheet is a phone surface up there — and the
+  // sidebar is scanned by every other case in this file, since it is part of the page.
+  test("the picker has no violations while picking", async ({ page, viewport }) => {
+    test.skip((viewport?.width ?? 0) >= 1024, "the sidebar replaces the pick sheet");
     await gotoApp(page);
     await switchList(page).click();
     await expect(sheet(page)).toBeVisible();
@@ -97,8 +110,7 @@ test.describe("axe", () => {
 
   test("the picker has no violations in edit mode", async ({ page }) => {
     await gotoApp(page);
-    await switchList(page).click();
-    await page.getByRole("button", { name: "Edit lists" }).click();
+    await openListEditor(page);
     expect(await scan(page, '[role="dialog"]')).toEqual([]);
   });
 
@@ -106,8 +118,7 @@ test.describe("axe", () => {
   // the UserButton that opens it never renders. It is unit-covered instead.
   test("the delete confirmation has no violations", async ({ page }) => {
     await gotoApp(page);
-    await switchList(page).click();
-    await page.getByRole("button", { name: "Edit lists" }).click();
+    await openListEditor(page);
     await page.getByLabel("New list name").fill("Hardware");
     await page.getByRole("button", { name: "Create list" }).click();
     await page.getByRole("button", { name: "Delete Hardware" }).click();

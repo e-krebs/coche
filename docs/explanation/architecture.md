@@ -65,7 +65,8 @@ flowchart TB
 | Local store | TinyBase `MergeableStore` (CRDT) ⇄ a mergeable `IndexedDB` persister that preserves HLCs and tombstones across reload; DB `shopping-<userId>` | [../../src/client/store/schema.ts](../../src/client/store/schema.ts), [../../src/client/store/store.ts](../../src/client/store/store.ts), [../../src/client/store/persister.ts](../../src/client/store/persister.ts) |
 | Shopping list UI | The active list's items in two sections (unchecked/checked), search, rename, quantity, delete, drag-reorder — wrapped by a view that also carries the header's sync/account controls and the two dialogs | [../../src/client/components/ShoppingList/](../../src/client/components/ShoppingList/), [../../src/client/components/ListView.tsx](../../src/client/components/ListView.tsx) |
 | Account button | The avatar's fixed seat in the header: Clerk's `UserButton` (carrying the language action), the dashed placeholder that holds the seat until Clerk resolves, and the sync badge pinned to its corner | [../../src/client/components/AccountButton.tsx](../../src/client/components/AccountButton.tsx), [../../src/client/components/SyncStatus.tsx](../../src/client/components/SyncStatus.tsx) |
-| List picker | A bottom sheet on a phone and a centred dialog above `sm`: switch list, and an edit mode to create, rename, reorder and delete lists — mounted above the keyed `<ShoppingList>` so a switch can't unmount it mid-interaction | [../../src/client/components/ListPicker.tsx](../../src/client/components/ListPicker.tsx), [../../src/client/components/ConfirmDialog.tsx](../../src/client/components/ConfirmDialog.tsx) |
+| List picker | A bottom sheet on a phone and a centred dialog above `sm`: switch list, and an edit mode to create, rename, reorder and delete lists — mounted above the keyed `<ShoppingList>` so a switch can't unmount it mid-interaction. Above `lg` switching moves to the sidebar and only edit mode opens | [../../src/client/components/ListPicker.tsx](../../src/client/components/ListPicker.tsx), [../../src/client/components/ConfirmDialog.tsx](../../src/client/components/ConfirmDialog.tsx) |
+| Lists sidebar | The roster standing beside the list above `lg`: a `nav` landmark of pickable rows, sharing one row rendering with the picker sheet. Its Edit opens the sheet straight into edit mode | [../../src/client/components/ListSidebar.tsx](../../src/client/components/ListSidebar.tsx), [../../src/client/components/RosterRows.tsx](../../src/client/components/RosterRows.tsx) |
 | Lists roster | Virtual default row, the gated default-list migration, list CRUD, the orphan sweep and position backfill | [../../src/client/store/lists.ts](../../src/client/store/lists.ts) |
 | Sign-out teardown | Deletes the local IndexedDB replica and broadcasts to peer tabs on any signed-out transition | [../../src/client/store/teardown.ts](../../src/client/store/teardown.ts) |
 | Service worker | Precache the SPA shell; runtime-cache the same-origin `clerk-js` served from `/clerk-js/`; the sync Worker origin stays network-only | [../../vite.config.ts](../../vite.config.ts) |
@@ -84,10 +85,13 @@ user today, holding every list they own; a membership layer is addable later wit
 Decisions that aren't obvious from the markup:
 
 - **Responsive tiers** — the app is a single column, capped at `28rem` on a phone and `42rem` above
-  `md`, and the phone-shaped compromises inside it are conditional rather than universal. Two
-  properties decide, and both are read through `useMediaQuery`
-  ([../../src/client/components/media.ts](../../src/client/components/media.ts)): the **width**, and
-  whether the **pointer is precise**. Pointer, not width alone, because a tablet in landscape is as
+  `md`; at `lg` the roster comes out of its modal and stands beside it as a sidebar
+  ([../adr/0016-roster-two-homes-by-width.md](../adr/0016-roster-two-homes-by-width.md)). The
+  phone-shaped compromises inside that column are conditional rather than universal. Three
+  properties decide, and all are read through `useMediaQuery`
+  ([../../src/client/components/media.ts](../../src/client/components/media.ts)): room for the
+  sidebar (`lg`), a precise **pointer**, and the two together (`md` and precise) for the header's
+  scroll reclaim. Pointer, not width alone, because a tablet in landscape is as
   wide as a laptop while being half as tall and about to lose a third of that to a soft keyboard —
   the case where reclaiming vertical space still earns its complexity. There is deliberately no
   height term: a short desktop window keeps the tall header, which is the trade for not carrying a
@@ -95,20 +99,25 @@ Decisions that aren't obvious from the markup:
   jsdom, so every branch these queries gate reports `false` there and is covered by the e2e tier
   instead ([../reference/testing.md](../reference/testing.md)); a component with unit assertions to
   keep takes the answer as a prop rather than reading it, so both of its branches stay reachable.
-- **Lists & the picker** — the header title is the active list's name *and* the button that opens
-  the list picker: a bottom sheet forked from the language chooser (scrim, `role="dialog"` +
-  `aria-modal`, a trapped Tab), which **centres itself above `sm`** and swaps its slide-up for the
-  same fade the other two dialogs use — a sheet rising from the bottom edge of a wide window reads
-  as a phone gesture that lost its phone, and above `sm` all three dialogs agree. Its rows are a
-  **menu** of `menuitemradio`s, not a radiogroup:
+- **Lists & the picker** — below `lg` the header title is the active list's name *and* the button
+  that opens the list picker: a bottom sheet forked from the language chooser (scrim,
+  `role="dialog"` + `aria-modal`, a trapped Tab), which **centres itself above `sm`** and swaps its
+  slide-up for the same fade the other two dialogs use — a sheet rising from the bottom edge of a
+  wide window reads as a phone gesture that lost its phone, and above `sm` all three dialogs agree.
+  At `lg` the roster leaves the modal for a **sidebar** and the title becomes a title again; that
+  swap and everything that follows from it is
+  [../adr/0016-roster-two-homes-by-width.md](../adr/0016-roster-two-homes-by-width.md). Its rows are
+  a **menu** of `menuitemradio`s, not a radiogroup:
   arrows rove without selecting, because selecting switches list and closes the sheet, so the first
   arrow press would end the interaction. The trigger carries **no `aria-label`** — the list name has
-  to be the `<h1>`'s accessible name, or heading navigation and voice control both lose it. Because
+  to be the `<h1>`'s accessible name, at either width, or heading navigation and voice control both
+  lose it. Because
   the trigger lives in the title band, that band **shrinks** on scroll — a shorter band, dropping the
   account button and its sync badge — instead of collapsing to nothing, so the picker stays reachable
   at any offset. The cost is a taller scrolled header. The shrink is **frozen on a wide screen with
-  a precise pointer**: it buys vertical room a desktop never ran out of, and freezing it stops the
-  band twitching on every wheel tick. That band's side columns are **fixed at one
+  a precise pointer, and wherever the sidebar is on screen**: it buys vertical room a desktop never
+  ran out of, freezing it stops the band twitching on every wheel tick, and beside the sidebar the
+  title is a plain heading with no smaller size to shrink to. That band's side columns are **fixed at one
   avatar wide**, not `1fr`: with elastic columns, anything that changes the right cluster's width —
   the avatar arriving, a longer sync label — moves the centred title, a shift on every cold load and
   every reconnect. Each list shows its **unchecked** count only: the number you'd act on, so `0`
@@ -241,12 +250,14 @@ Decisions that aren't obvious from the markup:
   *is* the state, swapping between "Edit lists" and "Done", and a toggle button whose name changes
   should not also report a pressed state — the pair announces "Done, toggle button, pressed".
 - **Landmarks & headings** — the items sit in a `<main>`, with the title band left outside it so it
-  keeps its `banner` role. Heading structure carries the two groups: the list name is the `<h1>` (and
-  the picker trigger), and the checked disclosure is an `<h2>`, so heading navigation can tell "still
+  keeps its `banner` role, and above `lg` the roster is a `nav` beside them. Heading structure
+  carries the two groups: the list name is the `<h1>` (and, below `lg`, the picker trigger), and the
+  checked disclosure is an `<h2>`, so heading navigation can tell "still
   to buy" from "already in the basket" without reading through. There is deliberately **no skip
   link**: the add/find field lives inside the header, so skipping to the main landmark would jump past
   the app's most-used control, and a landmark already satisfies bypass-blocks on a single-screen app.
-  There is nothing repeated across pages to bypass.
+  There is nothing repeated across pages to bypass. The cost is that the sidebar's rows precede that
+  field in tab order above `lg`, where landmark navigation is the way past them.
 - **Focus & keyboard** — mutations that unmount the focused control return focus to a button rather
   than dropping it to `<body>`: rename/quantity commits refocus the row, delete moves to a
   neighbour, Undo returns to the restored item. **Checking an item off** is the frequent one, and it

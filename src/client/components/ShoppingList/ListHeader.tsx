@@ -16,6 +16,7 @@ export const ListHeader = ({
   headerRight,
   notice,
   scrolled,
+  wide = false,
   query,
   setQuery,
   inputRef,
@@ -27,6 +28,8 @@ export const ListHeader = ({
   headerRight?: ReactNode;
   notice?: ReactNode;
   scrolled: boolean;
+  /** The sidebar is on screen and owns switching lists, so the title is a title again. */
+  wide?: boolean;
   query: string;
   setQuery: (v: string) => void;
   inputRef: RefObject<HTMLInputElement | null>;
@@ -43,37 +46,46 @@ export const ListHeader = ({
     >
       <div
         data-scrolled={scrolled || undefined}
+        data-wide={wide || undefined}
         className={`
-          group grid grid-cols-[--spacing(7)_minmax(0,1fr)_--spacing(7)] items-center pt-3 pb-1
-          transition-[padding] duration-300 ease-out
+          group mx-auto grid w-full grid-cols-[--spacing(7)_minmax(0,1fr)_--spacing(7)] items-center
+          pt-3 pb-1 transition-[padding] duration-300 ease-out
           data-scrolled:pt-1.5 data-scrolled:pb-0.5
+          data-wide:max-w-160 data-wide:grid-cols-[minmax(0,1fr)_--spacing(7)]
           motion-reduce:transition-none
         `}
       >
-        <span aria-hidden />
+        {/* The gutter the centred title needs; beside the sidebar it would only push it off-centre */}
+        {!wide && <span aria-hidden />}
         <h1 className="min-w-0">
-          <button
-            type="button"
-            onClick={onPickList}
-            aria-haspopup="dialog"
-            data-list-trigger
-            className={`
-              mx-auto flex max-w-full items-center gap-1 rounded-lg px-1 text-[22px] font-medium
-              tracking-tight outline-hidden transition-[font-size] duration-300 ease-out
-              group-data-scrolled:text-[15px]
-              focus-visible:ring-2 focus-visible:ring-accent-text
-              motion-reduce:transition-none
-            `}
-          >
-            <span className="truncate">{listName}</span>
-            <ExpandIcon
+          {wide ? (
+            <span className="block truncate px-1 text-[22px] font-medium tracking-tight">
+              {listName}
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={onPickList}
+              aria-haspopup="dialog"
+              data-list-trigger
               className={`
-                size-5 flex-none text-muted transition-[width,height] duration-300 ease-out
-                group-data-scrolled:size-4
+                mx-auto flex max-w-full items-center gap-1 rounded-lg px-1 text-[22px] font-medium
+                tracking-tight outline-hidden transition-[font-size] duration-300 ease-out
+                group-data-scrolled:text-[15px]
+                focus-visible:ring-2 focus-visible:ring-accent-text
                 motion-reduce:transition-none
               `}
-            />
-          </button>
+            >
+              <span className="truncate">{listName}</span>
+              <ExpandIcon
+                className={`
+                  size-5 flex-none text-muted transition-[width,height] duration-300 ease-out
+                  group-data-scrolled:size-4
+                  motion-reduce:transition-none
+                `}
+              />
+            </button>
+          )}
         </h1>
         {headerRight && (
           <div
@@ -95,7 +107,11 @@ export const ListHeader = ({
           e.preventDefault();
           onSubmit();
         }}
-        className="flex items-center gap-2 py-2"
+        data-wide={wide || undefined}
+        className={`
+          mx-auto flex w-full items-center gap-2 py-2
+          data-wide:max-w-160
+        `}
       >
         <div className="relative flex-1">
           <SearchIcon

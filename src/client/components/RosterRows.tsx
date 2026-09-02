@@ -8,27 +8,43 @@ export const rowBase = `flex w-full items-center gap-3 rounded-lg px-3 py-3 text
   focus-visible:bg-canvas focus-visible:ring-2 focus-visible:ring-accent-text
   focus-visible:ring-inset`;
 
+/**
+ * `menu` is the picker sheet: a menu of `menuitemradio`s with a roving tabindex, so arrows rove
+ * without selecting — selecting closes the sheet, so the first arrow press would end the
+ * interaction. `nav` is the sidebar, where the roster is persistent navigation rather than a
+ * transient menu: plain buttons in normal tab order, the one you're on marked `aria-current`. The
+ * sidebar's active row also carries `data-list-trigger`, the anchor a focus restore falls back to —
+ * it is the control that always exists and always names the active list, whichever surface holds it.
+ */
+type Semantics = "menu" | "nav";
+
 const PickRow = ({
   list,
   label,
   active,
+  semantics,
   onSelect,
 }: {
   list: ListSummary;
   label: string;
   active: boolean;
+  semantics: Semantics;
   onSelect: () => void;
 }) => {
   const t = useTranslation();
+  const menu = semantics === "menu";
+  // A roving tabindex in the menu, explicit on both ends as the pattern expects; in the sidebar
+  // every row is an ordinary tab stop, which a native button already is.
+  const tabIndex = menu ? (active ? 0 : -1) : undefined;
   return (
     <button
       type="button"
-      // A menu, not a radiogroup: arrows rove without selecting, because selecting switches list and
-      // closes the sheet — so the first arrow press would end the interaction.
-      role="menuitemradio"
-      aria-checked={active}
+      role={menu ? "menuitemradio" : undefined}
+      aria-checked={menu ? active : undefined}
+      aria-current={!menu && active ? "true" : undefined}
       aria-label={t("listWithCount", { name: label, count: list.count })}
-      tabIndex={active ? 0 : -1}
+      tabIndex={tabIndex}
+      data-list-trigger={(!menu && active) || undefined}
       onClick={onSelect}
       className={`
         ${rowBase}
@@ -60,21 +76,28 @@ const PickRow = ({
 export const RosterRows = ({
   lists,
   activeId,
+  semantics,
   onSelect,
 }: {
   lists: ListSummary[];
   activeId: string;
+  semantics: Semantics;
   onSelect: (id: string) => void;
 }) => {
   const t = useTranslation();
   return (
-    <div role="menu" aria-label={t("lists")} className="p-1.5">
+    <div
+      role={semantics === "menu" ? "menu" : undefined}
+      aria-label={semantics === "menu" ? t("lists") : undefined}
+      className="p-1.5"
+    >
       {lists.map((list) => (
         <PickRow
           key={list.id}
           list={list}
           label={list.name ?? t("appTitle")}
           active={list.id === activeId}
+          semantics={semantics}
           onSelect={() => {
             onSelect(list.id);
           }}

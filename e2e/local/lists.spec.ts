@@ -5,9 +5,10 @@ import {
   addItem,
   createList,
   field,
+  listTitle,
+  openListEditor,
   pickList,
   sheet,
-  switchList,
   uncheckedNames,
 } from "./fixtures";
 
@@ -17,7 +18,7 @@ test.describe("lists", () => {
   test("each list keeps its own items across a switch and a reload", async ({ page }) => {
     await gotoApp(page);
     await addItem(page, "Milk");
-    await expect(switchList(page)).toHaveText("Coche"); // nameless default list
+    await expect(listTitle(page)).toHaveText("Coche"); // nameless default list
 
     await createList(page, "Hardware");
     await expect.poll(async () => uncheckedNames(page)).toEqual([]);
@@ -27,7 +28,7 @@ test.describe("lists", () => {
     await expect.poll(async () => uncheckedNames(page)).toEqual(["Milk"]);
 
     await page.reload();
-    await expect(switchList(page)).toHaveText("Coche"); // the last-used list is remembered
+    await expect(listTitle(page)).toHaveText("Coche"); // the last-used list is remembered
     await expect.poll(async () => uncheckedNames(page)).toEqual(["Milk"]);
 
     await pickList(page, "Hardware");
@@ -44,14 +45,14 @@ test.describe("lists", () => {
     const hardwareUrl = page.url();
 
     await page.goto("/lists/list");
-    await expect(switchList(page)).toHaveText("Coche");
+    await expect(listTitle(page)).toHaveText("Coche");
     await expect.poll(async () => uncheckedNames(page)).toEqual(["Milk"]);
 
     await page.goto(hardwareUrl);
-    await expect(switchList(page)).toHaveText("Hardware");
+    await expect(listTitle(page)).toHaveText("Hardware");
 
     await page.goto("/lists/does-not-exist");
-    await expect(switchList(page)).toHaveText("Coche");
+    await expect(listTitle(page)).toHaveText("Coche");
     await expect(page).toHaveURL(/\/lists\/list$/);
   });
 
@@ -59,15 +60,14 @@ test.describe("lists", () => {
     await gotoApp(page);
     await createList(page, "Garden");
 
-    await switchList(page).click();
-    await page.getByRole("button", { name: "Edit lists" }).click();
+    await openListEditor(page);
     await sheet(page).getByRole("button", { name: "Garden", exact: true }).click();
     await page.getByLabel("Rename Garden").fill("Shed");
     await page.getByLabel("Rename Garden").press("Enter");
     await page.getByRole("button", { name: "Done" }).click();
     await page.keyboard.press("Escape");
 
-    await expect(switchList(page)).toHaveText("Shed");
+    await expect(listTitle(page)).toHaveText("Shed");
   });
 
   test("deleting a list takes its items and lands on another", async ({ page }) => {
@@ -77,8 +77,7 @@ test.describe("lists", () => {
     await addItem(page, "Nails");
     await field(page).blur();
 
-    await switchList(page).click();
-    await page.getByRole("button", { name: "Edit lists" }).click();
+    await openListEditor(page);
     await page.getByRole("button", { name: "Delete Hardware" }).click();
 
     // Confirmed, not undone: the count is every item the delete destroys.
@@ -87,13 +86,13 @@ test.describe("lists", () => {
     await dialog.getByRole("button", { name: "Delete" }).click();
 
     // Deleting the active list switches away and closes the sheet.
-    await expect(switchList(page)).toHaveText("Coche");
+    await expect(listTitle(page)).toHaveText("Coche");
     await expect.poll(async () => uncheckedNames(page)).toEqual(["Milk"]);
 
-    // Gone for good, and the last remaining list can't follow it.
-    await switchList(page).click();
-    await expect(page.getByRole("menuitemradio", { name: /^Hardware,/ })).toHaveCount(0);
-    await page.getByRole("button", { name: "Edit lists" }).click();
+    // Gone for good, and the last remaining list can't follow it. Asserted from the edit sheet,
+    // which lists every list at either width — the pick sheet only exists below the sidebar.
+    await openListEditor(page);
+    await expect(page.getByRole("button", { name: "Delete Hardware" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Delete Coche" })).toBeDisabled();
   });
 });

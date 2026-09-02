@@ -15,6 +15,12 @@ export const PRECISE = "(pointer: fine)";
 export const WIDE_AND_PRECISE = "(min-width: 48rem) and (pointer: fine)";
 
 /**
+ * Room for the roster to stand beside the list rather than over it. Width only: a tablet in
+ * landscape is a fine place for the sidebar, it just shouldn't lose the header's scroll reclaim.
+ */
+export const WIDE = "(min-width: 64rem)";
+
+/**
  * Subscribes to a media query. Reports `false` wherever `matchMedia` is missing — jsdom ships none,
  * so every branch this gates is unreachable under Vitest and belongs to the e2e tier instead. A
  * component with unit assertions to keep should take the result as a prop rather than read it here,
