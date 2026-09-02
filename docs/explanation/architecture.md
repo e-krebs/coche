@@ -15,7 +15,8 @@ Client logic runs under Vitest (jsdom) in
   persistence. Runs against a `vite preview` build with the sync server off (`VITE_SYNC_URL` empty)
   and Clerk's network blocked, so the app boots from a seeded cached identity
   ([../../e2e/local/fixtures.ts](../../e2e/local/fixtures.ts)). Hermetic, so it runs unconditionally
-  in CI.
+  in CI. It runs twice, once per viewport project — a phone and a desktop — because the responsive
+  tiers key off media queries, and `matchMedia` is absent under jsdom.
 - **Sync** ([../../e2e/sync/](../../e2e/sync/),
   [../../playwright.config.sync.ts](../../playwright.config.sync.ts)) — real Clerk via
   `@clerk/testing` against a local `wrangler dev` Worker, provisioning a fresh `+clerk_test` user
@@ -64,7 +65,7 @@ flowchart TB
 | Local store | TinyBase `MergeableStore` (CRDT) ⇄ a mergeable `IndexedDB` persister that preserves HLCs and tombstones across reload; DB `shopping-<userId>` | [../../src/client/store/schema.ts](../../src/client/store/schema.ts), [../../src/client/store/store.ts](../../src/client/store/store.ts), [../../src/client/store/persister.ts](../../src/client/store/persister.ts) |
 | Shopping list UI | The active list's items in two sections (unchecked/checked), search, rename, quantity, delete, drag-reorder — wrapped by a view that also carries the header's sync/account controls and the two dialogs | [../../src/client/components/ShoppingList/](../../src/client/components/ShoppingList/), [../../src/client/components/ListView.tsx](../../src/client/components/ListView.tsx) |
 | Account button | The avatar's fixed seat in the header: Clerk's `UserButton` (carrying the language action), the dashed placeholder that holds the seat until Clerk resolves, and the sync badge pinned to its corner | [../../src/client/components/AccountButton.tsx](../../src/client/components/AccountButton.tsx), [../../src/client/components/SyncStatus.tsx](../../src/client/components/SyncStatus.tsx) |
-| List picker | Bottom sheet over the header title: switch list, and an edit mode to create, rename, reorder and delete lists — mounted above the keyed `<ShoppingList>` so a switch can't unmount it mid-interaction | [../../src/client/components/ListPicker.tsx](../../src/client/components/ListPicker.tsx), [../../src/client/components/ConfirmDialog.tsx](../../src/client/components/ConfirmDialog.tsx) |
+| List picker | A bottom sheet on a phone and a centred dialog above `sm`: switch list, and an edit mode to create, rename, reorder and delete lists — mounted above the keyed `<ShoppingList>` so a switch can't unmount it mid-interaction | [../../src/client/components/ListPicker.tsx](../../src/client/components/ListPicker.tsx), [../../src/client/components/ConfirmDialog.tsx](../../src/client/components/ConfirmDialog.tsx) |
 | Lists roster | Virtual default row, the gated default-list migration, list CRUD, the orphan sweep and position backfill | [../../src/client/store/lists.ts](../../src/client/store/lists.ts) |
 | Sign-out teardown | Deletes the local IndexedDB replica and broadcasts to peer tabs on any signed-out transition | [../../src/client/store/teardown.ts](../../src/client/store/teardown.ts) |
 | Service worker | Precache the SPA shell; runtime-cache the same-origin `clerk-js` served from `/clerk-js/`; the sync Worker origin stays network-only | [../../vite.config.ts](../../vite.config.ts) |
@@ -82,15 +83,32 @@ user today, holding every list they own; a membership layer is addable later wit
 
 Decisions that aren't obvious from the markup:
 
+- **Responsive tiers** — the app is a single column, capped at `28rem` on a phone and `42rem` above
+  `md`, and the phone-shaped compromises inside it are conditional rather than universal. Two
+  properties decide, and both are read through `useMediaQuery`
+  ([../../src/client/components/media.ts](../../src/client/components/media.ts)): the **width**, and
+  whether the **pointer is precise**. Pointer, not width alone, because a tablet in landscape is as
+  wide as a laptop while being half as tall and about to lose a third of that to a soft keyboard —
+  the case where reclaiming vertical space still earns its complexity. There is deliberately no
+  height term: a short desktop window keeps the tall header, which is the trade for not carrying a
+  second threshold that would flap as the window resizes. `matchMedia` is absent under
+  jsdom, so every branch these queries gate reports `false` there and is covered by the e2e tier
+  instead ([../reference/testing.md](../reference/testing.md)); a component with unit assertions to
+  keep takes the answer as a prop rather than reading it, so both of its branches stay reachable.
 - **Lists & the picker** — the header title is the active list's name *and* the button that opens
   the list picker: a bottom sheet forked from the language chooser (scrim, `role="dialog"` +
-  `aria-modal`, a trapped Tab). Its rows are a **menu** of `menuitemradio`s, not a radiogroup:
+  `aria-modal`, a trapped Tab), which **centres itself above `sm`** and swaps its slide-up for the
+  same fade the other two dialogs use — a sheet rising from the bottom edge of a wide window reads
+  as a phone gesture that lost its phone, and above `sm` all three dialogs agree. Its rows are a
+  **menu** of `menuitemradio`s, not a radiogroup:
   arrows rove without selecting, because selecting switches list and closes the sheet, so the first
   arrow press would end the interaction. The trigger carries **no `aria-label`** — the list name has
   to be the `<h1>`'s accessible name, or heading navigation and voice control both lose it. Because
   the trigger lives in the title band, that band **shrinks** on scroll — a shorter band, dropping the
   account button and its sync badge — instead of collapsing to nothing, so the picker stays reachable
-  at any offset. The cost is a taller scrolled header. That band's side columns are **fixed at one
+  at any offset. The cost is a taller scrolled header. The shrink is **frozen on a wide screen with
+  a precise pointer**: it buys vertical room a desktop never ran out of, and freezing it stops the
+  band twitching on every wheel tick. That band's side columns are **fixed at one
   avatar wide**, not `1fr`: with elastic columns, anything that changes the right cluster's width —
   the avatar arriving, a longer sync label — moves the centred title, a shift on every cold load and
   every reconnect. Each list shows its **unchecked** count only: the number you'd act on, so `0`
@@ -146,7 +164,12 @@ Decisions that aren't obvious from the markup:
   drag, and is blocked from starting (but never torn down) while syncing. Delete is also reachable
   without touch via the row's edit mode — the same path in every row variant, checked and search rows
   included: activate the name to open the inline editor, then Tab to the Delete it reveals, which an
-  `onBlur` guard keeps alive precisely so that Tab works.
+  `onBlur` guard keeps alive precisely so that Tab works. On a **precise pointer** that same Delete
+  is also present outside edit mode, faded out until the row is hovered — a mouse cannot swipe, and
+  the editor detour is the only path it otherwise has. It is deliberately **not a tab stop**
+  (`tabIndex={-1}` until the row is being renamed): a keyboard user already has the editor path, and
+  a control per row would add one stop for every item to cross the list. One button serves both
+  cases, so the `onBlur` guard and the Tab-to-Delete order are the same code either way.
   [../../src/client/components/ShoppingList/useSwipeToDelete.ts](../../src/client/components/ShoppingList/useSwipeToDelete.ts),
   [UndoSnackbar.tsx](../../src/client/components/ShoppingList/UndoSnackbar.tsx).
 - **Announcements** — one polite `role="status"` region, mounted from the start and only ever swapping
@@ -290,7 +313,11 @@ Decisions that aren't obvious from the markup:
   collapsed section render at `opacity: 0` so a named element isn't lifted out of its clip).
   The checked-section fold uses CSS `grid-template-rows`, and the title band's shrink is a CSS
   transition on the same scrolled flag — sized down to a shorter band rather than to zero, so the
-  picker trigger is never unmounted mid-scroll. Swipe-to-delete tracks the finger with a CSS
+  picker trigger is never unmounted mid-scroll. The list picker's entrance is **two keyframes chosen
+  by breakpoint**, since a mount cannot be a transition and the sheet and the centred dialog arrive
+  from different places; both are `@utility` declarations rather than plain classes, because only a
+  utility accepts a `sm:` variant. The row's hover-revealed Delete is a plain opacity transition,
+  the cheapest tier for a state change. Swipe-to-delete tracks the finger with a CSS
   transform and springs back with a CSS transition, and crossing the delete threshold plays a short
   CSS keyframe pulse. The sync badge breathes while connecting — a keyframe on scale alone, because
   it rides the avatar's corner: translating it reads as a piece coming loose, and fading it over a
