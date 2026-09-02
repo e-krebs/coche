@@ -66,10 +66,24 @@ export const addItem = async (page: Page, name: string): Promise<void> => {
 };
 
 /**
- * The header title, which is also the picker trigger. Matched by attribute: its accessible name is
- * deliberately the list name, so a role+name lookup would collide with an item of the same name.
+ * The control that always names the active list: the header title on a phone, the sidebar's current
+ * row beside the list. Matched by attribute, which both carry — its accessible name is deliberately
+ * the list name, so a role+name lookup would collide with an item of the same name. Pressing it
+ * opens the picker only on the phone; use `pickList` to switch at either width.
  */
 export const switchList = (page: Page) => page.locator("[data-list-trigger]");
+
+/** The `<h1>`, which is the active list's name at every width — a button only on the phone. */
+export const listTitle = (page: Page) => page.getByRole("heading", { level: 1 });
+
+export const sidebar = (page: Page) => page.locator("[data-list-sidebar]");
+
+/**
+ * Which home the roster has. Read from the viewport rather than by counting the sidebar, so a
+ * helper called before first paint can't silently take the phone branch and then fail looking for a
+ * trigger that was never going to be there.
+ */
+const isWide = (page: Page) => (page.viewportSize()?.width ?? 0) >= 1024;
 
 /** The header's first band, which carries `data-scrolled` once the header has shrunk. */
 export const titleBand = (page: Page) => page.locator("header > div").first();
@@ -103,33 +117,55 @@ export const fillScreen = async (page: Page): Promise<void> => {
 export const sheet = (page: Page) => page.getByRole("dialog", { name: "Lists" });
 
 /**
+ * Opens the sheet in edit mode, from whichever surface owns the roster: the sidebar's own Edit goes
+ * straight there, while the phone has to open the pick sheet first and flip it.
+ */
+export const openListEditor = async (page: Page): Promise<void> => {
+  if (isWide(page)) {
+    await sidebar(page).getByRole("button", { name: "Edit lists" }).click();
+  } else {
+    await switchList(page).click();
+    await sheet(page).getByRole("button", { name: "Edit lists" }).click();
+  }
+  await expect(page.getByLabel("New list name")).toBeVisible();
+};
+
+/**
  * Creates a list from the picker's Edit mode and then switches to it. Creating deliberately stays in
- * the sheet, so landing on the new list is a second, explicit step.
+ * the sheet, so landing on the new list is a second, explicit step — and Done leaves the sheet in
+ * pick mode at either width, so the last step is the same one.
  */
 export const createList = async (page: Page, name: string): Promise<void> => {
-  await switchList(page).click();
-  await page.getByRole("button", { name: "Edit lists" }).click();
+  await openListEditor(page);
   await page.getByLabel("New list name").fill(name);
   await page.getByRole("button", { name: "Create list" }).click();
   await page.getByRole("button", { name: "Done" }).click();
   await page.getByRole("menuitemradio", { name: new RegExp(`^${name},`) }).click();
-  await expect(switchList(page)).toHaveText(name);
+  await expect(listTitle(page)).toHaveText(name);
 };
 
+/** Switches list: one click in the sidebar, or the sheet's menu on the phone. */
 export const pickList = async (page: Page, name: string): Promise<void> => {
-  await switchList(page).click();
-  await page.getByRole("menuitemradio", { name: new RegExp(`^${name},`) }).click();
-  await expect(switchList(page)).toHaveText(name);
+  if (isWide(page)) {
+    await sidebar(page)
+      .getByRole("button", { name: new RegExp(`^${name},`) })
+      .click();
+  } else {
+    await switchList(page).click();
+    await page.getByRole("menuitemradio", { name: new RegExp(`^${name},`) }).click();
+  }
+  await expect(listTitle(page)).toHaveText(name);
 };
 
 /**
  * Unchecked item names (or the search results), in display order. Excludes the checked section's
  * list: the unchecked one renders no `ul` at all when empty, so a bare `.first()` silently falls
- * through to the checked names. The picker's own list comes later in the DOM, so it can't win.
+ * through to the checked names. Scoped to `main`, so neither the picker's list nor the sidebar's
+ * roster can win — the sidebar comes *first* in the DOM.
  */
 export const uncheckedNames = async (page: Page): Promise<string[]> =>
   page
-    .locator("ul:not([data-checked-list])")
+    .locator("main ul:not([data-checked-list])")
     .first()
     .locator('button[aria-label^="Check off "]')
     .evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")!.slice("Check off ".length)));

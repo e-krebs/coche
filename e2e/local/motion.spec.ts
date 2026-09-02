@@ -10,7 +10,11 @@ test.describe("reduced motion", () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
   });
 
-  test("the picker sheet does not animate in", async ({ page }) => {
+  // Phone-only: above `sm` the panel's entrance is the centred dialog's fade, and above `lg` there
+  // is no pick sheet to open at all. Its reduced-motion guard is the same one the other two dialogs
+  // carry, which this tier already scans.
+  test("the picker sheet does not animate in", async ({ page, viewport }) => {
+    test.skip((viewport?.width ?? 0) >= 640, "the sheet entrance is the phone's");
     await gotoApp(page);
     await switchList(page).click();
     await expect(sheet(page)).toBeVisible();

@@ -17,6 +17,13 @@ const titleOffset = async (page: Page): Promise<number> => {
 };
 
 test.describe("header", () => {
+  // The whole file is the phone's header: above `lg` the sidebar owns switching, so the title is
+  // left-aligned text in a two-column band and has no centring left to drift.
+  test.skip(
+    ({ viewport }) => (viewport?.width ?? 0) >= 1024,
+    "the wide header has no centred title to measure",
+  );
+
   test("centres the list title with the avatar's seat still empty", async ({ page }) => {
     await gotoApp(page);
     expect(Math.abs(await titleOffset(page))).toBeLessThanOrEqual(CENTRE_TOLERANCE);
@@ -39,6 +46,7 @@ test.describe("header", () => {
   test("shrinks the title band once the page scrolls past the fold", async ({ page, viewport }) => {
     test.skip((viewport?.width ?? 0) >= 768, "the shrink is frozen above md");
     await gotoApp(page);
+    await expect(titleBand(page)).not.toHaveAttribute("data-scrolled");
     await fillScreen(page);
     await page.mouse.wheel(0, 400);
     await expect(titleBand(page)).toHaveAttribute("data-scrolled");
