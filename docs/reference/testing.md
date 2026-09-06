@@ -69,9 +69,11 @@ type-checking, not a test suite itself.
 
 - [../../src/client/__tests__/](../../src/client/__tests__/) — the global setup and shared MSW
   server above; not a suite itself.
-- [../../src/client/components/__tests__/](../../src/client/components/__tests__/) — the list picker
-  (pick, create, rename, delete-behind-confirmation, the dialog's focus contract, Tab containment and
-  Escape's precedence), the language dialog (radio roving, opener restore including a destroyed
+- [../../src/client/components/__tests__/](../../src/client/components/__tests__/) — the lists panel
+  (pick, create, rename, delete-behind-confirmation, and Escape's precedence, each run in **both** of
+  its wrappers, since the panel takes its home as a prop; plus the sheet's focus contract and Tab
+  containment, and the sidebar's own focus seats), the rule that keeps one panel on screen, the shared
+  rows under either role set, the language dialog (radio roving, opener restore including a destroyed
   opener), and the sync indicator, whose suite pins that it is *not* a live region.
 - [../../src/client/components/ShoppingList/__tests__/](../../src/client/components/ShoppingList/__tests__/)
   — shopping-list components and hooks.
@@ -103,19 +105,20 @@ vs. real-Clerk trade-off), see
   `pointer: fine` / `hover: hover`. **Every spec runs in both.** Where a case only holds at one
   width it skips itself on the other — rather than a whole file being excluded in the config, which
   would quietly narrow a guard to one width. Skipped above `lg`: all of `header.spec.ts` (the
-  sidebar leaves no centred title to measure) and the pick sheet's Tab-trap, Escape, focus-restore
-  and axe cases, which have no entry point up there. Skipped below `md`: `desktop.spec.ts`, whose
+  sidebar leaves no centred title to measure) and the pick sheet's Tab-trap, Escape and focus-restore
+  cases, which have no entry point up there. Skipped below `md`: `desktop.spec.ts`, whose
   phone run is the control it changes from. **No case is skipped in both projects.** The pair is the
-  whole runtime coverage of the
-  responsive tiers: `matchMedia` is absent under jsdom, so no unit
-  test can reach a width- or pointer-gated branch. `viewports.spec.ts` asserts what each project
+  runtime coverage of the responsive tiers: `matchMedia` is absent under jsdom, so no unit test can
+  reach a width- or pointer-gated branch — except where a component takes the answer as a prop, which
+  is how the lists panel's two wrappers are unit-reachable. `viewports.spec.ts` asserts what each project
   actually reports, so a config edit can't quietly turn `phone` into a second desktop and leave the
   coarse-pointer paths — swipe to delete, the header's scroll reclaim — untested everywhere.
   `desktop.spec.ts` covers the wide-screen half: the wider column, the frozen shrink, the
-  hover-revealed row Delete and its absence from the tab order, the sidebar and the edit sheet it
-  opens. Two cases sit between `sm` and `lg`, which is neither project's width: the centred picker,
-  and the header bar running edge to edge while its own content stays in the item column. They share
-  a fixed 900 px viewport and run once.
+  hover-revealed row Delete and its absence from the tab order, and the sidebar — picking, editing in
+  place, its focus anchor through both modes, and the confirmation rising above it. Cases that need a
+  width neither project has get a fixed viewport of their own and run once: the centred sheet and the
+  edge-to-edge header bar between `sm` and `lg`, and the crossing into the sidebar's width, which
+  starts below the threshold and resizes past it in-test — the one way to ask for two panels at once.
 - Hermetic by design: [../../e2e/local/fixtures.ts](../../e2e/local/fixtures.ts) extends `context`
   to seed `localStorage["shopping:userId"]` with a fixed test user via `addInitScript`, and to abort
   every non-localhost request via `context.route` — the app boots offline-only, with no sync Worker
@@ -127,23 +130,27 @@ vs. real-Clerk trade-off), see
   `row`, `announcer` (the list's polite live region, matched by `[data-announcer]` because dnd-kit
   mounts a `role="status"` region of its own), `gotoApp`, `addItem`, `uncheckedNames`,
   `waitForServiceWorker`, `waitForDragShift`, plus
-  the list-picker helpers — `switchList`, `listTitle`, `sidebar`, `sheet`, `pickList`,
-  `openListEditor` and `createList`. Three of those are **layout-aware**, because the roster has two
-  homes ([../adr/0016-roster-two-homes-by-width.md](../adr/0016-roster-two-homes-by-width.md)):
-  `pickList` clicks a sidebar row or opens the sheet's menu, `openListEditor` uses the sidebar's own
-  Edit or opens the sheet and flips it, and `createList` is built on the second. `switchList`
-  resolves at both widths — the header title and the sidebar's current row both carry
-  `[data-list-trigger]`, the anchor a focus restore falls back to — but only the phone's opens the
-  picker, so it is no longer the way to switch. Assertions about the *title text* use `listTitle`
+  the lists-panel helpers — `switchList`, `listTitle`, `sidebar`, `sheet`, `editRow`, `pickList`,
+  `openListEditor` and `createList`. Three of those are **layout-aware**, because the panel has two
+  homes ([../adr/0016-roster-two-homes-by-width.md](../adr/0016-roster-two-homes-by-width.md),
+  [../adr/0017-one-list-panel-two-wrappers.md](../adr/0017-one-list-panel-two-wrappers.md)):
+  `pickList` clicks a sidebar row or opens the sheet's menu, `openListEditor` flips the sidebar in
+  place or opens the sheet and flips that, and `createList` finishes through `pickList` above `lg`,
+  where Done leaves no menu to click. `switchList`
+  resolves at both widths — the header title, the sidebar's current row and, while that sidebar is
+  editing, its Done toggle all carry `[data-list-trigger]`, the anchor a focus restore falls back to
+  — but only the phone's opens the sheet, so it is not the way to switch. `editRow` scopes a row
+  lookup to the edit rows, whose `<ul>` is labelled, because an unscoped one collides with the header
+  title's accessible name. Assertions about the *title text* use `listTitle`
   (the `<h1>`), since the sidebar row's text carries its count too. `titleBand`
   matches the header's first band, whose `data-scrolled` attribute is the shrink's single source, and
   `fillScreen` adds enough rows to outgrow either project's viewport — a page that cannot scroll
   leaves `scrollY` at 0 and makes any assertion about the collapse vacuous. `sheetPanel` matches the
-  picker's panel (`[data-sheet]`), which `sheet` cannot: that one matches the `role="dialog"`
+  sheet's panel (`[data-sheet]`), which `sheet` cannot: that one matches the `role="dialog"`
   wrapper, whose box is the whole viewport at every breakpoint.
   `uncheckedNames` takes the first `ul` inside `main` that isn't `[data-checked-list]`: the
   unchecked section renders no `ul` at all when empty, so a bare `.first()` would silently return
-  the *checked* names, and the sidebar's roster comes earlier in the DOM than either.
+  the *checked* names, and the sidebar's rows come earlier in the DOM than either.
 - **`keyboard.spec.ts` and `motion.spec.ts` are the browser-only tier of the accessibility coverage.**
   Four things are not computable in jsdom, so they can only be asserted here: `inert` (jsdom reflects
   the attribute but implements none of its behaviour), sequential focus navigation with a real tab
@@ -155,9 +162,10 @@ vs. real-Clerk trade-off), see
   with it. `motion.spec.ts` emulates the preference in-test with
   `page.emulateMedia({ reducedMotion: "reduce" })` rather than adding a project of its own, so the
   preference stays orthogonal to the two viewport projects and `fullyParallel` still applies.
-- **`a11y.spec.ts`** runs `@axe-core/playwright` over nine DOM states — empty list, populated list,
-  the checked group collapsed and expanded, search results, no-match search, the picker in pick and
-  edit mode, and the delete confirmation — against the `wcag2a`/`wcag2aa`/`wcag21a`/`wcag21aa` tags. It emulates reduced
+- **`a11y.spec.ts`** runs `@axe-core/playwright` over the app's distinct DOM states — empty list,
+  populated list, the checked group collapsed and expanded, search results, no-match search, the
+  lists panel while picking and in edit mode (a dialog on the phone, a form inside the `nav` landmark
+  above `lg`), and the delete confirmation — against the `wcag2a`/`wcag2aa`/`wcag21a`/`wcag21aa` tags. It emulates reduced
   motion so each surface is fully painted when measured, and filters the two rules the whole-row drag
   activator trips (`nested-interactive`, `list`) **per node** rather than per scan, so a new violation
   of either elsewhere on the same screen still fails. `color-contrast` is never disabled. The language

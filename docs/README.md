@@ -70,3 +70,5 @@ Architecture decision records sit outside the four quadrants as their own recogn
   tier
 - [adr/0016-roster-two-homes-by-width.md](adr/0016-roster-two-homes-by-width.md) — The roster has two
   homes, chosen by width
+- [adr/0017-one-list-panel-two-wrappers.md](adr/0017-one-list-panel-two-wrappers.md) — One lists
+  panel, two wrappers, and editing follows it into either one

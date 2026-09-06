@@ -2,7 +2,11 @@
 
 ## Status
 
-Accepted.
+Accepted — with three parts superseded by
+[0017-one-list-panel-two-wrappers.md](0017-one-list-panel-two-wrappers.md): editing no longer stays
+in the sheet at every width, `data-list-trigger` no longer always names the active list (in edit mode
+beside the list it sits on the Done toggle), and the roster is no longer rendered twice in the
+codebase. The two homes, the width that chooses between them and the unshared role sets stand.
 
 ## Context
 
@@ -25,7 +29,8 @@ it has no decision to record.
 
 **The roster renders in one of two homes, chosen by viewport width.** Below `lg` it is the picker
 sheet, exactly as before. At `lg` and above it is a persistent sidebar
-([../../src/client/components/ListSidebar.tsx](../../src/client/components/ListSidebar.tsx)), and
+([../../src/client/components/ListSidebarWrapper.tsx](../../src/client/components/ListSidebarWrapper.tsx)),
+and
 three things move with it:
 
 - **The `<h1>` stops being a button.** The sidebar is the switcher, so the title is a title: no
