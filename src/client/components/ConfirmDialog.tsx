@@ -3,19 +3,26 @@ import { useTranslation } from "client/i18n/useTranslation";
 import { useOpenerFocus } from "client/components/focus";
 
 /**
- * Destructive confirmation. z-50 puts it above the list picker that opens it (z-40) and the Undo
- * snackbar (z-30); it stops its own keys so Escape cancels the dialog, not the sheet underneath.
+ * Destructive confirmation. z-50 puts it above the list sheet that opens it (z-40) and the Undo
+ * snackbar (z-30); it stops its own keys so Escape cancels the dialog, not the panel underneath.
  */
 export const ConfirmDialog = ({
   title,
   body,
   confirmLabel,
+  fallbackSelector,
   onConfirm,
   onCancel,
 }: {
   title: string;
   body: string;
   confirmLabel: string;
+  /**
+   * Where focus goes when the control that opened this went with the thing it confirmed. Worth
+   * passing wherever the caller is a surface that doesn't itself go away — nothing else will then
+   * reclaim the focus this drops.
+   */
+  fallbackSelector?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }) => {
@@ -24,9 +31,9 @@ export const ConfirmDialog = ({
   const titleId = useId();
   const bodyId = useId();
 
-  // No fallback selector: confirming can tear down the sheet the opener lived in, and then the sheet's
-  // own restore has the better claim on focus.
-  useOpenerFocus();
+  // Both restores are deferred a frame and gated on focus having been dropped, so where a sheet does
+  // tear down along with the opener, whichever runs second stands down.
+  useOpenerFocus({ fallbackSelector });
   // oxlint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- post-render focus
   useEffect(() => {
     buttonsRef.current[0]?.focus(); // Cancel: the safe default under a stray Enter

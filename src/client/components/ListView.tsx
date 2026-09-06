@@ -1,16 +1,33 @@
 import { useState } from "react";
 import { useSyncState } from "client/store/syncStatus";
 import { useLocale, useSetLocale } from "client/i18n/useTranslation";
+import { type ListSummary } from "client/store/lists";
 import { ShoppingList } from "client/components/ShoppingList";
 import { AccountButton } from "client/components/AccountButton";
 import { SyncNotice } from "client/components/SyncNotice";
 import { LanguageDialog } from "client/components/LanguageDialog";
-import { ListPicker } from "client/components/ListPicker";
-import { ListSidebar } from "client/components/ListSidebar";
+import { ListPanel } from "client/components/ListPanel";
 
 /**
- * One list on screen. The picker sits outside the keyed `<ShoppingList>`, whose remount is what
- * resets the query, edit mode, the checked fold and the Undo buffer on a switch.
+ * Where the lists are, and what they are doing. `"closed"` and `"pick"` are the same picture above
+ * `WIDE`, where the sidebar is always on screen and always pickable; below it `"closed"` means no
+ * sheet.
+ */
+type PanelMode = "closed" | "pick" | "edit";
+
+/**
+ * Crossing into the sidebar's territory with the pick sheet open is the one way to ask for two
+ * panels at once: the arriving sidebar does that sheet's job, so the sheet goes. Edit mode has no
+ * sidebar equivalent and rides the crossing both ways. Exported for its own sake — mounting
+ * `ListView` needs a Clerk provider, so this is the part a unit test can reach.
+ */
+export const nextPanelMode = ({ mode, wide }: { mode: PanelMode; wide: boolean }): PanelMode =>
+  wide && mode === "pick" ? "closed" : mode;
+
+/**
+ * One list on screen. The lists panel sits outside the keyed `<ShoppingList>`, whose remount is what
+ * resets the query, edit mode, the checked fold and the Undo buffer on a switch — and the panel's
+ * mode lives here, which is what keeps one panel on screen rather than two.
  */
 export const ListView = ({
   listId,
@@ -31,36 +48,45 @@ export const ListView = ({
   const locale = useLocale();
   const setLocale = useSetLocale();
   const [langOpen, setLangOpen] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerEditing, setPickerEditing] = useState(false);
+  const [mode, setMode] = useState<PanelMode>("closed");
+  const [confirming, setConfirming] = useState<ListSummary | null>(null);
 
-  const openPicker = (editing: boolean) => {
-    setPickerEditing(editing);
-    setPickerOpen(true);
-  };
+  // Adjusted during render rather than from an Effect: React re-runs this component with the new
+  // mode before reconciling its children, so the two panels never commit, where an Effect would
+  // paint them together for a frame.
+  const panel = nextPanelMode({ mode, wide });
+  if (panel !== mode) setMode(panel);
+
+  const blocked = langOpen || confirming !== null;
 
   return (
     <div
       data-wide={wide || undefined}
       className={`
         min-h-dvh
-        data-wide:grid data-wide:grid-cols-[17rem_minmax(0,1fr)]
+        data-wide:grid data-wide:grid-cols-[auto_minmax(0,1fr)]
       `}
     >
-      {wide && (
-        <div inert={pickerOpen || langOpen}>
-          <ListSidebar
-            activeId={listId}
-            onSelect={onSelectList}
-            onEdit={() => {
-              openPicker(true);
-            }}
-          />
-        </div>
+      {(wide || panel !== "closed") && (
+        <ListPanel
+          activeId={listId}
+          wrapper={wide ? "sidebar" : "sheet"}
+          editing={panel === "edit"}
+          blocked={blocked}
+          confirming={confirming}
+          onSelect={onSelectList}
+          onEditingChange={(editing) => {
+            setMode(editing ? "edit" : "pick");
+          }}
+          onConfirming={setConfirming}
+          onDismiss={() => {
+            setMode("closed");
+          }}
+        />
       )}
       {/* aria-modal only promises the page behind is unreachable; inert is what delivers it */}
       <div
-        inert={pickerOpen || langOpen}
+        inert={blocked || (!wide && panel !== "closed")}
         // Uncapped on purpose: the header's background and hairline have to reach this pane's edges
         // at every width, so the column cap lives on the header's bands and on `<main>` instead.
         className="w-full min-w-0"
@@ -71,7 +97,7 @@ export const ListView = ({
           listName={listName}
           wide={wide}
           onPickList={() => {
-            openPicker(false);
+            setMode("pick");
           }}
           // Block gestures only on first connect (its initial sync can reshuffle the list under a
           // finger); later reconnect blips shouldn't make swipe/reorder flap.
@@ -87,16 +113,6 @@ export const ListView = ({
           notice={<SyncNotice status={status} />}
         />
       </div>
-      {pickerOpen && (
-        <ListPicker
-          activeId={listId}
-          initialEditing={pickerEditing}
-          onSelect={onSelectList}
-          onClose={() => {
-            setPickerOpen(false);
-          }}
-        />
-      )}
       {langOpen && (
         <LanguageDialog
           locale={locale}

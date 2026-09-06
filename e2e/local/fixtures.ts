@@ -68,8 +68,9 @@ export const addItem = async (page: Page, name: string): Promise<void> => {
 /**
  * The control that always names the active list: the header title on a phone, the sidebar's current
  * row beside the list. Matched by attribute, which both carry — its accessible name is deliberately
- * the list name, so a role+name lookup would collide with an item of the same name. Pressing it
- * opens the picker only on the phone; use `pickList` to switch at either width.
+ * the list name, so a role+name lookup would collide with an item of the same name — except while
+ * the sidebar is editing, where no row is current and the panel's Done toggle holds the anchor
+ * instead. Pressing it opens the sheet only on the phone; use `pickList` to switch at either width.
  */
 export const switchList = (page: Page) => page.locator("[data-list-trigger]");
 
@@ -117,34 +118,34 @@ export const fillScreen = async (page: Page): Promise<void> => {
 export const sheet = (page: Page) => page.getByRole("dialog", { name: "Lists" });
 
 /**
- * Opens the sheet in edit mode, from whichever surface owns the roster: the sidebar's own Edit goes
- * straight there, while the phone has to open the pick sheet first and flip it.
+ * Puts the lists panel in edit mode, wherever it lives: the sidebar flips in place, while the phone
+ * has to open the pick sheet first and flip that. The wide branch also pins down that no modal came
+ * with it — a sheet over the sidebar would satisfy the field alone.
  */
 export const openListEditor = async (page: Page): Promise<void> => {
   if (isWide(page)) {
     await sidebar(page).getByRole("button", { name: "Edit lists" }).click();
+    await expect(sidebar(page).getByLabel("New list name")).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
   } else {
     await switchList(page).click();
     await sheet(page).getByRole("button", { name: "Edit lists" }).click();
+    await expect(page.getByLabel("New list name")).toBeVisible();
   }
-  await expect(page.getByLabel("New list name")).toBeVisible();
 };
 
 /**
- * Creates a list from the picker's Edit mode and then switches to it. Creating deliberately stays in
- * the sheet, so landing on the new list is a second, explicit step — and Done leaves the sheet in
- * pick mode at either width, so the last step is the same one.
+ * A list's row in edit mode, the one that opens its rename. Scoped to the edit rows at both widths:
+ * the header title's accessible name is the active list's, so an unscoped lookup collides with it.
  */
-export const createList = async (page: Page, name: string): Promise<void> => {
-  await openListEditor(page);
-  await page.getByLabel("New list name").fill(name);
-  await page.getByRole("button", { name: "Create list" }).click();
-  await page.getByRole("button", { name: "Done" }).click();
-  await page.getByRole("menuitemradio", { name: new RegExp(`^${name},`) }).click();
-  await expect(listTitle(page)).toHaveText(name);
-};
+export const editRow = (page: Page, name: string) =>
+  page.getByLabel("Edit lists").getByRole("button", { name, exact: true });
 
-/** Switches list: one click in the sidebar, or the sheet's menu on the phone. */
+/**
+ * Switches list: one click in the sidebar, or the sheet's menu on the phone.
+ *
+ * Declared before `createList`, which finishes through it.
+ */
 export const pickList = async (page: Page, name: string): Promise<void> => {
   if (isWide(page)) {
     await sidebar(page)
@@ -155,6 +156,24 @@ export const pickList = async (page: Page, name: string): Promise<void> => {
     await page.getByRole("menuitemradio", { name: new RegExp(`^${name},`) }).click();
   }
   await expect(listTitle(page)).toHaveText(name);
+};
+
+/**
+ * Creates a list from the panel's edit mode and then switches to it. Creating deliberately leaves the
+ * panel where it is, so landing on the new list is a second, explicit step — and Done means different
+ * things at the two widths: the pick sheet on a phone, a sidebar back to picking beside the list.
+ */
+export const createList = async (page: Page, name: string): Promise<void> => {
+  await openListEditor(page);
+  await page.getByLabel("New list name").fill(name);
+  await page.getByRole("button", { name: "Create list" }).click();
+  await page.getByRole("button", { name: "Done" }).click();
+  if (isWide(page)) {
+    await pickList(page, name);
+  } else {
+    await page.getByRole("menuitemradio", { name: new RegExp(`^${name},`) }).click();
+    await expect(listTitle(page)).toHaveText(name);
+  }
 };
 
 /**

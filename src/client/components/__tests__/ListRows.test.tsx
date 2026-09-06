@@ -28,9 +28,7 @@ const setup = ({
   activeId?: string;
 }) => {
   const onSelect = vi.fn();
-  render(
-    <ListRows lists={lists} activeId={activeId} semantics={semantics} onSelect={onSelect} />,
-  );
+  render(<ListRows lists={lists} activeId={activeId} semantics={semantics} onSelect={onSelect} />);
   return { onSelect, user: userEvent.setup() };
 };
 

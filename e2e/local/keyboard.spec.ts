@@ -128,14 +128,15 @@ test.describe("keyboard", () => {
   });
 
   // Space-then-Escape only: no arrow, so none of the KeyboardSensor timing that keeps arrow-driven
-  // reorder out of this tier (see reorder.spec.ts).
-  test("Escape cancels a lift without closing the sheet", async ({ page }) => {
+  // reorder out of this tier (see reorder.spec.ts). dnd-kit reads Escape as cancel, and the panel
+  // stands down while a lift is in flight — so the edit session stays, whichever home it is in.
+  test("Escape cancels a lift without ending the edit session", async ({ page }) => {
     await seed(page);
     await openListEditor(page);
     await page.getByRole("button", { name: /^Reorder / }).focus();
     await page.keyboard.press(" ");
     await page.keyboard.press("Escape");
-    await expect(sheet(page)).toBeVisible();
+    await expect(page.getByLabel("New list name")).toBeVisible();
   });
 
   // The ring is a box-shadow from Tailwind's `ring-*`, and :focus-visible only matches on a keyboard
