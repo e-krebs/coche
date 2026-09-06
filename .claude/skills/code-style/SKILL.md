@@ -23,14 +23,19 @@ style anchor.
 `yarn format` to write, `yarn format:check` in CI. It reflows **code only**: it never wraps comment
 prose or string literals, so hand-wrap long comments to ≤100 and leave unbreakable strings (SVG
 paths, i18n copy, import specifiers) as-is. Tailwind `className`s are the exception: they're wrapped
-and ordered by a **lint** rule, not oxfmt — its `sortTailwindcss` is deliberately off (why:
-[docs/explanation/tooling.md](../../../docs/explanation/tooling.md)). Markdown, CSS,
+and ordered by a **lint** rule, not oxfmt — oxfmt's own Tailwind sorting stays at its default of off
+(why: [docs/explanation/tooling.md](../../../docs/explanation/tooling.md)). Markdown, CSS,
 HTML, `package.json`, and the generated `routeTree.gen.ts` are excluded via `ignorePatterns`.
+Indentation, line endings and final newlines for the file types oxfmt ignores come from
+[.editorconfig](../../../.editorconfig); the 100-column ruler is in
+[.vscode/settings.json](../../../.vscode/settings.json), which also pins oxfmt as the TS formatter
+so an installed Prettier can't undo the Tailwind wrap on save.
 
 ## Linting
 
-**oxlint** (`.oxlintrc.json`) runs on the whole repo — `yarn lint`, enforced in CI; correctness
-rules are errors. React linting (the `react` plugin plus both `react-hooks` rules) is scoped to
+**oxlint** (`.oxlintrc.json`) runs on the whole repo bar the generated `routeTree.gen.ts`, which its
+`ignorePatterns` excludes — `yarn lint`, enforced in CI; correctness rules are errors. React
+linting (the `react` plugin plus both `react-hooks` rules) is scoped to
 `src/client/**`. Never silence a hooks error with an inline `oxlint-disable` — fix the hook (lift
 the call out of the branch, close the dependency).
 
@@ -59,8 +64,10 @@ generic/opaque-content casts, `SELF` from `cloudflare:test`) get a narrow `oxlin
 `-- <why>`, never a blanket one.
 
 oxlint, oxfmt, `oxlint-tsgolint`, and both jsPlugin versions are **pinned** — the wrap/sort/format
-fixpoint is version-sensitive, so never bump one alone. The reasoning behind the toolchain's shape
-(why `sortTailwindcss` is off, why `typeCheck` is off, rule-scoping and tuning) lives in
+fixpoint is version-sensitive, so never bump one alone — Dependabot groups all five into one PR for
+that reason ([docs/adr/0019-grouped-dependency-updates.md](../../../docs/adr/0019-grouped-dependency-updates.md)).
+The reasoning behind the toolchain's shape (why oxfmt doesn't sort Tailwind classes, why `typeCheck`
+is off, rule-scoping and tuning) lives in
 [docs/explanation/tooling.md](../../../docs/explanation/tooling.md).
 
 ## Imports

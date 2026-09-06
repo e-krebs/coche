@@ -161,12 +161,18 @@ CI runs it after the build ([../../.github/workflows/ci.yml](../../.github/workf
 `main` — and therefore what deploys. Force-pushes and deletions are refused, history stays linear, and
 the rules apply to admins too, so a hotfix also goes through a PR.
 
+Because merging is a deploy, **nothing here auto-merges** — including dependency bumps, which would
+otherwise ship to production unattended
+([../adr/0019-grouped-dependency-updates.md](../adr/0019-grouped-dependency-updates.md)). Required
+checks are also *strict*, so a PR must be up to date with `main` to merge: merging one open PR
+invalidates the rest, and each then needs a rebase and a full re-run.
+
 **No review is required to merge** — approvals are set to zero and code-owner review is not
 enforced, because a sole maintainer cannot approve their own pull request and any non-zero
 requirement would deadlock every change.
 [../../.github/CODEOWNERS](../../.github/CODEOWNERS) therefore declares ownership rather than
 gating on it; what it does buy is an automatic review request on pull requests that arrive from
-elsewhere — a bot, or a fork.
+elsewhere — Dependabot, or a fork.
 [../../.github/pull_request_template.md](../../.github/pull_request_template.md) is the same kind of
 aid: it prefills the section shape and the docs-sync checklist for a hand-opened PR, and is replaced
 wholesale when a PR body is supplied on creation. Security reports go through private advisories
@@ -195,14 +201,17 @@ instead of either channel, per [../../SECURITY.md](../../SECURITY.md).
   - Actions scopes a cache to the branch that wrote it plus that branch's base, so the first run on a
     new branch installs cold and populates its own entry — and only if that run is green, since the
     save step is skipped on failure. Timings settle from the second passing run on.
-- **verify** — `check:links` (the docs link gate, run first since it reads only the checkout — see
-  [../adr/0018-markdown-link-gate.md](../adr/0018-markdown-link-gate.md)), `lint` (oxlint, including
-  type-aware rules via `oxlint-tsgolint`), `format:check` (oxfmt), `typecheck` (client, Worker, both
-  e2e tiers, and the build scripts), `test` (client + Worker), the build, the CSP gate, and the
-  secret gate.
+- **verify** — `lint` (oxlint, including type-aware rules via `oxlint-tsgolint`), `format:check`
+  (oxfmt), `check:links` (the docs link gate, run before the build since it needs only the checkout —
+  see [../adr/0018-markdown-link-gate.md](../adr/0018-markdown-link-gate.md)), `typecheck` (client,
+  Worker, both e2e tiers, and the build scripts), `test` (client + Worker), the build, the CSP gate,
+  and the secret gate.
 - **e2e** — the hermetic local-only Playwright tier (no secrets needed).
-- **e2e-sync** — the sync Playwright tier; skips unless `CLERK_SECRET_KEY` is set as a repo secret
-  (so it no-ops cleanly on forks). The publishable key is public and committed in `.env.e2e-sync`.
+- **e2e-sync** — the sync Playwright tier; skips unless `CLERK_SECRET_KEY` is set as a repo secret,
+  so it no-ops cleanly on forks — and on Dependabot PRs, which get Dependabot's own (here empty)
+  secret store rather than the Actions one. Only the gate step runs in that case, so the job still
+  reports success and satisfies the required check. The publishable key is public and committed in
+  `.env.e2e-sync`.
 - **deploy** — pushes to `main` only, after all three of the above pass. Builds the SPA and re-runs
   the CSP and secret gates against *that* build (verify's runs on a placeholder key) before deploying
   anything, confirms all five Worker secrets exist, then deploys the Worker, then uploads `dist/` with

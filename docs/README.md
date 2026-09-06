@@ -74,3 +74,5 @@ Architecture decision records sit outside the four quadrants as their own recogn
   panel, two wrappers, and editing follows it into either one
 - [adr/0018-markdown-link-gate.md](adr/0018-markdown-link-gate.md) — A markdown link gate on the
   verify job
+- [adr/0019-grouped-dependency-updates.md](adr/0019-grouped-dependency-updates.md) — Grouped monthly
+  dependency updates, never auto-merged
