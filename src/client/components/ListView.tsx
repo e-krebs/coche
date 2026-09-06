@@ -7,7 +7,6 @@ import { SyncNotice } from "client/components/SyncNotice";
 import { LanguageDialog } from "client/components/LanguageDialog";
 import { ListPicker } from "client/components/ListPicker";
 import { ListSidebar } from "client/components/ListSidebar";
-import { WIDE, useMediaQuery } from "client/components/media";
 
 /**
  * One list on screen. The picker sits outside the keyed `<ShoppingList>`, whose remount is what
@@ -16,10 +15,16 @@ import { WIDE, useMediaQuery } from "client/components/media";
 export const ListView = ({
   listId,
   listName,
+  wide,
   onSelectList,
 }: {
   listId: string;
   listName: string;
+  /**
+   * Whether the lists have room to stand beside the list instead of over it. A prop rather than a
+   * media query read here: it decides which surface they get, and that is worth asserting.
+   */
+  wide: boolean;
   onSelectList: (id: string) => void;
 }) => {
   const { status, everSynced } = useSyncState();
@@ -28,11 +33,6 @@ export const ListView = ({
   const [langOpen, setLangOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerEditing, setPickerEditing] = useState(false);
-  // One source for both halves of the switch, so the sidebar and the title can't disagree about who
-  // owns picking. `useSyncExternalStore` has the answer on the first render, so there is no
-  // phone-shaped flash to hide with a CSS-only sidebar — and at phone width the roster is then
-  // genuinely absent from the DOM rather than merely hidden.
-  const wide = useMediaQuery(WIDE);
 
   const openPicker = (editing: boolean) => {
     setPickerEditing(editing);
