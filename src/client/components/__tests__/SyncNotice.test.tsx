@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
-import { useState } from "react";
+import { createContext, useContext } from "react";
 import {
   RouterProvider,
   createMemoryHistory,
@@ -12,15 +12,15 @@ import { SyncNotice } from "client/components/SyncNotice";
 import type { SyncStatus as Status } from "client/store/sync";
 
 // The sign-in affordance is a router <Link>, so the notice needs a router — a memory one with a stub
-// route tree keeps this a component test rather than a route test. The status is held in state so a
-// test can watch the strip react to sync recovering, as it does in the app.
+// route tree keeps this a component test rather than a route test. RouterProvider takes no children,
+// so the status arrives by context and setStatus re-renders the same tree: the app never remounts on
+// a status change, so a remount here would let a test pass for the wrong reason — the strip has to
+// survive reconciliation, which the node-identity assertion below pins.
+const StatusContext = createContext<Status>("disabled");
+
+const Harness = () => <SyncNotice status={useContext(StatusContext)} />;
+
 const setup = async ({ status }: { status: Status }) => {
-  let publish: (next: Status) => void = () => {};
-  const Harness = () => {
-    const [current, setCurrent] = useState(status);
-    publish = setCurrent;
-    return <SyncNotice status={current} />;
-  };
   const rootRoute = createRootRoute({ component: Harness });
   const signIn = createRoute({ getParentRoute: () => rootRoute, path: "/sign-in" });
   const router = createRouter({
@@ -29,12 +29,15 @@ const setup = async ({ status }: { status: Status }) => {
   });
   // The provider paints nothing until the router has loaded its first match.
   await router.load();
-  render(<RouterProvider router={router} />);
+  const tree = (current: Status) => (
+    <StatusContext.Provider value={current}>
+      <RouterProvider router={router} />
+    </StatusContext.Provider>
+  );
+  const { rerender } = render(tree(status));
   return {
     setStatus: (next: Status) => {
-      act(() => {
-        publish(next);
-      });
+      rerender(tree(next));
     },
   };
 };
@@ -118,11 +121,14 @@ describe("SyncNotice", () => {
     it("hands focus back when only the link goes, not the strip", async () => {
       const fallback = trigger();
       const { setStatus } = await setup({ status: "signin-required" });
+      const strip = ui.notice("Signed out — this list isn’t syncing");
       ui.signIn().focus();
 
       setStatus("offline");
 
-      expect(ui.notice("Offline — changes are saved on this device")).toBeInTheDocument();
+      // The same node, retitled: a remount would rescue focus too, so node identity is what tells
+      // this path apart from the strip going away.
+      expect(ui.notice("Offline — changes are saved on this device")).toBe(strip);
       await waitFor(() => {
         expect(fallback).toHaveFocus();
       });
