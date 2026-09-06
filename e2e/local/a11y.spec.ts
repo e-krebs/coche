@@ -100,7 +100,7 @@ test.describe("axe", () => {
 
   // Picking is the sidebar's job above `lg`, so the pick sheet is a phone surface up there — and the
   // sidebar is scanned by every other case in this file, since it is part of the page.
-  test("the picker has no violations while picking", async ({ page, viewport }) => {
+  test("the lists panel has no violations while picking", async ({ page, viewport }) => {
     test.skip((viewport?.width ?? 0) >= 1024, "the sidebar replaces the pick sheet");
     await gotoApp(page);
     await switchList(page).click();

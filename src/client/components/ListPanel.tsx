@@ -111,10 +111,18 @@ const EditRow = ({
             onDraft(e.target.value);
           }}
           onBlur={(e) => {
-            // A blur with nowhere to go is the row being taken out from under the field — a resize
-            // swapping the panel's home does exactly that — not the reader leaving it. Committing
-            // there would write a name they never confirmed.
-            if (e.relatedTarget) onRename(draft);
+            // A blur with nowhere to go is two events at once: a click on dead space, which commits
+            // like any other, and the field being taken out from under the reader by a resize
+            // swapping the panel's home, which must not — that would write a name nobody confirmed.
+            // Only the next frame tells them apart, by whether the field is still there.
+            if (e.relatedTarget) {
+              onRename(draft);
+              return;
+            }
+            const field = e.currentTarget;
+            requestAnimationFrame(() => {
+              if (field.isConnected) onRename(draft);
+            });
           }}
           onKeyDown={(e) => {
             // Both keys are the panel's otherwise — Escape would dismiss it, Enter submit nothing.
@@ -239,6 +247,9 @@ export const ListPanel = ({
 
   const dismiss = () => {
     clearDrafts();
+    // Escape leaves edit mode too, and the region has to change to be spoken at all — announcing
+    // only the way in would go silent on the second trip through.
+    if (editing) setAnnouncement(t("listsEditingDone"));
     onDismiss();
   };
 
@@ -314,6 +325,10 @@ export const ListPanel = ({
 
   const body = (
     <>
+      {/* Inside the panel, so a reader whose tree narrows to an open dialog still hears it */}
+      <p data-lists-announcer role="status" aria-live="polite" aria-atomic className="sr-only">
+        {announcement}
+      </p>
       <div
         data-wrapper={wrapper}
         className={`
@@ -364,7 +379,8 @@ export const ListPanel = ({
             }}
           >
             <SortableContext items={lists.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-              <ul aria-label={t("editLists")} className="flex flex-col gap-0.5 p-1.5">
+              {/* Marked rather than named: the surface around it is named "Lists" already */}
+              <ul data-list-editor className="flex flex-col gap-0.5 p-1.5">
                 {lists.map((list) => (
                   <EditRow
                     key={list.id}
@@ -462,9 +478,9 @@ export const ListPanel = ({
     </>
   );
 
-  // The live region and the confirmation sit outside the wrapper, both of them: inside the sheet
-  // they would go inert with the panel, and inside the sidebar — a stacking context, being sticky —
-  // a fixed overlay could not rise above the list's own header.
+  // The confirmation sits outside the wrapper: inside the sheet it would go inert along with the
+  // panel it covers, and inside the sidebar — a stacking context, being sticky — a fixed overlay
+  // could not rise above the list's own header.
   return (
     <>
       {menu ? (
@@ -487,9 +503,6 @@ export const ListPanel = ({
           {body}
         </ListSidebarWrapper>
       )}
-      <p data-lists-announcer role="status" aria-live="polite" aria-atomic className="sr-only">
-        {announcement}
-      </p>
       {confirming && (
         <ConfirmDialog
           title={t("deleteListTitle", { name: nameOf(confirming) })}
@@ -499,7 +512,10 @@ export const ListPanel = ({
               : t("deleteListBody", { count: confirming.total })
           }
           confirmLabel={t("confirmDelete")}
-          fallbackSelector="[data-list-trigger]"
+          // Confirming destroys the Delete that opened this, so focus needs somewhere else: the
+          // first surviving row while editing — the anchor up there is the toggle that *ends* the
+          // session, one keypress from a reader who is deleting a second list.
+          fallbackSelector={editing ? "[data-rename-row]" : "[data-list-trigger]"}
           onConfirm={confirmDelete}
           onCancel={() => {
             onConfirming(null);

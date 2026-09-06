@@ -17,7 +17,7 @@ const list = (id: string, name: string | undefined, count = 0): ListSummary => (
 const lists = [list(DEFAULT_LIST_ID, undefined, 3), list("garden", "Garden", 0)];
 
 /**
- * The sidebar and the picker sheet share one row rendering under two role sets, and `matchMedia` is
+ * The sidebar and the sheet share one row rendering under two role sets, and `matchMedia` is
  * absent in jsdom — so `semantics` is a prop precisely to make both reachable here.
  */
 const setup = ({
@@ -50,7 +50,7 @@ describe("ListRows", () => {
     expect(ui.button("Garden")).toHaveAccessibleName("Garden, 0 items");
   });
 
-  describe("in the picker sheet", () => {
+  describe("in the sheet", () => {
     // A menu, not a radiogroup: arrows must rove without selecting, since selecting closes the sheet.
     it("is a menu with a roving tabindex", () => {
       setup({ semantics: "menu" });

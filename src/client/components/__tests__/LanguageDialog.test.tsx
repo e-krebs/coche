@@ -16,7 +16,7 @@ const setup = ({ locale = "en" }: { locale?: Locale } = {}) => {
 };
 
 // The real opener is a Clerk menu item that unmounts with its popover; the header trigger is what the
-// restore falls back to. Both are stand-ins here — see the same helper in ListPicker.test.tsx.
+// restore falls back to. Both are stand-ins here — see the same helper in ListPanel.test.tsx.
 const trigger = () => {
   document.querySelectorAll("[data-list-trigger]").forEach((el) => {
     el.remove();

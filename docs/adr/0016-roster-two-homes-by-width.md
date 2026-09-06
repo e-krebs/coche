@@ -30,8 +30,7 @@ it has no decision to record.
 **The roster renders in one of two homes, chosen by viewport width.** Below `lg` it is the picker
 sheet, exactly as before. At `lg` and above it is a persistent sidebar
 ([../../src/client/components/ListSidebarWrapper.tsx](../../src/client/components/ListSidebarWrapper.tsx)),
-and
-three things move with it:
+and three things move with it:
 
 - **The `<h1>` stops being a button.** The sidebar is the switcher, so the title is a title: no
   `aria-haspopup`, no chevron, no tab stop. Its accessible name is still the list name at both

@@ -90,7 +90,7 @@ const isWide = (page: Page) => (page.viewportSize()?.width ?? 0) >= 1024;
 export const titleBand = (page: Page) => page.locator("header > div").first();
 
 /**
- * The picker's panel. `sheet` matches the `role="dialog"` wrapper, whose box is the whole viewport
+ * The sheet's panel. `sheet` matches the `role="dialog"` wrapper, whose box is the whole viewport
  * at every breakpoint — so anything measuring where the panel sits needs this instead.
  */
 export const sheetPanel = (page: Page) => page.locator("[data-sheet]");
@@ -112,7 +112,7 @@ export const fillScreen = async (page: Page): Promise<void> => {
 };
 
 /**
- * The open picker. Scope list-row lookups to it: the header trigger's accessible name is the active
+ * The open sheet. Scope list-row lookups to it: the header trigger's accessible name is the active
  * list's name, so an unscoped `{ name: "Garden" }` matches it too.
  */
 export const sheet = (page: Page) => page.getByRole("dialog", { name: "Lists" });
@@ -135,11 +135,12 @@ export const openListEditor = async (page: Page): Promise<void> => {
 };
 
 /**
- * A list's row in edit mode, the one that opens its rename. Scoped to the edit rows at both widths:
- * the header title's accessible name is the active list's, so an unscoped lookup collides with it.
+ * A list's row in edit mode, the one that opens its rename. Scoped to the edit rows at both widths
+ * by attribute: the header title's accessible name is the active list's, so an unscoped lookup
+ * collides with it.
  */
 export const editRow = (page: Page, name: string) =>
-  page.getByLabel("Edit lists").getByRole("button", { name, exact: true });
+  page.locator("[data-list-editor]").getByRole("button", { name, exact: true });
 
 /**
  * Switches list: one click in the sidebar, or the sheet's menu on the phone.
@@ -179,8 +180,8 @@ export const createList = async (page: Page, name: string): Promise<void> => {
 /**
  * Unchecked item names (or the search results), in display order. Excludes the checked section's
  * list: the unchecked one renders no `ul` at all when empty, so a bare `.first()` silently falls
- * through to the checked names. Scoped to `main`, so neither the picker's list nor the sidebar's
- * roster can win — the sidebar comes *first* in the DOM.
+ * through to the checked names. Scoped to `main`, so neither the sheet's rows nor the sidebar's can
+ * win — the sidebar comes *first* in the DOM.
  */
 export const uncheckedNames = async (page: Page): Promise<string[]> =>
   page

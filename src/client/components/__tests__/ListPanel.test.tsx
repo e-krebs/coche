@@ -34,12 +34,14 @@ const setup = ({
   activeId = DEFAULT_LIST_ID,
   wrapper = "sheet",
   editing = false,
+  blocked = false,
 }: {
   lists?: Tables["lists"];
   items?: Tables["items"];
   activeId?: string;
   wrapper?: Wrapper;
   editing?: boolean;
+  blocked?: boolean;
 } = {}) => {
   const store = createShoppingStore();
   store.setTables({ lists, items });
@@ -56,7 +58,7 @@ const setup = ({
           activeId={activeId}
           wrapper={home}
           editing={mode}
-          blocked={false}
+          blocked={blocked}
           confirming={confirming}
           onSelect={onSelect}
           onEditingChange={(next) => {
@@ -64,7 +66,12 @@ const setup = ({
             setMode(next);
           }}
           onConfirming={setConfirming}
-          onDismiss={onDismiss}
+          // Dismissing takes the panel out of edit mode too, as `ListView`'s one mode does: there is
+          // no state in which it is dismissed and still editing.
+          onDismiss={() => {
+            onDismiss();
+            setMode(false);
+          }}
         />
       </Provider>
     );
@@ -84,13 +91,20 @@ const setup = ({
   };
 };
 
-// The app has exactly one header trigger, and the global cleanup only unmounts React trees — so drop
-// any left by an earlier test before adding this one's. Sheet cases only: beside the list the panel
-// renders a real one, and removing that would tear a node out from under React.
-const trigger = () => {
+// The global cleanup only unmounts React trees, so a stand-in trigger left in `document.body` by an
+// earlier case outlives it — and a focus restore's `document.querySelector` would find that one
+// rather than the panel's own. Call it before rendering, never after: it would take a live node out
+// from under React.
+const dropStrayTriggers = () => {
   document.querySelectorAll("[data-list-trigger]").forEach((el) => {
     el.remove();
   });
+};
+
+// The app has exactly one header trigger. Sheet cases only: beside the list the panel renders a real
+// one of its own.
+const trigger = () => {
+  dropStrayTriggers();
   const el = document.createElement("button");
   el.dataset.listTrigger = "";
   document.body.append(el);
@@ -141,9 +155,26 @@ const ui = {
   get sidebar() {
     return screen.getByRole("navigation", { name: "Lists" });
   },
+  // What a modal in front of the panel turns `inert`: the sheet's panel rather than its full-screen
+  // dialog wrapper, and the sidebar's `nav` itself.
+  surface: (wrapper: Wrapper) => {
+    const el =
+      wrapper === "sheet"
+        ? document.querySelector<HTMLElement>("[data-sheet]")
+        : screen.getByRole("navigation", { name: "Lists" });
+    if (!el) throw new Error("No panel surface");
+    return el;
+  },
   // Scoped to the panel: the stand-in trigger the sheet's focus cases leave in `document.body`
   // outlives them, since the global cleanup only unmounts React trees.
   triggersIn: (root: HTMLElement) => root.querySelectorAll("[data-list-trigger]"),
+  // Matched by attribute, not role: dnd-kit renders its own role="status" region alongside the
+  // sortable rows, so a role lookup is ambiguous in edit mode.
+  get announcer() {
+    const el = document.querySelector<HTMLElement>("[data-lists-announcer]");
+    if (!el) throw new Error("No announcer region");
+    return el;
+  },
 };
 
 describe.each(["sheet", "sidebar"] as const)("ListPanel in the %s", (wrapper) => {
@@ -155,6 +186,16 @@ describe.each(["sheet", "sidebar"] as const)("ListPanel in the %s", (wrapper) =>
     await user.click(ui.edit);
     expect(onEditingChange).toHaveBeenCalledWith(true);
     expect(ui.done).toBeInTheDocument();
+  });
+
+  // Beside the list the relabelled toggle is the only visual signal that the panel became an editor
+  // — no dialog boundary, no focus move — so the flip is spoken at both widths.
+  it("announces the flip into edit mode and back out of it", async () => {
+    const { user } = setup({ lists: twoLists, wrapper });
+    await user.click(ui.edit);
+    expect(ui.announcer).toHaveTextContent("Editing lists.");
+    await user.click(ui.done);
+    expect(ui.announcer).toHaveTextContent("Done editing lists.");
   });
 
   // The nameless default list shows the app title, and each row its unchecked count only.
@@ -169,6 +210,13 @@ describe.each(["sheet", "sidebar"] as const)("ListPanel in the %s", (wrapper) =>
     });
     expect(ui.pick(wrapper, "Coche")).toHaveAccessibleName("Coche, 1 item");
     expect(ui.pick(wrapper, "Garden")).toHaveAccessibleName("Garden, 0 items");
+  });
+
+  // A dialog in front of the panel promises the panel is unreachable; `inert` is what delivers it,
+  // at both widths — above `lg` nothing else is doing that job.
+  it("puts its own controls out of reach while a modal is in front", () => {
+    setup({ lists: twoLists, wrapper, blocked: true });
+    expect(ui.surface(wrapper)).toHaveAttribute("inert");
   });
 
   it("reports the list that was picked", async () => {
@@ -234,6 +282,29 @@ describe.each(["sheet", "sidebar"] as const)("ListPanel in the %s", (wrapper) =>
       await user.clear(ui.rename("Coche"));
       await user.type(ui.rename("Coche"), "Kitchen{Enter}");
       expect(store.getCell("lists", DEFAULT_LIST_ID, "name")).toBe("Kitchen");
+    });
+
+    // The field vanishing takes focus with it, and beside the list nothing behind is inert to catch
+    // it — so tab order would restart from the top of the document.
+    it("puts focus back on the row when the field closes", async () => {
+      const { user } = setup({ lists: twoLists, wrapper, editing: true });
+      await user.click(ui.name("Garden"));
+      await user.type(ui.rename("Garden"), "Shed{Escape}");
+      expect(ui.name("Garden")).toHaveFocus();
+    });
+
+    // A click on dead space is a commit like any other. Only a field that has *gone* — taken out by
+    // a change of home — must not commit, and one frame is what tells the two apart.
+    it("commits a rename blurred to nowhere, and keeps the field usable", async () => {
+      const { store, user } = setup({ lists: twoLists, wrapper, editing: true });
+      await user.click(ui.name("Garden"));
+      await user.clear(ui.rename("Garden"));
+      await user.type(ui.rename("Garden"), "Shed");
+      ui.rename("Garden").blur();
+      await waitFor(() => {
+        expect(store.getCell("lists", "garden", "name")).toBe("Shed");
+      });
+      expect(ui.name("Shed")).toBeInTheDocument();
     });
 
     // The field's own value would go with the markup; the panel outlives the change of home, so the
@@ -308,6 +379,14 @@ describe.each(["sheet", "sidebar"] as const)("ListPanel in the %s", (wrapper) =>
       await user.click(ui.confirm);
       expect(onSelect).toHaveBeenCalledWith(DEFAULT_LIST_ID);
       expect(onDismiss).toHaveBeenCalledOnce();
+    });
+
+    // The row simply goes; nothing else says it did.
+    it("announces the list it removed", async () => {
+      const { user } = setup({ lists: twoLists, wrapper, editing: true });
+      await user.click(ui.del("Garden"));
+      await user.click(ui.confirm);
+      expect(ui.announcer).toHaveTextContent("Deleted the list “Garden”.");
     });
 
     it("stays put when the deleted list was not the active one", async () => {
@@ -463,6 +542,18 @@ describe("ListPanel in the sidebar", () => {
     await user.click(ui.edit);
     expect(ui.triggersIn(ui.sidebar)).toHaveLength(1);
     expect(ui.done).toHaveAttribute("data-list-trigger");
+  });
+
+  // Leaving edit mode destroys every control but the toggle, and Escape can be pressed from any of
+  // them — so a focus that fell to <body> goes back to the anchor rather than restarting tab order.
+  it("hands focus back to the anchor when Escape ends the edit session", async () => {
+    dropStrayTriggers();
+    const { user } = setup({ lists: twoLists, wrapper: "sidebar", editing: true });
+    ui.reorder("Garden").focus();
+    await user.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(ui.pick("sidebar", "Coche")).toHaveFocus();
+    });
   });
 
   it("keeps picking to itself, with nothing to close", async () => {

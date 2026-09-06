@@ -76,16 +76,17 @@ test.describe("keyboard", () => {
     await expect(page.locator('button[aria-label="Check off Apples"]')).toBeHidden();
   });
 
-  // The pick sheet has no entry point beside the sidebar — picking is a click there, with no dialog
-  // to trap, escape or return focus from. desktop.spec.ts asserts the Escape, the focus restore and
-  // the inert page behind them against the edit sheet, the only one that still opens up there.
+  // No sheet has an entry point beside the sidebar — picking is a click there and editing happens in
+  // place, with no dialog to trap, escape or return focus from. desktop.spec.ts asserts what those
+  // three become up there: Escape leaves edit mode, the toggle keeps focus, and nothing goes inert
+  // until a confirmation opens.
   test.describe("the pick sheet", () => {
     test.skip(
       ({ viewport }) => (viewport?.width ?? 0) >= 1024,
       "the sidebar replaces the pick sheet above lg",
     );
 
-    test("Tab stays inside the picker while it is open", async ({ page }) => {
+    test("Tab stays inside the sheet while it is open", async ({ page }) => {
       await seed(page);
       await switchList(page).press("Enter");
       await expect(sheet(page)).toBeVisible();

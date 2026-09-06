@@ -70,11 +70,12 @@ type-checking, not a test suite itself.
 - [../../src/client/__tests__/](../../src/client/__tests__/) — the global setup and shared MSW
   server above; not a suite itself.
 - [../../src/client/components/__tests__/](../../src/client/components/__tests__/) — the lists panel
-  (pick, create, rename, delete-behind-confirmation, and Escape's precedence, each run in **both** of
-  its wrappers, since the panel takes its home as a prop; plus the sheet's focus contract and Tab
-  containment, and the sidebar's own focus seats), the rule that keeps one panel on screen, the shared
-  rows under either role set, the language dialog (radio roving, opener restore including a destroyed
-  opener), and the sync indicator, whose suite pins that it is *not* a live region.
+  (pick, create, rename, delete-behind-confirmation, Escape's precedence and what its live region
+  says, each run in **both** of its wrappers, since the panel takes its home as a prop; plus the
+  sheet's focus contract and Tab containment, and the sidebar's own focus seats), the rule that
+  keeps one panel on screen, the shared rows under either role set, the language dialog (radio
+  roving, opener restore including a destroyed opener), and the sync indicator, whose suite pins
+  that it is *not* a live region.
 - [../../src/client/components/ShoppingList/__tests__/](../../src/client/components/ShoppingList/__tests__/)
   — shopping-list components and hooks.
 - [../../src/client/i18n/__tests__/](../../src/client/i18n/__tests__/) — i18n resources/lookup.
@@ -105,20 +106,22 @@ vs. real-Clerk trade-off), see
   `pointer: fine` / `hover: hover`. **Every spec runs in both.** Where a case only holds at one
   width it skips itself on the other — rather than a whole file being excluded in the config, which
   would quietly narrow a guard to one width. Skipped above `lg`: all of `header.spec.ts` (the
-  sidebar leaves no centred title to measure) and the pick sheet's Tab-trap, Escape and focus-restore
-  cases, which have no entry point up there. Skipped below `md`: `desktop.spec.ts`, whose
+  sidebar leaves no centred title to measure) and the pick sheet's Tab-trap, Escape, focus-restore
+  and axe cases, which have no entry point up there — edit mode's own axe scan runs at both widths,
+  since editing follows the panel into the sidebar. Skipped below `md`: `desktop.spec.ts`, whose
   phone run is the control it changes from. **No case is skipped in both projects.** The pair is the
   runtime coverage of the responsive tiers: `matchMedia` is absent under jsdom, so no unit test can
   reach a width- or pointer-gated branch — except where a component takes the answer as a prop, which
-  is how the lists panel's two wrappers are unit-reachable. `viewports.spec.ts` asserts what each project
-  actually reports, so a config edit can't quietly turn `phone` into a second desktop and leave the
-  coarse-pointer paths — swipe to delete, the header's scroll reclaim — untested everywhere.
-  `desktop.spec.ts` covers the wide-screen half: the wider column, the frozen shrink, the
-  hover-revealed row Delete and its absence from the tab order, and the sidebar — picking, editing in
-  place, its focus anchor through both modes, and the confirmation rising above it. Cases that need a
-  width neither project has get a fixed viewport of their own and run once: the centred sheet and the
-  edge-to-edge header bar between `sm` and `lg`, and the crossing into the sidebar's width, which
-  starts below the threshold and resizes past it in-test — the one way to ask for two panels at once.
+  is how the lists panel's two wrappers are unit-reachable. `viewports.spec.ts` asserts what each
+  project actually reports, so a config edit can't quietly turn `phone` into a second desktop and
+  leave the coarse-pointer paths — swipe to delete, the header's scroll reclaim — untested
+  everywhere. `desktop.spec.ts` covers the wide-screen half: the wider column, the frozen shrink,
+  the hover-revealed row Delete and its absence from the tab order, and the sidebar — picking,
+  editing in place, its focus anchor through both modes, and the confirmation rising above it. Cases
+  that need a width neither project has get a fixed viewport of their own and run once: the centred
+  sheet and the edge-to-edge header bar between `sm` and `lg`, and the crossing into the sidebar's
+  width, which starts below the threshold and resizes past it in-test — the one way to ask for two
+  panels at once.
 - Hermetic by design: [../../e2e/local/fixtures.ts](../../e2e/local/fixtures.ts) extends `context`
   to seed `localStorage["shopping:userId"]` with a fixed test user via `addInitScript`, and to abort
   every non-localhost request via `context.route` — the app boots offline-only, with no sync Worker

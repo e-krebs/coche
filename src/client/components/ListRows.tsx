@@ -2,19 +2,20 @@ import { type ListSummary } from "client/store/lists";
 import { useTranslation } from "client/i18n/useTranslation";
 import { CheckIcon } from "client/components/icons";
 
-/** Shared with the picker's edit rows, which live beside their drag handle and delete button. */
+/** Shared with the panel's edit rows, which live beside their drag handle and delete button. */
 export const rowBase = `flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[15px]
   outline-hidden
   focus-visible:bg-canvas focus-visible:ring-2 focus-visible:ring-accent-text
   focus-visible:ring-inset`;
 
 /**
- * `menu` is the picker sheet: a menu of `menuitemradio`s with a roving tabindex, so arrows rove
+ * `menu` is the sheet: a menu of `menuitemradio`s with a roving tabindex, so arrows rove
  * without selecting — selecting closes the sheet, so the first arrow press would end the
  * interaction. `nav` is the sidebar, where the roster is persistent navigation rather than a
  * transient menu: plain buttons in normal tab order, the one you're on marked `aria-current`. The
- * sidebar's active row also carries `data-list-trigger`, the anchor a focus restore falls back to —
- * it is the control that always exists and always names the active list, whichever surface holds it.
+ * sidebar's active row also carries `data-list-trigger`, the anchor a focus restore falls back to:
+ * always a button, always present, and naming the active list whenever the panel is picking — in
+ * edit mode no row is current, and the panel's Done toggle holds it instead.
  */
 type Semantics = "menu" | "nav";
 

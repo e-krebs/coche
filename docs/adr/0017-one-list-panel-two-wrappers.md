@@ -86,7 +86,9 @@ it is stable under reorder.
 - **Reordering in the column needs a drag overlay.** The column is `sticky`, so dnd-kit's scroll
   compensation would slide the lifted row away from the row it lands on when the page scrolls
   mid-drag. The sheet is `fixed`, which keeps the page's scroll out of those sums, so it keeps the
-  plain transform.
+  plain transform. The overlay stays inside the column, which is a stacking context: a lift dragged
+  out over the list paints under the list's own sticky header. That is cosmetic and drag-only, and
+  the alternative — portalling it out — would take the lifted row out of the panel it belongs to.
 - **Both wrappers are unit-testable.** The width reaches the panel as a prop, so jsdom — which has no
   `matchMedia` — can reach the sidebar's branch for the first time. `ListView` itself still can't be
   mounted there (Clerk's `useUser` throws outside its provider), so only its mode rule is exported
