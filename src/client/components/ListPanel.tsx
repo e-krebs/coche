@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -253,25 +253,36 @@ export const ListPanel = ({
     onDismiss();
   };
 
-  const accessibility = useMemo(() => {
-    const nameOf = (id: UniqueIdentifier) =>
-      lists.find((l) => l.id === String(id))?.name ?? t("appTitle");
-    const posOf = (id: UniqueIdentifier) => lists.findIndex((l) => l.id === String(id)) + 1;
-    const total = lists.length;
-    const announcements: Announcements = {
-      onDragStart: ({ active }) => t("dragListStart", { name: nameOf(active.id) }),
-      onDragOver: ({ active, over }) =>
-        over
-          ? t("dragListOver", { name: nameOf(active.id), position: posOf(over.id), total })
-          : undefined,
-      onDragEnd: ({ active, over }) =>
-        over
-          ? t("dragListEnd", { name: nameOf(active.id), position: posOf(over.id), total })
-          : t("dragListCancel", { name: nameOf(active.id) }),
-      onDragCancel: ({ active }) => t("dragListCancel", { name: nameOf(active.id) }),
-    };
-    return { announcements, screenReaderInstructions: { draggable: t("dragListInstructions") } };
-  }, [t, lists]);
+  // Unmemoized for the same reason as the list's: `lists` is rebuilt every render, so a memo on it
+  // recomputed every render anyway. Id-keyed rather than reusing `nameOf`, which takes the row.
+  const dragName = (id: UniqueIdentifier) =>
+    lists.find((l) => l.id === String(id))?.name ?? t("appTitle");
+  const dragPos = (id: UniqueIdentifier) => lists.findIndex((l) => l.id === String(id)) + 1;
+  const dragTotal = lists.length;
+  const announcements: Announcements = {
+    onDragStart: ({ active }) => t("dragListStart", { name: dragName(active.id) }),
+    onDragOver: ({ active, over }) =>
+      over
+        ? t("dragListOver", {
+            name: dragName(active.id),
+            position: dragPos(over.id),
+            total: dragTotal,
+          })
+        : undefined,
+    onDragEnd: ({ active, over }) =>
+      over
+        ? t("dragListEnd", {
+            name: dragName(active.id),
+            position: dragPos(over.id),
+            total: dragTotal,
+          })
+        : t("dragListCancel", { name: dragName(active.id) }),
+    onDragCancel: ({ active }) => t("dragListCancel", { name: dragName(active.id) }),
+  };
+  const accessibility = {
+    announcements,
+    screenReaderInstructions: { draggable: t("dragListInstructions") },
+  };
 
   // Escape is decided here, where what is in flight is known; the sheet's own handler takes Tab and
   // the arrows. A keyboard drag reads Escape as cancel (dnd-kit's), so leave it alone or the whole
