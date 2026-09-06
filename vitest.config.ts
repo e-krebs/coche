@@ -1,13 +1,13 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
-import tsconfigPaths from "vite-tsconfig-paths";
 import { cloudflareTest } from "@cloudflare/vitest-pool-workers";
 
 export default defineConfig({
   test: {
     projects: [
       {
-        plugins: [tsconfigPaths(), react()],
+        plugins: [react()],
+        resolve: { tsconfigPaths: true },
         test: {
           name: "client",
           dir: "src/client",
@@ -18,7 +18,6 @@ export default defineConfig({
       },
       {
         plugins: [
-          tsconfigPaths(),
           cloudflareTest({
             wrangler: { configPath: "./wrangler.toml" },
             miniflare: {
@@ -33,6 +32,7 @@ export default defineConfig({
             },
           }),
         ],
+        resolve: { tsconfigPaths: true },
         test: {
           name: "server",
           dir: "src/server",

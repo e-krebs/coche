@@ -6,7 +6,6 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
-import tsconfigPaths from "vite-tsconfig-paths";
 import { DEV_FILE, readCspFile } from "./scripts/csp.ts";
 
 const CLERK_JS_DIST = join(import.meta.dirname, "node_modules/@clerk/clerk-js/dist");
@@ -80,9 +79,9 @@ export default defineConfig(({ command }) => {
       headers: cspHeaders,
     },
     base: "/",
+    resolve: { tsconfigPaths: true },
     // tanstackRouter must precede viteReact so generated routes are transformed.
     plugins: [
-      tsconfigPaths(),
       tanstackRouter({
         target: "react",
         autoCodeSplitting: true,
