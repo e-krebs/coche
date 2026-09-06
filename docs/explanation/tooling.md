@@ -193,6 +193,14 @@ single pull request by name, so a bump can never land as five separate green PRs
 policy, along with why `@axe-core/playwright` is carved out of every group for the *other* pinning
 reason above.
 
+Grouped bumps have a second-order effect the lockfile absorbs quietly. Yarn never re-resolves a
+descriptor it has already resolved, so a range that moves — this repo's own, or one inside a bumped
+parent — leaves every already-locked descriptor for that package where it was, and the package ends
+up installed twice: both entries valid, no gate the wiser, and the hoisted copy not necessarily the
+newer one. `yarn dedupe --check` runs on `verify` for that reason;
+[../adr/0020-lockfile-dedupe-gate.md](../adr/0020-lockfile-dedupe-gate.md) covers why it reports
+rather than autofixes.
+
 ## Living with a type system that doesn't know the runtime
 
 Two friction points recur often enough to have a standing pattern rather than a one-off fix each

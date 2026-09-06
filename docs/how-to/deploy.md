@@ -203,7 +203,9 @@ instead of either channel, per [../../SECURITY.md](../../SECURITY.md).
     save step is skipped on failure. Timings settle from the second passing run on.
 - **verify** — `lint` (oxlint, including type-aware rules via `oxlint-tsgolint`), `format:check`
   (oxfmt), `check:links` (the docs link gate, run before the build since it needs only the checkout —
-  see [../adr/0018-markdown-link-gate.md](../adr/0018-markdown-link-gate.md)), `typecheck` (client,
+  see [../adr/0018-markdown-link-gate.md](../adr/0018-markdown-link-gate.md)), `yarn dedupe --check`
+  (the lockfile dedupe gate, placed early for the same reason — see
+  [../adr/0020-lockfile-dedupe-gate.md](../adr/0020-lockfile-dedupe-gate.md)), `typecheck` (client,
   Worker, both e2e tiers, and the build scripts), `test` (client + Worker), the build, the CSP gate,
   and the secret gate.
 - **e2e** — the hermetic local-only Playwright tier (no secrets needed).
