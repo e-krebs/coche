@@ -20,6 +20,7 @@
     "fix": "oxlint --fix . && oxfmt .",
     "check:secrets": "node scripts/check-dist-secrets.ts",
     "check:csp": "node scripts/check-csp.ts",
+    "check:links": "node scripts/check-links.ts",
     "icons": "node scripts/gen-icons.ts",
     "test": "vitest run --project client",
     "test:watch": "vitest",

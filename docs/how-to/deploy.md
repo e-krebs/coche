@@ -195,9 +195,11 @@ instead of either channel, per [../../SECURITY.md](../../SECURITY.md).
   - Actions scopes a cache to the branch that wrote it plus that branch's base, so the first run on a
     new branch installs cold and populates its own entry — and only if that run is green, since the
     save step is skipped on failure. Timings settle from the second passing run on.
-- **verify** — `lint` (oxlint, including type-aware rules via `oxlint-tsgolint`), `format:check`
-  (oxfmt), `typecheck` (client, Worker, both e2e tiers, and the build scripts), `test`
-  (client + Worker), the build, the CSP gate, and the secret gate.
+- **verify** — `check:links` (the docs link gate, run first since it reads only the checkout — see
+  [../adr/0018-markdown-link-gate.md](../adr/0018-markdown-link-gate.md)), `lint` (oxlint, including
+  type-aware rules via `oxlint-tsgolint`), `format:check` (oxfmt), `typecheck` (client, Worker, both
+  e2e tiers, and the build scripts), `test` (client + Worker), the build, the CSP gate, and the
+  secret gate.
 - **e2e** — the hermetic local-only Playwright tier (no secrets needed).
 - **e2e-sync** — the sync Playwright tier; skips unless `CLERK_SECRET_KEY` is set as a repo secret
   (so it no-ops cleanly on forks). The publishable key is public and committed in `.env.e2e-sync`.
