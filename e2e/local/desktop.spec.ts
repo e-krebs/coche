@@ -6,10 +6,13 @@ import {
   addItem,
   checkbox,
   createList,
+  editRow,
   fillScreen,
   listTitle,
+  openListEditor,
   pickList,
   row,
+  sheet,
   sheetPanel,
   sidebar,
   switchList,
@@ -133,21 +136,68 @@ test.describe("desktop layout", () => {
     expect(await uncheckedNames(page)).toEqual(["Compost"]);
   });
 
-  test("opens the sheet straight into edit mode, and hands focus back on close", async ({
-    page,
-  }) => {
+  // Editing follows the lists into whichever home they have, so up here it happens in the sidebar
+  // itself — no sheet, no scrim, and the list beside it stays live, because nothing is modal.
+  test("turns the sidebar into the editor rather than opening a sheet", async ({ page }) => {
     await gotoApp(page);
     await addItem(page, "Milk");
     const edit = sidebar(page).getByRole("button", { name: "Edit lists" });
     await edit.click();
-    // Straight into edit mode: picking is the sidebar's job, so there is nothing else to offer.
-    await expect(page.getByLabel("New list name")).toBeVisible();
-    // Both the list and the roster behind the sheet are unreachable, not just the list.
-    await expect(page.locator("[inert] [data-list-sidebar]")).toHaveCount(1);
-    await expect(page.locator('[inert] button[aria-label="Check off Milk"]')).toHaveCount(1);
-    await page.keyboard.press("Escape");
+    await expect(sidebar(page).getByLabel("New list name")).toBeVisible();
+    await expect(
+      sidebar(page)
+        .getByRole("button", { name: /^Reorder / })
+        .first(),
+    ).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(sheetPanel(page)).toHaveCount(0);
-    await expect(edit).toBeFocused();
+    await expect(page.locator("[inert]")).toHaveCount(0);
+    // Wider while editing: a row has to hold a drag handle, a rename field and a delete.
+    expect(await widthOf(page, "[data-list-sidebar]")).toBeGreaterThan(17 * 16);
+  });
+
+  // Done drops back to picking, which is all the sidebar ever offers — and the toggle it was
+  // pressed on is still there, so focus has nowhere it needs to be rescued to.
+  test("steps back out of edit mode without going anywhere", async ({ page }) => {
+    await gotoApp(page);
+    await openListEditor(page);
+    const done = sidebar(page).getByRole("button", { name: "Done" });
+    await done.click();
+    await expect(sidebar(page).getByLabel("New list name")).toHaveCount(0);
+    await expect(switchList(page)).toHaveAttribute("aria-current", "true");
+    await expect(sidebar(page).getByRole("button", { name: "Edit lists" })).toBeFocused();
+  });
+
+  // Escape is the keyboard's way out, mirroring what it does to the sheet below `lg`.
+  test("leaves edit mode on Escape", async ({ page }) => {
+    await gotoApp(page);
+    await openListEditor(page);
+    await page.keyboard.press("Escape");
+    await expect(sidebar(page).getByLabel("New list name")).toHaveCount(0);
+  });
+
+  // The anchor four focus restores aim at has to exist, and exactly once, in both modes: while
+  // editing no row is `aria-current`, so it moves to the toggle.
+  test("keeps exactly one focus anchor through edit mode", async ({ page }) => {
+    await gotoApp(page);
+    await expect(switchList(page)).toHaveCount(1);
+    await openListEditor(page);
+    await expect(switchList(page)).toHaveCount(1);
+    await expect(switchList(page)).toHaveAccessibleName("Done");
+  });
+
+  // A fixed overlay nested in the sticky sidebar would be trapped in its stacking context, painting
+  // under the list's own header — so the confirmation is a sibling of the panel, not a child.
+  test("raises the delete confirmation above the sidebar it came from", async ({ page }) => {
+    await gotoApp(page);
+    await createList(page, "Garden");
+    await openListEditor(page);
+    await page.getByRole("button", { name: "Delete Garden" }).click();
+    await expect(page.getByRole("alertdialog")).toBeVisible();
+    await expect(page.locator("[data-list-sidebar] [role=alertdialog]")).toHaveCount(0);
+    // The page behind it is unreachable at this width too, where no sheet is doing that job.
+    await expect(page.locator("[data-list-sidebar][inert]")).toHaveCount(1);
+    await expect(page.locator("[inert] main")).toHaveCount(1);
   });
 });
 
@@ -210,14 +260,56 @@ test.describe("tablet layout", () => {
     }
   });
 
-  test("centres the list picker instead of sliding it off the bottom edge", async ({ page }) => {
+  test("centres the lists sheet instead of sliding it off the bottom edge", async ({ page }) => {
     test.skip(test.info().project.name !== "desktop", "both projects share this fixed viewport");
     await gotoApp(page);
     await switchList(page).click();
     const box = await sheetPanel(page).boundingBox();
     const view = page.viewportSize();
-    if (!box || !view) throw new Error("picker or viewport not laid out");
+    if (!box || !view) throw new Error("sheet or viewport not laid out");
     // A bottom sheet ends flush with the viewport floor; a centred dialog leaves room under it.
     expect(view.height - (box.y + box.height)).toBeGreaterThan(16);
+  });
+});
+
+// Resizing past `lg` with the sheet open is the one way to ask for two lists panels at once. Starts
+// below the threshold and crosses it in-test, so it needs a viewport of its own and runs once.
+test.describe("crossing into the sidebar's width", () => {
+  test.use({ viewport: { width: 900, height: 800 } });
+
+  test("hands picking to the sidebar instead of leaving a sheet over it", async ({ page }) => {
+    test.skip(test.info().project.name !== "desktop", "both projects share this fixed viewport");
+    await gotoApp(page);
+    await switchList(page).click();
+    await expect(sheet(page)).toBeVisible();
+
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await expect(sidebar(page)).toBeVisible();
+    await expect(sheetPanel(page)).toHaveCount(0);
+    // The anchor changed seat with the lists: the title that opened the sheet is a heading up here,
+    // so the restore falls through to the sidebar's current row.
+    await expect(switchList(page)).toBeFocused();
+
+    // And a sheet nobody re-opened does not come back when the sidebar leaves again.
+    await page.setViewportSize({ width: 900, height: 800 });
+    await expect(sheetPanel(page)).toHaveCount(0);
+    await expect(sidebar(page)).toHaveCount(0);
+  });
+
+  test("carries an edit session across, drafts and all", async ({ page }) => {
+    test.skip(test.info().project.name !== "desktop", "both projects share this fixed viewport");
+    await gotoApp(page);
+    await createList(page, "Garden");
+    await openListEditor(page);
+    await page.getByLabel("New list name").fill("Hardw");
+    await editRow(page, "Garden").click();
+    await page.getByLabel("Rename Garden").fill("Shed");
+
+    // Nothing beside the list creates, renames, reorders or deletes, so the editor is nobody's
+    // duplicate: it follows the lists into their other home rather than being dismissed.
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await expect(sidebar(page).getByLabel("New list name")).toHaveValue("Hardw");
+    await expect(page.getByLabel("Rename Garden")).toHaveValue("Shed");
+    await expect(editRow(page, "Garden")).toHaveCount(0);
   });
 });

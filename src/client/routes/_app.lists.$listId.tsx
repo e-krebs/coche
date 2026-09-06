@@ -3,12 +3,20 @@ import { Navigate, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useLists, writeLastList } from "client/store/lists";
 import { useTranslation } from "client/i18n/useTranslation";
 import { ListView } from "client/components/ListView";
+import { WIDE, useMediaQuery } from "client/components/media";
 
 const ListRoute = () => {
   const { listId } = Route.useParams();
   const navigate = useNavigate();
   const t = useTranslation();
   const lists = useLists();
+  // One source for both halves of the switch, so the sidebar and the title can't disagree about who
+  // owns picking. `useSyncExternalStore` has the answer on the first render, so there is no
+  // phone-shaped flash to hide with a CSS-only sidebar — and at phone width the sidebar is then
+  // genuinely absent from the DOM rather than merely hidden. Read here rather than in `ListView`, so
+  // the component deciding which surface the lists get takes the width as a prop and keeps both of
+  // its branches reachable under jsdom.
+  const wide = useMediaQuery(WIDE);
   const active = lists.find((l) => l.id === listId);
   const activeId = active?.id;
 
@@ -29,6 +37,7 @@ const ListRoute = () => {
     <ListView
       listId={active.id}
       listName={active.name ?? t("appTitle")}
+      wide={wide}
       onSelectList={(id) => {
         window.scrollTo(0, 0); // the outgoing list's offset means nothing on the new one
         // replace, not push: Back should leave the app, not walk back through a switch history.

@@ -1,4 +1,4 @@
-import { test, expect, gotoApp, addItem, checkbox, switchList, sheet } from "./fixtures";
+import { test, expect, gotoApp, addItem, checkbox, sheet, sidebar, switchList } from "./fixtures";
 
 /**
  * Reduced motion is CSS plus one `startViewTransition` bypass, so jsdom computes none of it. Emulated
@@ -20,6 +20,16 @@ test.describe("reduced motion", () => {
     await expect(sheet(page)).toBeVisible();
     const panel = sheet(page).locator(".animate-sheet-in");
     expect(await panel.evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
+  });
+
+  // The sidebar widens for edit mode, which is a transition on its own `width` — the only animation
+  // that exists solely above `lg`.
+  test("the sidebar does not widen with a transition", async ({ page, viewport }) => {
+    test.skip((viewport?.width ?? 0) < 1024, "the sidebar is the wide screen's");
+    await gotoApp(page);
+    expect(await sidebar(page).evaluate((el) => getComputedStyle(el).transitionProperty)).toBe(
+      "none",
+    );
   });
 
   test("the checked fold does not transition", async ({ page }) => {

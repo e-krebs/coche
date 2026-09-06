@@ -88,7 +88,7 @@ until added), and delete. A search box filters the combined set to a flat, non-d
 "find an item and flip its checked state while shopping" flow, so you don't scroll a long list or
 expand the checked section just to check something off. Search covers the active list only.
 
-The header title is the active list's name and doubles as the picker trigger: it opens a bottom
-sheet listing every list with its unchecked count, and an edit mode for creating, renaming,
-reordering and deleting lists. Switching writes the list id into the URL. See
+One panel lists every list with its unchecked count, and carries an edit mode for creating, renaming,
+reordering and deleting them; its home is a sheet or a sidebar, chosen by width. Switching writes the
+list id into the URL. See
 [../explanation/architecture.md#design--ux](../explanation/architecture.md#design--ux).

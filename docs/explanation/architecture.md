@@ -65,8 +65,8 @@ flowchart TB
 | Local store | TinyBase `MergeableStore` (CRDT) ⇄ a mergeable `IndexedDB` persister that preserves HLCs and tombstones across reload; DB `shopping-<userId>` | [../../src/client/store/schema.ts](../../src/client/store/schema.ts), [../../src/client/store/store.ts](../../src/client/store/store.ts), [../../src/client/store/persister.ts](../../src/client/store/persister.ts) |
 | Shopping list UI | The active list's items in two sections (unchecked/checked), search, rename, quantity, delete, drag-reorder — wrapped by a view that also carries the header's sync/account controls and the two dialogs | [../../src/client/components/ShoppingList/](../../src/client/components/ShoppingList/), [../../src/client/components/ListView.tsx](../../src/client/components/ListView.tsx) |
 | Account button | The avatar's fixed seat in the header: Clerk's `UserButton` (carrying the language action), the dashed placeholder that holds the seat until Clerk resolves, and the sync badge pinned to its corner | [../../src/client/components/AccountButton.tsx](../../src/client/components/AccountButton.tsx), [../../src/client/components/SyncStatus.tsx](../../src/client/components/SyncStatus.tsx) |
-| List picker | A bottom sheet on a phone and a centred dialog above `sm`: switch list, and an edit mode to create, rename, reorder and delete lists — mounted above the keyed `<ShoppingList>` so a switch can't unmount it mid-interaction. Above `lg` switching moves to the sidebar and only edit mode opens | [../../src/client/components/ListPicker.tsx](../../src/client/components/ListPicker.tsx), [../../src/client/components/ConfirmDialog.tsx](../../src/client/components/ConfirmDialog.tsx) |
-| Lists sidebar | The roster standing beside the list above `lg`: a `nav` landmark of pickable rows, sharing one row rendering with the picker sheet. Its Edit opens the sheet straight into edit mode | [../../src/client/components/ListSidebar.tsx](../../src/client/components/ListSidebar.tsx), [../../src/client/components/RosterRows.tsx](../../src/client/components/RosterRows.tsx) |
+| Lists panel | Every list with its unchecked count, plus an edit mode to create, rename, reorder and delete them — one component for both homes, mounted above the keyed `<ShoppingList>` so a switch can't unmount it mid-interaction. `ListView` owns which mode it is in, so two of them can't be on screen ([../adr/0017-one-list-panel-two-wrappers.md](../adr/0017-one-list-panel-two-wrappers.md)) | [../../src/client/components/ListPanel.tsx](../../src/client/components/ListPanel.tsx), [../../src/client/components/ListRows.tsx](../../src/client/components/ListRows.tsx), [../../src/client/components/ConfirmDialog.tsx](../../src/client/components/ConfirmDialog.tsx) |
+| The panel's two wrappers | Chrome only, chosen by width: below `lg` the modal apparatus (scrim, dialog boundary, Tab trap, focus placed on arrival and handed back on exit) around a bottom sheet that centres itself above `sm`; above `lg` a sticky `nav` landmark that widens while editing | [../../src/client/components/ListSheetWrapper.tsx](../../src/client/components/ListSheetWrapper.tsx), [../../src/client/components/ListSidebarWrapper.tsx](../../src/client/components/ListSidebarWrapper.tsx) |
 | Lists roster | Virtual default row, the gated default-list migration, list CRUD, the orphan sweep and position backfill | [../../src/client/store/lists.ts](../../src/client/store/lists.ts) |
 | Sign-out teardown | Deletes the local IndexedDB replica and broadcasts to peer tabs on any signed-out transition | [../../src/client/store/teardown.ts](../../src/client/store/teardown.ts) |
 | Service worker | Precache the SPA shell; runtime-cache the same-origin `clerk-js` served from `/clerk-js/`; the sync Worker origin stays network-only | [../../vite.config.ts](../../vite.config.ts) |
@@ -104,21 +104,27 @@ Decisions that aren't obvious from the markup:
   jsdom, so every branch these queries gate reports `false` there and is covered by the e2e tier
   instead ([../reference/testing.md](../reference/testing.md)); a component with unit assertions to
   keep takes the answer as a prop rather than reading it, so both of its branches stay reachable.
-- **Lists & the picker** — below `lg` the header title is the active list's name *and* the button
-  that opens the list picker: a bottom sheet forked from the language chooser (scrim,
-  `role="dialog"` + `aria-modal`, a trapped Tab), which **centres itself above `sm`** and swaps its
-  slide-up for the same fade the other two dialogs use — a sheet rising from the bottom edge of a
-  wide window reads as a phone gesture that lost its phone, and above `sm` all three dialogs agree.
-  At `lg` the roster leaves the modal for a **sidebar** and the title becomes a title again; that
+- **Lists & their panel** — the lists are **one component in one of two wrappers**, chosen by width,
+  so the two homes can't drift apart in what they show and two of them can't be on screen at once
+  ([../adr/0017-one-list-panel-two-wrappers.md](../adr/0017-one-list-panel-two-wrappers.md)). Below
+  `lg` the header title is the active list's name *and* the button that opens the panel as a sheet
+  forked from the language chooser (scrim, `role="dialog"` + `aria-modal`, a trapped Tab), which
+  **centres itself above `sm`** and swaps its slide-up for the same fade the other two dialogs use —
+  a sheet rising from the bottom edge of a wide window reads as a phone gesture that lost its phone,
+  and above `sm` all three dialogs agree.
+  At `lg` the panel leaves the modal for a **sidebar** and the title becomes a title again; that
   swap and everything that follows from it is
-  [../adr/0016-roster-two-homes-by-width.md](../adr/0016-roster-two-homes-by-width.md). Its rows are
+  [../adr/0016-roster-two-homes-by-width.md](../adr/0016-roster-two-homes-by-width.md). **Crossing
+  that width mid-interaction** swaps the wrapper rather than the panel: a sheet that was only picking
+  gives way to the sidebar doing the same job, while an edit session — which the sidebar has no
+  equivalent for — rides across in either direction, half-typed names included. Its rows are
   a **menu** of `menuitemradio`s, not a radiogroup:
   arrows rove without selecting, because selecting switches list and closes the sheet, so the first
   arrow press would end the interaction. The trigger carries **no `aria-label`** — the list name has
   to be the `<h1>`'s accessible name, at either width, or heading navigation and voice control both
   lose it. Because
   the trigger lives in the title band, that band **shrinks** on scroll — a shorter band, dropping the
-  account button and its sync badge — instead of collapsing to nothing, so the picker stays reachable
+  account button and its sync badge — instead of collapsing to nothing, so the panel stays reachable
   at any offset. The cost is a taller scrolled header. The shrink is **frozen on a wide screen with
   a precise pointer, and wherever the sidebar is on screen**: it buys vertical room a desktop never
   ran out of, freezing it stops the band twitching on every wheel tick, and beside the sidebar the
@@ -126,18 +132,27 @@ Decisions that aren't obvious from the markup:
   avatar wide**, not `1fr`: with elastic columns, anything that changes the right cluster's width —
   the avatar arriving, a longer sync label — moves the centred title, a shift on every cold load and
   every reconnect. Each list shows its **unchecked** count only: the number you'd act on, so `0`
-  reads as "nothing to do here". List management lives in the sheet's edit
-  mode, and every action there leaves the sheet open — creating a list neither switches to it nor
-  closes, so you can add several in one sitting: an inline new-list field, tap-to-rename reusing the
-  row's input, a drag handle for ordering,
-  and delete behind a confirmation nested inside the sheet, naming every item the delete destroys —
-  checked included, which is why the roster carries both counts. Deleting the list you're standing on
-  switches away and closes the sheet; deleting any other leaves it open. **Escape is decided in one
-  place**, the sheet's own handler, so it can weigh what is in flight: it cancels a keyboard drag
-  without closing (dnd-kit already reads Escape as cancel), it clears a half-typed list name rather
-  than discarding it along with the sheet, and only otherwise closes. The inline rename input is the
-  one exception, keeping `Enter` and `Escape` for itself — and only those two, so `Tab` still reaches
-  the sheet's trap rather than being decided by native tab order. The active list is URL state
+  reads as "nothing to do here". **List management lives wherever the panel does** — in the sheet on
+  a phone, in the sidebar itself above `lg`, which widens from 17 rem to 22 rem for the duration
+  because a row there has to hold a drag handle, a rename field and a delete. Every action leaves the
+  panel where it is: creating a list neither switches to it nor dismisses anything, so you can add
+  several in one sitting — an inline new-list field (pinned to the sidebar's floor, where the rows can
+  outgrow the viewport), tap-to-rename reusing the row's input, a drag handle for ordering, and delete
+  behind a confirmation that names every item it destroys — checked included, which is why each list
+  carries both counts. The confirmation is a **sibling of both wrappers**, never inside one: nested in
+  the sticky sidebar it would be trapped in that stacking context, and nested in the sheet it would go
+  `inert` along with the panel it covers. Deleting the list you're standing on switches away and steps
+  the panel out of editing; deleting any other leaves it as it was. **Escape is decided in one
+  place**, the panel's own handler, so it can weigh what is in flight: it cancels a keyboard drag
+  without going further (dnd-kit already reads Escape as cancel), it clears a half-typed list name
+  rather than discarding it, and only otherwise steps the panel out of its current job — dismissing
+  the sheet on a phone, dropping the sidebar back to picking above `lg`, where there is nothing to
+  close. It reaches the handler only from inside the panel, since it is bound there rather than on the
+  document, which would fight dnd-kit's own cancel. The inline rename input is the one exception,
+  keeping `Enter` and `Escape` for itself — and only those two, so `Tab` still reaches the sheet's
+  trap rather than being decided by native tab order. Both drafts — the rename and the new-list name —
+  are held by the panel rather than by the fields, because the fields are torn down by a change of
+  home. The active list is URL state
   (`/lists/$listId`, replacing rather than pushing so Back doesn't walk a switch history) plus a
   device-local last-used hint for `/` — deliberately not a synced value, same seam as the locale
   mirror. An id that no longer resolves redirects to the first list rather than a not-found screen.
@@ -212,7 +227,7 @@ Decisions that aren't obvious from the markup:
   user has to read, click, or read *state* from. `faint` cannot carry content — it measures about
   2.4:1 on the canvas in light mode and 3.6:1 in dark, so it fails body text in both, and fails even
   the 3:1 non-text bar for an icon button. That is why the empty and no-match copy, checked item
-  names, the quantity glyph, list counts, the picker's icon buttons and the **unselected** option
+  names, the quantity glyph, list counts, the panel's icon buttons and the **unselected** option
   indicators all sit on `muted`. That last one is the subtle case and the reason the rule is drawn
   around *state* rather than around text: an unselected radio's ring is the only thing distinguishing
   it from a selected one, so it is a UI component boundary owing 3:1, not decoration — and no
@@ -236,11 +251,12 @@ Decisions that aren't obvious from the markup:
   empty subclass, so going native would move containment and Escape out of unit-test reach (see
   [../adr/0014-jsx-a11y-lint-rules.md](../adr/0014-jsx-a11y-lint-rules.md)). `aria-modal` alone only
   *claims* the page behind is unreachable, and a keydown trap has a blind spot — with focus on
-  `<body>` there is no keydown to intercept. So the list is wrapped in an `inert` subtree whenever
-  either dialog is open, which is a property of the tree rather than of a handler, and the sheet
-  already does the same to itself while the nested confirmation is up. Focus restore survives it
-  because closing clears `inert` in the same commit that unmounts the dialog, one frame before the
-  deferred restore runs — the header trigger it reaches for lives inside that subtree.
+  `<body>` there is no keydown to intercept. So the list is wrapped in an `inert` subtree whenever a
+  dialog is open, which is a property of the tree rather than of a handler, and the panel does the
+  same to its own rows while the nested confirmation is up — at every width, including the one where
+  the panel is a sidebar and nothing else is modal. Focus restore survives it because closing clears
+  `inert` in the same commit that unmounts the dialog, one frame before the deferred restore runs —
+  the header trigger it reaches for lives inside that subtree.
 - **Dialog naming** — each dialog is named by `aria-labelledby` pointing at its own visible `<h2>`,
   rather than an `aria-label` repeating the same words in a second place that can drift. The delete
   confirmation is an `alertdialog`, and its body — the sentence naming every item the delete
@@ -248,21 +264,29 @@ Decisions that aren't obvious from the markup:
   assistive tech on arrival instead of only when the user reads past the title. The checked disclosure
   gets `aria-controls`, pointing at the panel it expands. Two state attributes are deliberately
   **absent**, both for the same underlying reason — an attribute that duplicates or contradicts what
-  the element already says is worse than none. The picker trigger carries no `aria-expanded`:
+  the element already says is worse than none. The panel's trigger carries no `aria-expanded`:
   `aria-haspopup="dialog"` already says a dialog opens, `aria-expanded` describes content that expands
   in place, and while the sheet is open the trigger sits inside an `inert` subtree, so the value could
   never be read as anything but `false`. The Edit-lists toggle carries no `aria-pressed`: its label
   *is* the state, swapping between "Edit lists" and "Done", and a toggle button whose name changes
-  should not also report a pressed state — the pair announces "Done, toggle button, pressed".
+  should not also report a pressed state — the pair announces "Done, toggle button, pressed". Above
+  `lg` that label is the only visual signal that the sidebar just became an editor, so **the panel
+  owns a polite live region** for the mode flip and for a list being deleted: the sheet had a dialog
+  boundary and a focus move to say as much, and a column that changes in place has neither.
 - **Landmarks & headings** — the items sit in a `<main>`, with the title band left outside it so it
   keeps its `banner` role, and above `lg` the roster is a `nav` beside them. Heading structure
-  carries the two groups: the list name is the `<h1>` (and, below `lg`, the picker trigger), and the
+  carries the two groups: the list name is the `<h1>` (and, below `lg`, the panel's trigger), and the
   checked disclosure is an `<h2>`, so heading navigation can tell "still
   to buy" from "already in the basket" without reading through. There is deliberately **no skip
   link**: the add/find field lives inside the header, so skipping to the main landmark would jump past
   the app's most-used control, and a landmark already satisfies bypass-blocks on a single-screen app.
   There is nothing repeated across pages to bypass. The cost is that the sidebar's rows precede that
-  field in tab order above `lg`, where landmark navigation is the way past them.
+  field in tab order above `lg`, where landmark navigation is the way past them — one stop per list
+  while picking, three plus the two create controls while editing, and no trap, because the editing
+  sidebar is not modal. That is the standing cost of editing in place, and it makes the no-skip-link
+  argument weaker up there: a link *to* the add/find field would skip the lists rather than the field.
+  The sidebar stays a `nav` in both modes, since a landmark that vanished and returned under the
+  reader whenever Edit was pressed would be worse than one that briefly holds controls.
 - **Focus & keyboard** — mutations that unmount the focused control return focus to a button rather
   than dropping it to `<body>`: rename/quantity commits refocus the row, delete moves to a
   neighbour, Undo returns to the restored item. **Checking an item off** is the frequent one, and it
@@ -286,11 +310,18 @@ Decisions that aren't obvious from the markup:
   attempt. jsdom has no View Transitions API, so this is a browser-only failure mode and the reason
   the animation helper takes an after-callback instead of the caller guessing a delay. Each only
   reclaims focus that was genuinely lost, so it never steals focus the user moved on purpose, and
-  always targets a button so it can't pop the soft keyboard. The same rule holds through the picker's
-  two nested layers: opening the sheet moves
-  focus into it and closing returns it to the title trigger, and the delete confirmation — a dialog
-  inside a dialog — returns focus to the row that opened it, not to whatever the DOM happened to
-  leave focused. All three dialogs share one hook for this, and restore on the frame *after* they
+  always targets a button so it can't pop the soft keyboard. The same rule holds through the lists
+  panel's layers: opening the sheet moves focus into it — unless the field already has it, which is
+  how an edit session survives a change of home without a blur committing a name nobody confirmed —
+  and closing returns focus to the title trigger, while the delete confirmation returns it to the row
+  that opened it, not to whatever the DOM happened to leave focused. Above `lg` the panel does that
+  work itself, because nothing behind it is `inert` to catch a dropped focus: a rename that closes
+  returns focus to its own row, and leaving edit mode — which destroys every control but the toggle —
+  returns it to the anchor. That anchor is `data-list-trigger`, and it changes seat with the lists:
+  the header title on a phone, the sidebar's current row beside the list, and the Done toggle while
+  that sidebar is editing, where no row is current. A width change can now destroy the opener too,
+  which is the case the fallback selector covers alongside a list switch and Clerk's menu.
+  All the dialogs share one hook for this, and restore on the frame *after* they
   unmount rather than during cleanup: a switch remounts the header in the same commit that closes
   them, so the captured opener is still connected while cleanup runs and only dies afterwards —
   focusing it there would drop focus to `<body>`. The language chooser leans hardest on the fallback,
@@ -329,10 +360,13 @@ Decisions that aren't obvious from the markup:
   collapsed section render at `opacity: 0` so a named element isn't lifted out of its clip).
   The checked-section fold uses CSS `grid-template-rows`, and the title band's shrink is a CSS
   transition on the same scrolled flag — sized down to a shorter band rather than to zero, so the
-  picker trigger is never unmounted mid-scroll. The list picker's entrance is **two keyframes chosen
+  panel trigger is never unmounted mid-scroll. The lists sheet's entrance is **two keyframes chosen
   by breakpoint**, since a mount cannot be a transition and the sheet and the centred dialog arrive
   from different places; both are `@utility` declarations rather than plain classes, because only a
-  utility accepts a `sm:` variant. The row's hover-revealed Delete is a plain opacity transition,
+  utility accepts a `sm:` variant. The sidebar's widening for edit mode is a transition on its own
+  `width`, with the grid column sized to it: `grid-template-columns` interpolates unevenly across
+  engines, and two same-specificity breakpoint variants of one utility would leave the winner to
+  sheet order. The row's hover-revealed Delete is a plain opacity transition,
   the cheapest tier for a state change. Swipe-to-delete tracks the finger with a CSS
   transform and springs back with a CSS transition, and crossing the delete threshold plays a short
   CSS keyframe pulse. The sync badge breathes while connecting — a keyframe on scale alone, because

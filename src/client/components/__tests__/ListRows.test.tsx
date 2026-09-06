@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { RosterRows } from "client/components/RosterRows";
+import { ListRows } from "client/components/ListRows";
 import { DEFAULT_LIST_ID } from "client/store/schema";
 import type { ListSummary } from "client/store/lists";
 
@@ -17,7 +17,7 @@ const list = (id: string, name: string | undefined, count = 0): ListSummary => (
 const lists = [list(DEFAULT_LIST_ID, undefined, 3), list("garden", "Garden", 0)];
 
 /**
- * The sidebar and the picker sheet share one row rendering under two role sets, and `matchMedia` is
+ * The sidebar and the sheet share one row rendering under two role sets, and `matchMedia` is
  * absent in jsdom — so `semantics` is a prop precisely to make both reachable here.
  */
 const setup = ({
@@ -28,9 +28,7 @@ const setup = ({
   activeId?: string;
 }) => {
   const onSelect = vi.fn();
-  render(
-    <RosterRows lists={lists} activeId={activeId} semantics={semantics} onSelect={onSelect} />,
-  );
+  render(<ListRows lists={lists} activeId={activeId} semantics={semantics} onSelect={onSelect} />);
   return { onSelect, user: userEvent.setup() };
 };
 
@@ -43,7 +41,7 @@ const ui = {
   },
 };
 
-describe("RosterRows", () => {
+describe("ListRows", () => {
   // The nameless default list renders the app title, and each row shows its unchecked count only —
   // the number you'd act on, so 0 reads as "nothing to do here".
   it("names the default list and counts what is left to do", () => {
@@ -52,7 +50,7 @@ describe("RosterRows", () => {
     expect(ui.button("Garden")).toHaveAccessibleName("Garden, 0 items");
   });
 
-  describe("in the picker sheet", () => {
+  describe("in the sheet", () => {
     // A menu, not a radiogroup: arrows must rove without selecting, since selecting closes the sheet.
     it("is a menu with a roving tabindex", () => {
       setup({ semantics: "menu" });

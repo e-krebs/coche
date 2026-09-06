@@ -41,9 +41,10 @@ the rule's advice is wrong for this codebase rather than because the codebase is
 - **`no-autofocus`.** Both `autoFocus` attributes sit on an inline editor that exists only because
   the user just activated a control to open it. The focus move *is* the interaction, and removing it
   breaks the keyboard delete path, which reaches Delete by tabbing from the focused rename input.
-- **`no-noninteractive-element-interactions`.** Each dialog's container element owns `Escape` and the
-  Tab trap for its whole subtree. That is a container concern by design; moving the handler to an
-  interactive descendant would scope it to one control instead of the dialog.
+- **`no-noninteractive-element-interactions`.** A surface's container element owns `Escape` — and, in
+  a dialog, the Tab trap — for its whole subtree; the lists panel's `nav` owns the same handler above
+  `lg`, where it is not a dialog at all. That is a container concern by design; moving the handler to
+  an interactive descendant would scope it to one control instead of the surface.
 
 ## Consequences
 

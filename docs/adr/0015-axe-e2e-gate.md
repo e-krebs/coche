@@ -22,11 +22,12 @@ activator node was not a missing assertion; it was a whole failure mode nobody h
 ## Decision
 
 `@axe-core/playwright` runs as an ordinary spec on the hermetic local tier
-([../../e2e/local/a11y.spec.ts](../../e2e/local/a11y.spec.ts)), scanning nine DOM states: the empty
-list, a populated list, the checked group both collapsed and expanded, search results, a search with
-no matches, the picker in both pick and edit mode, and the delete confirmation. The collapsed checked
-group earns its own scan because it is the only place `inert` and `aria-hidden` wrap focusable
-content.
+([../../e2e/local/a11y.spec.ts](../../e2e/local/a11y.spec.ts)), scanning the empty list, a populated
+list, the checked group both collapsed and expanded, search results, a search with no matches, the
+lists panel while picking and in edit mode, and the delete confirmation. The collapsed checked group
+earns its own scan because it is the only place `inert` and `aria-hidden` wrap focusable content; the
+panel's edit mode earns one at each width, since above `lg` it is a form inside a `nav` landmark
+rather than a dialog.
 
 - **Rides `yarn test:e2e`, not a new command or CI job.** It needs a real engine, the local tier
   already provides one hermetically, and a separate job would double the build for one spec file.

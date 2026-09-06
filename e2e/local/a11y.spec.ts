@@ -100,7 +100,7 @@ test.describe("axe", () => {
 
   // Picking is the sidebar's job above `lg`, so the pick sheet is a phone surface up there — and the
   // sidebar is scanned by every other case in this file, since it is part of the page.
-  test("the picker has no violations while picking", async ({ page, viewport }) => {
+  test("the lists panel has no violations while picking", async ({ page, viewport }) => {
     test.skip((viewport?.width ?? 0) >= 1024, "the sidebar replaces the pick sheet");
     await gotoApp(page);
     await switchList(page).click();
@@ -108,10 +108,13 @@ test.describe("axe", () => {
     expect(await scan(page, '[role="dialog"]')).toEqual([]);
   });
 
-  test("the picker has no violations in edit mode", async ({ page }) => {
+  // Edit mode has two shapes: a modal sheet on the phone, and above `lg` a form inside the sidebar's
+  // `nav` — drag handles, rename fields and deletes in a landmark, which no other scanned state has.
+  test("the lists panel has no violations in edit mode", async ({ page, viewport }) => {
     await gotoApp(page);
     await openListEditor(page);
-    expect(await scan(page, '[role="dialog"]')).toEqual([]);
+    const target = (viewport?.width ?? 0) >= 1024 ? "[data-list-sidebar]" : '[role="dialog"]';
+    expect(await scan(page, target)).toEqual([]);
   });
 
   // The one dialog this tier can't reach is the language chooser: Clerk's network is blocked here, so

@@ -4,11 +4,12 @@ import {
   gotoApp,
   addItem,
   createList,
+  editRow,
   field,
   listTitle,
   openListEditor,
   pickList,
-  sheet,
+  switchList,
   uncheckedNames,
 } from "./fixtures";
 
@@ -56,17 +57,26 @@ test.describe("lists", () => {
     await expect(page).toHaveURL(/\/lists\/list$/);
   });
 
+  // Four focus restores fall back to this anchor and Playwright's strict mode fails on a second one,
+  // so: exactly one, at either width, in either mode — it changes seat rather than multiplying.
+  test("keeps exactly one focus anchor for the lists", async ({ page }) => {
+    await gotoApp(page);
+    await expect(switchList(page)).toHaveCount(1);
+    await openListEditor(page);
+    await expect(switchList(page)).toHaveCount(1);
+  });
+
   test("renaming a list retitles the header", async ({ page }) => {
     await gotoApp(page);
     await createList(page, "Garden");
 
     await openListEditor(page);
-    await sheet(page).getByRole("button", { name: "Garden", exact: true }).click();
+    await editRow(page, "Garden").click();
     await page.getByLabel("Rename Garden").fill("Shed");
     await page.getByLabel("Rename Garden").press("Enter");
-    await page.getByRole("button", { name: "Done" }).click();
-    await page.keyboard.press("Escape");
 
+    // Behind the panel on a phone, beside it above `lg` — either way the header follows the rename,
+    // and `toHaveText` asks nothing about visibility.
     await expect(listTitle(page)).toHaveText("Shed");
   });
 
@@ -85,12 +95,12 @@ test.describe("lists", () => {
     await expect(dialog).toContainText("Its 1 item goes with it.");
     await dialog.getByRole("button", { name: "Delete" }).click();
 
-    // Deleting the active list switches away and closes the sheet.
+    // Deleting the active list switches away and steps the panel out of edit mode.
     await expect(listTitle(page)).toHaveText("Coche");
     await expect.poll(async () => uncheckedNames(page)).toEqual(["Milk"]);
 
-    // Gone for good, and the last remaining list can't follow it. Asserted from the edit sheet,
-    // which lists every list at either width — the pick sheet only exists below the sidebar.
+    // Gone for good, and the last remaining list can't follow it. Asserted from edit mode, which
+    // lists every list at either width — the pick sheet only exists below the sidebar.
     await openListEditor(page);
     await expect(page.getByRole("button", { name: "Delete Hardware" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Delete Coche" })).toBeDisabled();
