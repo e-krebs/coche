@@ -161,6 +161,17 @@ CI runs it after the build ([../../.github/workflows/ci.yml](../../.github/workf
 `main` — and therefore what deploys. Force-pushes and deletions are refused, history stays linear, and
 the rules apply to admins too, so a hotfix also goes through a PR.
 
+**No review is required to merge** — approvals are set to zero and code-owner review is not
+enforced, because a sole maintainer cannot approve their own pull request and any non-zero
+requirement would deadlock every change.
+[../../.github/CODEOWNERS](../../.github/CODEOWNERS) therefore declares ownership rather than
+gating on it; what it does buy is an automatic review request on pull requests that arrive from
+elsewhere — a bot, or a fork.
+[../../.github/pull_request_template.md](../../.github/pull_request_template.md) is the same kind of
+aid: it prefills the section shape and the docs-sync checklist for a hand-opened PR, and is replaced
+wholesale when a PR body is supplied on creation. Security reports go through private advisories
+instead of either channel, per [../../SECURITY.md](../../SECURITY.md).
+
 [../../.github/workflows/ci.yml](../../.github/workflows/ci.yml) runs on push and PR:
 
 - Every job starts from the shared
