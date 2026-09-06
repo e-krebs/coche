@@ -76,5 +76,6 @@ Cross-directory imports use bare path aliases, never relative `../`: `shared/*`,
 `server/*` (→ `src/*`). Same-directory imports stay `./`. Aliases are declared as **relative**
 `paths` in each leaf tsconfig (`tsconfig.json`, `src/server/tsconfig.json`) — TS 7 (tsgo) removed
 `baseUrl` and resolves inherited `paths` per-leaf, so don't re-add `baseUrl` or centralize `paths`
-in `tsconfig.base.json`. `vite-tsconfig-paths` bridges the aliases into Vite and Vitest;
+in `tsconfig.base.json`. Vite's native `resolve.tsconfigPaths` bridges the aliases into Vite and
+Vitest — set in `vite.config.ts` and on both `vitest.config.ts` projects, not via a plugin;
 esbuild/wrangler read the tsconfig directly.
