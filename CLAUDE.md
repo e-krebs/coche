@@ -41,9 +41,11 @@ Code touched → doc to check (update if the change is user- or reader-visible):
 | `src/shared/**` (client↔server contract: `/ws-ticket` shape, WS URL) | explanation | [docs/explanation/auth-and-sync.md](docs/explanation/auth-and-sync.md) |
 | `wrangler.toml`, env vars, `.github/workflows/**`, deploy scripts | how-to | [docs/how-to/deploy.md](docs/how-to/deploy.md) |
 | Routing / SPA shell / Clerk wiring (`src/client/routes/**`, `src/client/router.tsx`) | explanation | [docs/explanation/architecture.md](docs/explanation/architecture.md) (components) |
-| Lint/format/typecheck config (`.oxlintrc.json`, `.oxfmtrc.json`, `tsconfig*.json`, `.nvmrc`, pinned tool versions) | explanation | [docs/explanation/tooling.md](docs/explanation/tooling.md) |
-| Test infrastructure (`vitest.config.ts`, `setup.ts`/`msw.ts`, Playwright configs, `e2e/**`) | reference | [docs/reference/testing.md](docs/reference/testing.md) |
+| Lint/format/typecheck/editor config (`.oxlintrc.json`, `.oxfmtrc.json`, `tsconfig*.json`, `.nvmrc`, `.editorconfig`, `.vscode/**`, pinned tool versions, `.github/dependabot.yml`) | explanation | [docs/explanation/tooling.md](docs/explanation/tooling.md) |
+| `scripts/**` gates (`check-csp.ts`, `check-dist-secrets.ts`, `check-links.ts`) — what a gate checks, or a new one | explanation; how-to | [docs/explanation/tooling.md](docs/explanation/tooling.md); [docs/how-to/deploy.md](docs/how-to/deploy.md) (the `verify` job's step list) |
+| `.claude/skills/**`, `.claude/hooks/**` — a convention restated for agents | — | keep in step with the `docs/` page it points at; a rule that moves in one has to move in both |
 | `.github/CODEOWNERS`, `pull_request_template.md`, `SECURITY.md`, branch-protection settings | how-to | [docs/how-to/deploy.md](docs/how-to/deploy.md) (the `CI` section — the only place review and protection rules are described) |
+| Test infrastructure (`vitest.config.ts`, `setup.ts`/`msw.ts`, Playwright configs, `e2e/**`) | reference | [docs/reference/testing.md](docs/reference/testing.md) |
 | README's Status / Documentation sections | — | keep in step with `docs/` (don't let them contradict) |
 
 A new architectural decision — or reversing an existing one — gets an ADR under

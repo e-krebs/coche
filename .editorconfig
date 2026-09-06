@@ -1,0 +1,19 @@
+# Covers what oxfmt doesn't: Markdown, CSS, HTML and package.json are all in its ignorePatterns.
+# For .ts/.tsx these values restate oxfmt's own defaults, so they never disagree with `yarn format`.
+# max_line_length is deliberately absent — the VS Code EditorConfig extension doesn't implement it;
+# the 100-column ruler lives in .vscode/settings.json, where it works.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# Generated and committed. oxfmt, oxlint and the editing hook all leave it alone; an editor that
+# normalized it on save would be the one actor rewriting a file nobody owns.
+[*.gen.ts]
+trim_trailing_whitespace = false
+insert_final_newline = unset

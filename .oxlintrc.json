@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "unicorn", "oxc"],
+  "ignorePatterns": ["src/client/routeTree.gen.ts"],
   "jsPlugins": [
     "eslint-plugin-react-you-might-not-need-an-effect",
     "eslint-plugin-readable-tailwind"

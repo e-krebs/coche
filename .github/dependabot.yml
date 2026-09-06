@@ -1,0 +1,63 @@
+version: 2
+
+# Monthly with a limit of 2, not weekly with the default 5: `main` requires status checks to be up
+# to date (`strict`), so merging one PR staleness-invalidates every other open one — each then needs
+# a rebase and a re-run of all three required jobs. A queue that outpaces review doesn't sit
+# idle here, it accrues rebase work. See docs/adr/0019-grouped-dependency-updates.md.
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: chore(deps)
+    # First match wins, so the toolchain group is listed ahead of the catch-all buckets.
+    groups:
+      # oxlint, oxfmt and the two jsPlugins form a wrap → sort → format fixpoint, and oxlint-tsgolint
+      # plugs straight into oxlint's plugin interface. They are pinned exact for that reason and have
+      # to arrive together, in one PR where `yarn fix` can be checked for convergence.
+      oxc-toolchain:
+        patterns:
+          - oxlint
+          - oxfmt
+          - oxlint-tsgolint
+          - eslint-plugin-readable-tailwind
+          - eslint-plugin-react-you-might-not-need-an-effect
+      # Both buckets exclude @axe-core/*: a floating axe minor ships new rules, which can fail the
+      # a11y gate on unchanged app code, so it always arrives alone and a red run names its own
+      # cause (docs/adr/0015-axe-e2e-gate.md). Listed on both in case it ever moves dependency type.
+      production-minor-patch:
+        dependency-type: production
+        update-types: [minor, patch]
+        exclude-patterns:
+          - "@axe-core/*"
+      # The oxc five are re-excluded by name rather than left to first-match-wins: they match this
+      # bucket by dependency-type too, and the lockstep shouldn't rest on rule ordering.
+      development-minor-patch:
+        dependency-type: development
+        update-types: [minor, patch]
+        exclude-patterns:
+          - "@axe-core/*"
+          - oxlint
+          - oxfmt
+          - oxlint-tsgolint
+          - eslint-plugin-readable-tailwind
+          - eslint-plugin-react-you-might-not-need-an-effect
+
+  - package-ecosystem: github-actions
+    # The composite action is listed explicitly: Dependabot scans /.github/workflows and a
+    # root-level action.yml only, so setup-node and cache — which live in the nested composite —
+    # are invisible under "/" alone.
+    directories:
+      - "/"
+      - "/.github/actions/setup"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      github-actions:
+        patterns:
+          - "*"
