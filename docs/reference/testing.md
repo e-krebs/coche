@@ -54,6 +54,23 @@ gate into a pure part and a Clerk-bound wrapper:
 Covered by
 [../../src/client/store/__tests__/identity.test.ts](../../src/client/store/__tests__/identity.test.ts).
 
+**Extracted rules.** Two decisions are applied during render by a component that no unit test can
+mount — `_app`'s layout reaches Clerk's `useAuth` through `useSync`, `ListView` reaches `useUser` —
+so each is exported as a pure function and asserted with plain values, while the wiring it feeds is
+left to the e2e tier:
+
+- `nextEverSynced({ everSynced, status })` in
+  [../../src/client/store/syncStatus.ts](../../src/client/store/syncStatus.ts) — the stickiness of
+  `everSynced` across a reconnect blip. Covered by
+  [../../src/client/store/__tests__/syncStatus.test.ts](../../src/client/store/__tests__/syncStatus.test.ts).
+- `nextPanelMode({ mode, wide })` in
+  [../../src/client/components/ListView.tsx](../../src/client/components/ListView.tsx) — which lists
+  panel survives a width crossing. Covered by
+  [../../src/client/components/__tests__/ListView.test.tsx](../../src/client/components/__tests__/ListView.test.tsx).
+
+Both are idempotent, which is what makes applying them during render safe under StrictMode's double
+invoke — and each test file asserts that directly.
+
 ### `server` project
 
 Runs under `@cloudflare/vitest-pool-workers`, wired to the project's own

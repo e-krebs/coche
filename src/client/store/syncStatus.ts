@@ -7,6 +7,18 @@ export type SyncState = {
   everSynced: boolean;
 };
 
+/**
+ * The stickiness rule behind `everSynced`, applied during render by the `_app` layout. Idempotent,
+ * which is what makes that safe — React re-runs the component until the state settles.
+ */
+export const nextEverSynced = ({
+  everSynced,
+  status,
+}: {
+  everSynced: boolean;
+  status: SyncStatus;
+}): boolean => everSynced || status === "synced";
+
 const SyncStateContext = createContext<SyncState>({ status: "disabled", everSynced: false });
 
 export const SyncStateProvider = SyncStateContext.Provider;
