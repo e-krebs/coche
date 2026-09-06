@@ -3,9 +3,9 @@ import { nextEverSynced } from "client/store/syncStatus";
 
 /**
  * The stickiness rule behind `everSynced`. Only the rule: the `_app` layout that applies it mounts
- * `useSync`, which reaches Clerk's `useAuth` and throws outside a provider, so the socket lifecycle
- * it gates is asserted in the e2e tier instead
- * ([docs/reference/testing.md](../../../../docs/reference/testing.md)).
+ * `useSync`, which reaches Clerk's `useAuth` and throws outside a provider. No tier picks up the
+ * rest — the sync tier takes a session off `synced` and back, but asserts the badge and the strip,
+ * both functions of `status` alone ([docs/reference/testing.md](../../../../docs/reference/testing.md)).
  */
 describe("nextEverSynced", () => {
   // The gate feeds roster repair, which must not run against a replica that hasn't arrived yet.

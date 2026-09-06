@@ -182,9 +182,11 @@ wrap-then-sort-then-format sequence is a fixpoint: `readable-tailwind`'s wrappin
 line breaks fall, its sorting decides the order within each line, and oxfmt has to leave that shape
 alone afterward. A version bump to either plugin's wrap-column math or class-order table, or to
 oxfmt's own formatting rules, can shift that fixpoint enough that `yarn fix` no longer
-converges — one tool keeps re-touching what the other just wrote. `oxlint-tsgolint` is pinned in
-lockstep with `oxlint` rather than independently because it plugs into oxlint's plugin interface
-directly, so it tracks oxlint's version rather than having a compatibility range of its own.
+converges — one tool keeps re-touching what the other just wrote. `oxlint-tsgolint` is pinned and
+bumped in the same pull request as `oxlint` rather than independently, because it plugs into
+oxlint's plugin interface directly and declares no compatibility range of its own. Its version
+numbers track `tsgo`, not oxlint, so the two never look aligned — the lockstep is the release, not
+the number.
 
 That fixpoint is also what shapes how updates arrive. Dependabot groups those five packages into a
 single pull request by name, so a bump can never land as five separate green PRs that only break

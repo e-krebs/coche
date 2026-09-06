@@ -57,12 +57,15 @@ Covered by
 **Extracted rules.** Two decisions are applied during render by a component that no unit test can
 mount — `_app`'s layout reaches Clerk's `useAuth` through `useSync`, `ListView` reaches `useUser` —
 so each is exported as a pure function and asserted with plain values, while the wiring it feeds is
-left to the e2e tier:
+exercised only where a browser tier happens to reach it:
 
 - `nextEverSynced({ everSynced, status })` in
   [../../src/client/store/syncStatus.ts](../../src/client/store/syncStatus.ts) — the stickiness of
   `everSynced` across a reconnect blip. Covered by
   [../../src/client/store/__tests__/syncStatus.test.ts](../../src/client/store/__tests__/syncStatus.test.ts).
+  The rule only: `notice.spec.ts` does take a live session off `synced` and back, but asserts the
+  badge and the strip, both functions of `status` alone — what the latch does for the gesture gate
+  across that blip is asserted nowhere.
 - `nextPanelMode({ mode, wide })` in
   [../../src/client/components/ListView.tsx](../../src/client/components/ListView.tsx) — which lists
   panel survives a width crossing. Covered by
@@ -97,8 +100,8 @@ type-checking, not a test suite itself.
   — shopping-list components and hooks.
 - [../../src/client/i18n/__tests__/](../../src/client/i18n/__tests__/) — i18n resources/lookup.
 - [../../src/client/store/__tests__/](../../src/client/store/__tests__/) — store, sync, CRDT merge,
-  reorder, teardown, identity, and the lists roster (virtual default row, the gated default-list
-  migration, orphan resurrection).
+  reorder, teardown, identity, the `everSynced` latch, and the lists roster (virtual default row, the
+  gated default-list migration, orphan resurrection).
 - [../../src/server/__tests__/](../../src/server/__tests__/) — Worker/DO auth, Clerk verification,
   and request handling.
 

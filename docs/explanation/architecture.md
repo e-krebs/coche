@@ -190,7 +190,8 @@ Decisions that aren't obvious from the markup:
   A commit slides the row off and shows an Undo snackbar
   that restores the item via `store.setRow` under the same rowId, preserving its
   `(position, id)` order. The gesture tracks a single `Touch.identifier`, is suppressed during a
-  drag, and is blocked from starting (but never torn down) while syncing. Delete is also reachable
+  drag, and is blocked from starting (but never torn down) while the *first* sync of the session is
+  in flight — `everSynced` latches sticky, so later reconnects never re-block it. Delete is also reachable
   without touch via the row's edit mode — the same path in every row variant, checked and search rows
   included: activate the name to open the inline editor, then Tab to the Delete it reveals, which an
   `onBlur` guard keeps alive precisely so that Tab works. On a **precise pointer** that same Delete
