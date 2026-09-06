@@ -43,6 +43,7 @@ Code touched → doc to check (update if the change is user- or reader-visible):
 | Routing / SPA shell / Clerk wiring (`src/client/routes/**`, `src/client/router.tsx`) | explanation | [docs/explanation/architecture.md](docs/explanation/architecture.md) (components) |
 | Lint/format/typecheck config (`.oxlintrc.json`, `.oxfmtrc.json`, `tsconfig*.json`, `.nvmrc`, pinned tool versions) | explanation | [docs/explanation/tooling.md](docs/explanation/tooling.md) |
 | Test infrastructure (`vitest.config.ts`, `setup.ts`/`msw.ts`, Playwright configs, `e2e/**`) | reference | [docs/reference/testing.md](docs/reference/testing.md) |
+| `.github/CODEOWNERS`, `pull_request_template.md`, `SECURITY.md`, branch-protection settings | how-to | [docs/how-to/deploy.md](docs/how-to/deploy.md) (the `CI` section — the only place review and protection rules are described) |
 | README's Status / Documentation sections | — | keep in step with `docs/` (don't let them contradict) |
 
 A new architectural decision — or reversing an existing one — gets an ADR under

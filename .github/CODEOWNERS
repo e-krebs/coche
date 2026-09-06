@@ -1,0 +1,5 @@
+# A declaration of ownership, not a merge gate: branch protection sets
+# required_approving_review_count to 0 and require_code_owner_reviews to false, and GitHub never
+# requests review from a PR's own author. What this file does buy is a review request on PRs that
+# arrive from somewhere else — Dependabot, or a fork.
+*  @e-krebs

@@ -34,9 +34,17 @@
     "type": "git",
     "url": "git+https://github.com/e-krebs/coche.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "shopping-list",
+    "local-first",
+    "crdt",
+    "tinybase",
+    "cloudflare-workers",
+    "durable-objects",
+    "tanstack-router"
+  ],
+  "author": "Emmanuel Krebs",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/e-krebs/coche/issues"
   },
