@@ -118,7 +118,9 @@ type Disposable = { startSync: () => Promise<unknown>; destroy: () => Promise<un
 export const useSync = (store: Store<Schemas> | undefined): SyncStatus => {
   const { getToken, isSignedIn, isLoaded } = useAuth();
   const getTokenRef = useRef(getToken);
-  getTokenRef.current = getToken;
+  useEffect(() => {
+    getTokenRef.current = getToken;
+  });
 
   const [status, setStatus] = useState<SyncStatus>(env.syncUrl ? "connecting" : "disabled");
 
@@ -126,13 +128,10 @@ export const useSync = (store: Store<Schemas> | undefined): SyncStatus => {
   // live WebSocket (connect / reconnect / teardown), the sanctioned Effect use per the React docs,
   // and useSyncExternalStore cannot model a reconnecting socket.
   // https://react.dev/learn/synchronizing-with-effects
-  // oxlint-disable react-you-might-not-need-an-effect/no-external-store-subscription, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change
   useEffect(() => {
     const syncUrl = env.syncUrl;
-    if (!syncUrl) {
-      setStatus("disabled");
-      return undefined;
-    }
+    // A missing sync URL is build-time, so useState already seeded the status as "disabled".
+    if (!syncUrl) return undefined;
     if (!store) return undefined;
 
     let cancelled = false;
@@ -290,7 +289,6 @@ export const useSync = (store: Store<Schemas> | undefined): SyncStatus => {
       void cleanup();
     };
   }, [store, isSignedIn, isLoaded]);
-  // oxlint-enable react-you-might-not-need-an-effect/no-external-store-subscription, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change
 
   return status;
 };

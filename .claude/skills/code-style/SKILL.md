@@ -45,8 +45,10 @@ Don't reach for `useEffect` to derive state, handle events, chain updates, or no
 [react.dev](https://react.dev/learn/you-might-not-need-an-effect). The one exception is genuinely
 **synchronizing with an external system** (a live socket, a scroll subscription, post-render focus):
 keep the Effect and wrap it in a block `// oxlint-disable <rule>` / `// oxlint-enable <rule>` with a
-one-line *why* + doc link — never a blanket file-level disable. Examples: `store/sync.ts`,
-`components/ShoppingList/useHeaderCollapse.ts`.
+one-line *why* + doc link — never a blanket file-level disable. Example:
+`components/ShoppingList/useHeaderCollapse.ts`. `store/sync.ts` keeps the rationale comment without
+the directives: its socket Effect no longer trips either rule, and a suppression that suppresses
+nothing pre-approves the next violation in the same body.
 
 **Tailwind class wrapping + ordering** is a lint concern too (`eslint-plugin-readable-tailwind`,
 errors, same scope): a long `className` becomes a multi-line **template literal**
