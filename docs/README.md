@@ -76,3 +76,5 @@ Architecture decision records sit outside the four quadrants as their own recogn
   verify job
 - [adr/0019-grouped-dependency-updates.md](adr/0019-grouped-dependency-updates.md) — Grouped monthly
   dependency updates, never auto-merged
+- [adr/0020-lockfile-dedupe-gate.md](adr/0020-lockfile-dedupe-gate.md) — A lockfile dedupe gate on
+  the verify job
