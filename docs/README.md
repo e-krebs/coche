@@ -72,3 +72,5 @@ Architecture decision records sit outside the four quadrants as their own recogn
   homes, chosen by width
 - [adr/0017-one-list-panel-two-wrappers.md](adr/0017-one-list-panel-two-wrappers.md) — One lists
   panel, two wrappers, and editing follows it into either one
+- [adr/0018-markdown-link-gate.md](adr/0018-markdown-link-gate.md) — A markdown link gate on the
+  verify job
