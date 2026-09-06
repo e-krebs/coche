@@ -32,16 +32,24 @@ const EditRow = ({
   list,
   label,
   renaming,
+  draft,
   canDelete,
   onStartRename,
+  onDraft,
   onRename,
   onDelete,
 }: {
   list: ListSummary;
   label: string;
   renaming: boolean;
+  /**
+   * The rename in progress, held by the sheet rather than by the input: the input is torn down by
+   * anything that reshapes the roster, and DOM state doesn't survive that.
+   */
+  draft: string;
   canDelete: boolean;
   onStartRename: () => void;
+  onDraft: (draft: string) => void;
   onRename: (name: string | null) => void;
   onDelete: () => void;
 }) => {
@@ -81,10 +89,13 @@ const EditRow = ({
       {renaming ? (
         <input
           autoFocus
-          defaultValue={label}
+          value={draft}
           aria-label={t("renameList", { name: label })}
-          onBlur={(e) => {
-            onRename(e.target.value);
+          onChange={(e) => {
+            onDraft(e.target.value);
+          }}
+          onBlur={() => {
+            onRename(draft);
           }}
           onKeyDown={(e) => {
             // Both keys are the sheet's otherwise — Escape would close it, Enter submit nothing. Only
@@ -92,8 +103,7 @@ const EditRow = ({
             // out of the modal.
             if (e.key !== "Enter" && e.key !== "Escape") return;
             e.stopPropagation();
-            if (e.key === "Enter") onRename(e.currentTarget.value);
-            else onRename(null);
+            onRename(e.key === "Enter" ? draft : null);
           }}
           className={`
             flex-1 rounded-lg border border-accent-text bg-accent-soft px-2.5 py-1.5 text-[15px]
@@ -150,6 +160,7 @@ export const ListPicker = ({
   const { lists, add, rename, remove, reorder } = useListRoster();
   const [editing, setEditing] = useState(initialEditing);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
   const [confirming, setConfirming] = useState<ListSummary | null>(null);
   const [dragging, setDragging] = useState(false);
   const [newName, setNewName] = useState("");
@@ -352,10 +363,13 @@ export const ListPicker = ({
                         list={list}
                         label={nameOf(list)}
                         renaming={renaming === list.id}
+                        draft={renameDraft}
                         canDelete={canDelete}
                         onStartRename={() => {
                           setRenaming(list.id);
+                          setRenameDraft(nameOf(list));
                         }}
+                        onDraft={setRenameDraft}
                         onRename={(name) => {
                           if (name !== null) rename({ id: list.id, name });
                           setRenaming(null);
