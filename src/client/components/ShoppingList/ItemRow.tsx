@@ -129,7 +129,16 @@ export const ItemRow = ({
   const nameEditing = editing?.id === item.id && editing.mode === "name";
   const qtyEditing = editing?.id === item.id && editing.mode === "qty";
   const { quantity } = item;
-  const swipe = useSwipeToDelete({
+  // Destructured, not held as one object: the compiler types every property of a ref-bearing bag as
+  // a ref read, so `ref=`/`style=` off it trip react(refs).
+  const {
+    ref: swipeRef,
+    style: swipeStyle,
+    dx,
+    swiping,
+    reached,
+    releasing,
+  } = useSwipeToDelete({
     onDelete: () => {
       onDelete(item.id);
     },
@@ -189,32 +198,32 @@ export const ItemRow = ({
         data-dragging:opacity-30
       `}
     >
-      {(swipe.dx < 0 || swipe.releasing) && (
+      {(dx < 0 || releasing) && (
         <div
-          data-reached={swipe.reached || undefined}
+          data-reached={reached || undefined}
           className={`
             pointer-events-none absolute inset-y-0 right-3 flex items-center justify-center
             overflow-hidden rounded-full bg-danger-soft text-white
             data-reached:bg-danger
           `}
           style={{
-            width: Math.max(0, -swipe.dx - 24),
+            width: Math.max(0, -dx - 24),
             transition: prefersReducedMotion()
               ? undefined
-              : swipe.swiping
+              : swiping
                 ? "background-color 0.15s ease-out"
                 : "width 0.3s cubic-bezier(0.34, 1.15, 0.64, 1), background-color 0.15s ease-out",
           }}
           aria-hidden
         >
-          <span className="inline-flex" data-reached-bump={swipe.reached || undefined}>
+          <span className="inline-flex" data-reached-bump={reached || undefined}>
             <DeleteIcon className="size-5" />
           </span>
         </div>
       )}
       <div
-        ref={swipe.ref}
-        style={swipe.style}
+        ref={swipeRef}
+        style={swipeStyle}
         className="relative flex items-center gap-3.5 bg-canvas px-2 py-2.5"
       >
         <button

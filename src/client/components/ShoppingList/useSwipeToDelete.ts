@@ -22,11 +22,15 @@ export const useSwipeToDelete = ({
   const [reached, setReached] = useState(false); // past the delete threshold
   const [releasing, setReleasing] = useState(false); // keep the pill mounted through spring-back
   const onDeleteRef = useRef(onDelete);
-  onDeleteRef.current = onDelete;
   // Read at gesture start (not an effect dep) so syncing blocks a new swipe without cancelling one
   // in progress.
   const syncingRef = useRef(syncing);
-  syncingRef.current = syncing;
+  // Its own effect: folding these into the gesture effect's `[enabled]` deps would freeze both at
+  // the values `enabled` last changed on.
+  useEffect(() => {
+    onDeleteRef.current = onDelete;
+    syncingRef.current = syncing;
+  });
 
   useEffect(() => {
     const el = ref.current;

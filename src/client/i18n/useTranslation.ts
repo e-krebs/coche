@@ -10,7 +10,7 @@ import { getStoredLocale, storeLocale, usePersistedLocale } from "./localeStore"
 export const useLocale = usePersistedLocale;
 
 // Stable across renders so a `t` in a dependency array means "the locale changed" rather than "we
-// rendered" — the drag-announcement objects are memoised on it.
+// rendered".
 export const useTranslation = (): ((key: MessageKey, vars?: Vars) => string) => {
   const locale = usePersistedLocale();
   return useCallback((key: MessageKey, vars?: Vars) => translate({ locale, key, vars }), [locale]);

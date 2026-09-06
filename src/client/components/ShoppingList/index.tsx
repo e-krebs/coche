@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -146,29 +146,26 @@ export const ShoppingList = ({
   );
 
   // dnd-kit's defaults are hardcoded English and interpolate `active.id` — the opaque TinyBase row id.
-  // The item arrays are fresh each render, so this identity still churns; the memo keeps the shape in
-  // one place rather than pretending to stabilise it.
-  const announcements = useMemo<Announcements>(() => {
-    const nameOf = (id: UniqueIdentifier) => items.find((i) => i.id === String(id))?.name ?? "";
-    const posOf = (id: UniqueIdentifier) => unchecked.findIndex((i) => i.id === String(id)) + 1;
-    const total = unchecked.length;
-    return {
-      onDragStart: ({ active }) => t("dragStart", { name: nameOf(active.id) }),
-      onDragOver: ({ active, over }) =>
-        over
-          ? t("dragOver", { name: nameOf(active.id), position: posOf(over.id), total })
-          : undefined,
-      onDragEnd: ({ active, over }) =>
-        over
-          ? t("dragEnd", { name: nameOf(active.id), position: posOf(over.id), total })
-          : t("dragCancel", { name: nameOf(active.id) }),
-      onDragCancel: ({ active }) => t("dragCancel", { name: nameOf(active.id) }),
-    };
-  }, [t, items, unchecked]);
-  const accessibility = useMemo(
-    () => ({ announcements, screenReaderInstructions: { draggable: t("dragInstructions") } }),
-    [announcements, t],
-  );
+  // Unmemoized: the item arrays are fresh each render, so a memo here recomputed every render anyway.
+  const nameOf = (id: UniqueIdentifier) => items.find((i) => i.id === String(id))?.name ?? "";
+  const posOf = (id: UniqueIdentifier) => unchecked.findIndex((i) => i.id === String(id)) + 1;
+  const total = unchecked.length;
+  const announcements: Announcements = {
+    onDragStart: ({ active }) => t("dragStart", { name: nameOf(active.id) }),
+    onDragOver: ({ active, over }) =>
+      over
+        ? t("dragOver", { name: nameOf(active.id), position: posOf(over.id), total })
+        : undefined,
+    onDragEnd: ({ active, over }) =>
+      over
+        ? t("dragEnd", { name: nameOf(active.id), position: posOf(over.id), total })
+        : t("dragCancel", { name: nameOf(active.id) }),
+    onDragCancel: ({ active }) => t("dragCancel", { name: nameOf(active.id) }),
+  };
+  const accessibility = {
+    announcements,
+    screenReaderInstructions: { draggable: t("dragInstructions") },
+  };
 
   const rowProps: RowProps = {
     editing,

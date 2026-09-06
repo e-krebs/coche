@@ -1,11 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Navigate, Outlet, createFileRoute } from "@tanstack/react-router";
 import { useIdentity } from "client/store/identity";
 import { StoreProvider } from "client/store/StoreProvider";
 import { useStore } from "client/store/store";
 import { useRosterRepair } from "client/store/lists";
 import { useSync } from "client/store/sync";
-import { SyncStateProvider } from "client/store/syncStatus";
+import { SyncStateProvider, nextEverSynced } from "client/store/syncStatus";
 import { CheckIcon } from "client/components/icons";
 import { useSyncLocale, useTranslation } from "client/i18n/useTranslation";
 
@@ -29,14 +29,15 @@ const SyncedShell = () => {
   const status = useSync(store);
   const [everSynced, setEverSynced] = useState(false);
   useSyncLocale();
-  useEffect(() => {
-    if (status === "synced") setEverSynced(true);
-  }, [status]);
+  // Latched during render, not from an Effect: the first synced status and the latch then reach the
+  // children in one commit, where an Effect published `false` alongside it for a frame.
+  const synced = nextEverSynced({ everSynced, status });
+  if (synced !== everSynced) setEverSynced(synced);
   // Local-only has no replica to race, so it never waits for a sync that won't come.
-  useRosterRepair({ synced: everSynced || status === "disabled" });
+  useRosterRepair({ synced: synced || status === "disabled" });
 
   return (
-    <SyncStateProvider value={{ status, everSynced }}>
+    <SyncStateProvider value={{ status, everSynced: synced }}>
       <Outlet />
     </SyncStateProvider>
   );
