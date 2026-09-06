@@ -22,7 +22,7 @@ import { useTranslation } from "client/i18n/useTranslation";
 import { AddIcon, DeleteIcon, DragIcon } from "client/components/icons";
 import { ConfirmDialog } from "client/components/ConfirmDialog";
 import { useOpenerFocus } from "client/components/focus";
-import { RosterRows, rowBase } from "client/components/RosterRows";
+import { ListRows, rowBase } from "client/components/ListRows";
 import { prefersReducedMotion } from "./ShoppingList/helpers";
 
 const iconBtn = `grid size-8 flex-none place-items-center rounded-full text-muted outline-hidden
@@ -419,7 +419,7 @@ export const ListPicker = ({
               </form>
             </>
           ) : (
-            <RosterRows
+            <ListRows
               lists={lists}
               activeId={activeId}
               semantics="menu"

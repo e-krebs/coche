@@ -1,7 +1,7 @@
 import { useId } from "react";
 import { useLists } from "client/store/lists";
 import { useTranslation } from "client/i18n/useTranslation";
-import { RosterRows } from "client/components/RosterRows";
+import { ListRows } from "client/components/ListRows";
 
 /**
  * The roster standing beside the list instead of over it. Picking is all it does — creating,
@@ -44,7 +44,7 @@ export const ListSidebar = ({
           {t("editLists")}
         </button>
       </div>
-      <RosterRows lists={lists} activeId={activeId} semantics="nav" onSelect={onSelect} />
+      <ListRows lists={lists} activeId={activeId} semantics="nav" onSelect={onSelect} />
     </nav>
   );
 };

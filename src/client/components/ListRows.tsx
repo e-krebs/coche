@@ -68,12 +68,12 @@ const PickRow = ({
 };
 
 /**
- * The roster as rows you can pick from. Extracted so one rendering of a list's name and count can
+ * The lists as rows you can pick from. Extracted so one rendering of a list's name and count can
  * serve more than one surface — a list must not read differently depending on where it is shown.
  * Each row shows the **unchecked** count only: the number you'd act on, so `0` reads as "nothing to
  * do here".
  */
-export const RosterRows = ({
+export const ListRows = ({
   lists,
   activeId,
   semantics,

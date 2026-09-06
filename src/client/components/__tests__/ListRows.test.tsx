@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { RosterRows } from "client/components/RosterRows";
+import { ListRows } from "client/components/ListRows";
 import { DEFAULT_LIST_ID } from "client/store/schema";
 import type { ListSummary } from "client/store/lists";
 
@@ -29,7 +29,7 @@ const setup = ({
 }) => {
   const onSelect = vi.fn();
   render(
-    <RosterRows lists={lists} activeId={activeId} semantics={semantics} onSelect={onSelect} />,
+    <ListRows lists={lists} activeId={activeId} semantics={semantics} onSelect={onSelect} />,
   );
   return { onSelect, user: userEvent.setup() };
 };
@@ -43,7 +43,7 @@ const ui = {
   },
 };
 
-describe("RosterRows", () => {
+describe("ListRows", () => {
   // The nameless default list renders the app title, and each row shows its unchecked count only —
   // the number you'd act on, so 0 reads as "nothing to do here".
   it("names the default list and counts what is left to do", () => {

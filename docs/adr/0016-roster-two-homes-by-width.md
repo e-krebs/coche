@@ -37,7 +37,7 @@ three things move with it:
   sync notice) are unchanged, and it stays a button either way, so a focus restore still cannot pop
   a soft keyboard.
 - **Only the rows are shared, not their semantics.**
-  [../../src/client/components/RosterRows.tsx](../../src/client/components/RosterRows.tsx) renders
+  [../../src/client/components/ListRows.tsx](../../src/client/components/ListRows.tsx) renders
   one row — name, unchecked count, active marker — under either of two role sets. In the sheet they
   are a `menu` of `menuitemradio`s with a roving tabindex, because arrows must rove without
   selecting: selecting closes the sheet, so the first arrow press would otherwise end the
