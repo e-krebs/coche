@@ -131,13 +131,15 @@ vs. real-Clerk trade-off), see
   sidebar leaves no centred title to measure) and the pick sheet's Tab-trap, Escape, focus-restore
   and axe cases, which have no entry point up there — edit mode's own axe scan runs at both widths,
   since editing follows the panel into the sidebar. Skipped below `md`: `desktop.spec.ts`, whose
-  phone run is the control it changes from. **No case is skipped in both projects.** The pair is the
+  phone run is the control it changes from. Skipped wherever the project has no `hasTouch`:
+  `swipe.spec.ts` and the swipe case in `motion.spec.ts`, which construct `TouchEvent`s a
+  touchless context does not define. **No case is skipped in both projects.** The pair is the
   runtime coverage of the responsive tiers: `matchMedia` is absent under jsdom, so no unit test can
   reach a width- or pointer-gated branch — except where a component takes the answer as a prop, which
   is how the lists panel's two wrappers are unit-reachable. `viewports.spec.ts` asserts what each
   project actually reports, so a config edit can't quietly turn `phone` into a second desktop and
-  leave the coarse-pointer paths — swipe to delete, the header's scroll reclaim — untested
-  everywhere. `desktop.spec.ts` covers the wide-screen half: the wider column, the frozen shrink,
+  leave the coarse-pointer paths — swipe to delete, the header's scroll reclaim — skipping
+  themselves everywhere. `desktop.spec.ts` covers the wide-screen half: the wider column, the frozen shrink,
   the hover-revealed row Delete and its absence from the tab order, and the sidebar — picking,
   editing in place, its focus anchor through both modes, and the confirmation rising above it. Cases
   that need a width neither project has get a fixed viewport of their own and run once: the centred
@@ -154,7 +156,8 @@ vs. real-Clerk trade-off), see
 - The fixtures module also exports the DOM helpers shared across local specs: `field`, `checkbox`,
   `row`, `announcer` (the list's polite live region, matched by `[data-announcer]` because dnd-kit
   mounts a `role="status"` region of its own), `gotoApp`, `addItem`, `uncheckedNames`,
-  `waitForServiceWorker`, `waitForDragShift`, plus
+  `waitForServiceWorker`, `waitForDragShift`, the swipe trio — `startSwipe`, `swipeSurface` and
+  `deletePill` — plus
   the lists-panel helpers — `switchList`, `listTitle`, `sidebar`, `sheet`, `editRow`, `pickList`,
   `openListEditor` and `createList`. Three of those are **layout-aware**, because the panel has two
   homes ([../adr/0016-roster-two-homes-by-width.md](../adr/0016-roster-two-homes-by-width.md),
@@ -204,6 +207,17 @@ vs. real-Clerk trade-off), see
   here: the avatar never arrives, which is the cold-load shape the header's fixed side columns exist
   to survive. A layout regression is invisible to the unit tier, where no Tailwind class becomes a
   computed style.
+- **`swipe.spec.ts`** drives swipe to delete, the coarse pointer's only destructive gesture: the row
+  following the finger, the pill's width and its armed state, the commit past a third of the row's
+  width, a spring-back short of it, a `touchcancel` that deletes nothing, a second finger abandoning
+  the gesture, and the axis lock that leaves a vertical drag to scroll. The reduced-motion half of
+  the spring-back lives with the other motion cases in `motion.spec.ts`. Nothing here is computable
+  in jsdom: the threshold is a fraction of the rendered width, and `TouchEvent` needs a
+  touch-capable context. Every event comes from `startSwipe`, which constructs real `Touch` objects
+  inside the page — Playwright's own `locator.dispatchEvent("touchmove", …)` carries plain objects
+  whose `clientX` reads `undefined`, so the hook drops every move and a spring-back or cancel case
+  passes with no gesture at all. A case that asserts a row survived waits for the pill to unmount
+  first, a barrier that outlasts the timer a commit would have deleted on.
 - Arrow-driven keyboard reorder stays out of this tier (see the note in
   [../../e2e/local/reorder.spec.ts](../../e2e/local/reorder.spec.ts)); the lift-then-Escape case here
   presses no arrow, so it has none of that timing sensitivity.
@@ -237,6 +251,13 @@ vs. real-Clerk trade-off), see
 - **`notice.spec.ts`** is the only place a loud sync state is reachable: the local tier runs with no
   sync URL, so it is permanently `disabled`. It drives `context.setOffline(true)` on a signed-in page
   and asserts the header notice names the state and that the list stays writable underneath.
+- **`swipe-gate.spec.ts`** is the only place the swipe's `syncing` gate is reachable: the gate is
+  `status === "connecting" && !everSynced`, so it lives for one connection of one signed-in session
+  and never at all in the permanently `disabled` local tier. The test holds the `/ws-ticket` response
+  open to widen that window, proves a swipe cannot start inside it, then releases the ticket and
+  repeats the same gesture — which deletes. Its describe block opts into `hasTouch`, which this
+  tier's one project does not carry. A swipe already in progress when the first sync starts is out of
+  reach: the status is `connecting` from the first render, so no gesture can begin ahead of it.
 - Type-checked independently via [../../e2e/sync/tsconfig.json](../../e2e/sync/tsconfig.json).
 
 ## CI

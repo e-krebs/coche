@@ -1,4 +1,14 @@
-import { test, expect, gotoApp, addItem, checkbox, sheet, sidebar, switchList } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoApp,
+  addItem,
+  checkbox,
+  sheet,
+  sidebar,
+  startSwipe,
+  switchList,
+} from "./fixtures";
 
 /**
  * Reduced motion is CSS plus one `startViewTransition` bypass, so jsdom computes none of it. Emulated
@@ -38,6 +48,21 @@ test.describe("reduced motion", () => {
     await checkbox(page, "Milk").click();
     const fold = page.locator("[data-checked-list]").locator("xpath=../..");
     expect(await fold.evaluate((el) => getComputedStyle(el).transitionProperty)).toBe("none");
+  });
+
+  // The spring-back is an inline transition the swipe hook writes, not a class, so the preference is
+  // read in JS. The row still has to return to its resting place — reduced motion drops the spring,
+  // never the gesture.
+  test("a released swipe springs back without a transition", async ({ page, hasTouch }) => {
+    test.skip(!hasTouch, "the phone project is the touch-capable one, and TouchEvent needs it");
+    await gotoApp(page);
+    await addItem(page, "Butter");
+    const swipe = await startSwipe({ page, name: "Butter" });
+    await swipe.move({ dx: -40 });
+    await swipe.release();
+
+    await expect.poll(async () => swipe.transform()).toBe("");
+    expect(await swipe.transition()).toBe("");
   });
 
   // The View Transitions wrapper is skipped entirely under reduced motion, so the mutation has to

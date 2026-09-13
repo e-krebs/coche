@@ -1,7 +1,15 @@
 import { test as base, expect, type Page } from "@playwright/test";
 import { clerk, setupClerkTestingToken } from "@clerk/testing/playwright";
 import { createClerkClient } from "@clerk/backend";
-import { addItem, checkbox, field, row, uncheckedNames } from "../local/fixtures";
+import {
+  addItem,
+  checkbox,
+  deletePill,
+  field,
+  row,
+  startSwipe,
+  uncheckedNames,
+} from "../local/fixtures";
 
 const backend = () => createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
 
@@ -64,4 +72,4 @@ export const test = base.extend<{ makeUser: (tag?: string) => Promise<TestUser> 
   },
 });
 
-export { expect, clerk, addItem, checkbox, field, row, uncheckedNames };
+export { expect, clerk, addItem, checkbox, deletePill, field, row, startSwipe, uncheckedNames };
