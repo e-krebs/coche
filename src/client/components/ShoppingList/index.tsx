@@ -19,7 +19,7 @@ import {
 import { sortedByPosition } from "client/store/reorder";
 import { useTable } from "client/store/store";
 import { useTranslation } from "client/i18n/useTranslation";
-import { focusDropped } from "client/components/focus";
+import { focusDropped, reclaimFocus } from "client/components/focus";
 import { PRECISE, WIDE_AND_PRECISE, useMediaQuery } from "client/components/media";
 import { prefersReducedMotion } from "./helpers";
 import { ItemRow, SortableRow } from "./ItemRow";
@@ -100,7 +100,10 @@ export const ShoppingList = ({
     requestAnimationFrame(() => {
       if (!focusDropped()) return;
       const refs = control === "check" ? checkBtnRefs : nameBtnRefs;
-      if (id !== undefined) refs.current.get(id)?.focus();
+      // A row can be anywhere on the page — unchecking puts it back above the section it came from —
+      // so this one takes focus without the reveal. The fallback below keeps a plain `.focus()`: its
+      // target is visible at any offset, so there is nothing to reveal and nothing to suppress.
+      if (id !== undefined) reclaimFocus(refs.current.get(id));
       // The target can be a collapsed checked row, and an inert subtree refuses focus silently.
       if (focusDropped()) document.querySelector<HTMLElement>("[data-list-trigger]")?.focus();
     });

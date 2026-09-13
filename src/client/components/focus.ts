@@ -10,6 +10,22 @@ export const focusDropped = () => {
 };
 
 /**
+ * Takes focus back to a control without dragging the page along. A plain `.focus()` reveals its
+ * target, and unchecking remounts the row a viewport or more above the section it came from — so the
+ * reveal scrolled the page away from whatever the finger was pointing at. A keyboard reader still has
+ * to see where focus went, and `:focus-visible` is the engine's own answer to "was this a keyboard
+ * interaction". Read *after* the focus, so a control that refused it — an `inert` collapsed row — is
+ * never revealed either. A target that can end up under the sticky header carries its own
+ * `scroll-margin-top` (the item rows do); the root can't, since a control living inside that padding
+ * for good would scroll the page to the top instead.
+ */
+export const reclaimFocus = (el: HTMLElement | null | undefined) => {
+  if (!el) return;
+  el.focus({ preventScroll: true });
+  if (el.matches(":focus-visible")) el.scrollIntoView({ block: "nearest" });
+};
+
+/**
  * Rescues focus from a control that vanishes from under the reader — an unmount drops focus to
  * `<body>` and restarts tab order from the top of the document. Attach the returned ref to the
  * control. The check has to happen in a *layout* effect's cleanup, the last moment the node is still

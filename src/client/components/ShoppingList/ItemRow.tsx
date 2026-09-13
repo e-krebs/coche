@@ -36,6 +36,13 @@ interface ItemRowProps extends RowProps {
 const focusRing = `outline-hidden
   focus-visible:ring-2 focus-visible:ring-accent-text`;
 
+// The two controls a focus reclaim aims at, and a row can be anywhere on the page — so the scroll
+// that reveals one has to clear the sticky header, 110px at its tallest, with enough over it that
+// the row doesn't land flush underneath. Scoped to these rather than set as the root's
+// scroll-padding, which would also apply to the header's own controls: a target that sits inside
+// that padding for good scrolls the page to the top instead.
+const clearsHeader = "scroll-mt-32";
+
 /**
  * Stop a control's press from reaching the row's drag sensor so it doesn't arm a long-press drag.
  */
@@ -238,6 +245,7 @@ export const ItemRow = ({
           }}
           className={`
             ${focusRing}
+            ${clearsHeader}
             grid size-5.5 flex-none place-items-center rounded-full border-[1.5px] border-muted
             text-transparent
             data-checked:border-accent data-checked:bg-accent data-checked:text-on-accent
@@ -291,6 +299,7 @@ export const ItemRow = ({
             }}
             className={`
               ${focusRing}
+              ${clearsHeader}
               flex-1 rounded-md text-left text-[15px]
               data-checked:text-muted data-checked:line-through
             `}

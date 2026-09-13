@@ -295,8 +295,10 @@ Decisions that aren't obvious from the markup:
   focus doesn't appear to move at all and Space walks straight down a list; the row above takes over
   when the last one is checked. Following the item into the checked section would be the symmetric
   choice and the wrong one: that section is collapsed and `inert` in the common case, so the focus
-  would be silently refused. Two cases keep the item as their own target instead, because it never
-  leaves the screen: **unchecking**, which remounts it further down the unchecked list, and a toggle
+  would be silently refused. Two cases keep the item as their own target instead, because the row
+  survives the mutation: **unchecking**, which remounts it in the unchecked list above the section it
+  came from, a viewport or more away on a phone — which is what the reveal rule below exists for —
+  and a toggle
   inside a **filtered view**, which matches on the name rather than the checked flag and so only
   re-sorts the row — and whose rendered order isn't the list's order to walk down anyway.
   A row therefore registers two controls by item id — its name button for the mutations that leave
@@ -311,7 +313,20 @@ Decisions that aren't obvious from the markup:
   attempt. jsdom has no View Transitions API, so this is a browser-only failure mode and the reason
   the animation helper takes an after-callback instead of the caller guessing a delay. Each only
   reclaims focus that was genuinely lost, so it never steals focus the user moved on purpose, and
-  always targets a button so it can't pop the soft keyboard. The same rule holds through the lists
+  always targets a button so it can't pop the soft keyboard.
+  A reclaim also takes focus **without the reveal a plain `.focus()` performs**, and scrolls only when
+  the engine reports the restore as `:focus-visible`: a tap then leaves the page where the finger left
+  it while the row animates up, and a Tab or Space restore still lands on screen. Without that, an
+  uncheck scrolled the page to the top to chase the row it had just moved. `:focus-visible` is the
+  engine's own record of whether the interaction was a keyboard one, read *after* the focus so a
+  control that refused it — an `inert` collapsed row — is never revealed either. The clearance from
+  the sticky header is a `scroll-margin-top` on the two row controls a reclaim aims at, deliberately
+  not `scroll-padding-top` on the root: the root's version applies to the reveal a plain `.focus()`
+  performs too, and a control that lives inside that padding for good — the header title, the field —
+  can never leave it, so the page scrolls to the top trying. Everything else keeps a plain
+  `.focus()`: the header-title fallback and the field are visible at any offset, and the row's own
+  rename and quantity buttons, the dialogs' openers and the sign-in rescue target controls that
+  cannot have moved off screen. The same rule holds through the lists
   panel's layers: opening the sheet moves focus into it — unless the field already has it, which is
   how an edit session survives a change of home without a blur committing a name nobody confirmed —
   and closing returns focus to the title trigger, while the delete confirmation returns it to the row
@@ -382,7 +397,7 @@ Decisions that aren't obvious from the markup:
   `prefers-reduced-motion`.
   [../../src/client/components/ShoppingList/helpers.ts](../../src/client/components/ShoppingList/helpers.ts),
   [ItemRow.tsx](../../src/client/components/ShoppingList/ItemRow.tsx).
-- **Scroll restoration** — page-level scroll under a sticky header; the offset is persisted to
+- **Scroll restoration** — page-level scroll under a sticky header. The offset is persisted to
   `sessionStorage` under a **per-list** key and re-applied before paint in a `useLayoutEffect` once
   rows exist. One shared key would restore list A's offset into list B, so the key carries the list
   id. Restoring is **reload-only**: switching lists scrolls to top, because landing halfway down a

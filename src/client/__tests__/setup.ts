@@ -5,6 +5,13 @@ import { IDBFactory } from "fake-indexeddb";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { server } from "./msw";
 
+// jsdom ships no scrollIntoView at all, and reclaimFocus calls it whenever the engine reports the
+// restore as :focus-visible — which jsdom answers false for today, so without this a heuristic change
+// there would surface as an unhandled error inside a requestAnimationFrame.
+if (typeof Element.prototype.scrollIntoView !== "function") {
+  Element.prototype.scrollIntoView = () => undefined;
+}
+
 beforeAll(() => {
   server.listen({ onUnhandledRequest: "error" });
 });

@@ -24,7 +24,9 @@ missing one, so without it the suite would pass only on a machine that happens t
 Tests render with **@testing-library/react** and **user-event**. Global setup file:
 [../../src/client/__tests__/setup.ts](../../src/client/__tests__/setup.ts) — imports
 `fake-indexeddb/auto` (so `indexedDB` exists under jsdom) and `@testing-library/jest-dom/vitest`
-(custom matchers), then:
+(custom matchers), installs a no-op `Element.prototype.scrollIntoView` (jsdom implements none, and
+the focus reclaim in [../../src/client/components/focus.ts](../../src/client/components/focus.ts)
+calls it whenever the engine reports the restore as `:focus-visible`), then:
 
 - `beforeAll` starts the shared MSW server (see below) with `onUnhandledRequest: "error"`.
 - The global `afterEach` — the repo's single cross-cutting teardown, so individual test files carry
@@ -174,13 +176,16 @@ vs. real-Clerk trade-off), see
   `uncheckedNames` takes the first `ul` inside `main` that isn't `[data-checked-list]`: the
   unchecked section renders no `ul` at all when empty, so a bare `.first()` would silently return
   the *checked* names, and the sidebar's rows come earlier in the DOM than either.
-- **`keyboard.spec.ts` and `motion.spec.ts` are the browser-only tier of the accessibility coverage.**
-  Four things are not computable in jsdom, so they can only be asserted here: `inert` (jsdom reflects
+- **`keyboard.spec.ts`, `motion.spec.ts` and the scroll cases in `check.spec.ts` are the browser-only
+  tier of the accessibility coverage.**
+  Five things are not computable in jsdom, so they can only be asserted here: `inert` (jsdom reflects
   the attribute but implements none of its behaviour), sequential focus navigation with a real tab
   order, `:focus-visible` plus the `ring-*` box-shadow it reveals — the unit config sets
-  `css: false`, so a Tailwind class never becomes a computed style there — and the View Transitions
+  `css: false`, so a Tailwind class never becomes a computed style there — the View Transitions
   API, which defers a mutation to a later frame and so is the one place a focus restore scheduled
-  against the pre-mutation tree actually fails. The division of labour is:
+  against the pre-mutation tree actually fails, and layout itself, which is what the scroll offset a
+  reclaimed focus must leave alone and the reveal a keyboard reclaim must still perform are measured
+  against. The division of labour is:
   the unit tier asserts where focus *lands* (`toHaveFocus`), this tier asserts what the browser does
   with it. `motion.spec.ts` emulates the preference in-test with
   `page.emulateMedia({ reducedMotion: "reduce" })` rather than adding a project of its own, so the
