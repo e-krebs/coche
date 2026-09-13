@@ -112,6 +112,26 @@ export const fillScreen = async (page: Page): Promise<void> => {
 };
 
 /**
+ * Scrolls to the bottom and waits for the document to stay that tall. The checked fold animates the
+ * document taller over 200ms, so one scroll lands short of the bottom it aimed at and anything
+ * measured straight after it moves again. Settled means two polls a beat apart read the same height.
+ */
+export const scrollToSettledBottom = async (page: Page): Promise<void> => {
+  let previous = -1;
+  await expect
+    .poll(async () => {
+      const height = await page.evaluate(() => {
+        window.scrollTo(0, document.documentElement.scrollHeight);
+        return document.documentElement.scrollHeight;
+      });
+      const settled = height === previous;
+      previous = height;
+      return settled;
+    })
+    .toBe(true);
+};
+
+/**
  * The open sheet. Scope list-row lookups to it: the header trigger's accessible name is the active
  * list's name, so an unscoped `{ name: "Garden" }` matches it too.
  */

@@ -6,8 +6,11 @@ import {
   gotoApp,
   addItem,
   field,
+  fillScreen,
   openListEditor,
   row,
+  scrollToSettledBottom,
+  uncheckedNames,
   sheet,
   switchList,
 } from "./fixtures";
@@ -63,6 +66,47 @@ test.describe("keyboard", () => {
     await expect(checkoff).toHaveAttribute("aria-pressed", "true");
     await expect(checkoff).toBeFocused();
     await expect(announcer(page)).toHaveText("");
+  });
+
+  // The other half of the reclaim's reveal rule: a tap must not move the page (check.spec.ts), and a
+  // keyboard restore must still land on screen — and below the sticky header, which is what the row
+  // controls' scroll-margin-top buys. The sixth row by rendered order, not the first, whose slot is
+  // so near the top of the document that the reveal clamps at offset 0 and the clearance comes for
+  // free — and not by name, since `fillScreen` submits without waiting and two rows minted from the
+  // same last position land in an order the names don't predict.
+  test("unchecking by keyboard brings the row back on screen, clear of the header", async ({
+    page,
+  }) => {
+    await gotoApp(page);
+    await fillScreen(page);
+    await field(page).blur();
+    const names = await uncheckedNames(page);
+    const [sixth, seventh] = names.slice(5);
+    await checkbox(page, sixth).click();
+    await checkbox(page, seventh).click();
+    await page.getByRole("button", { name: /^Checked \(2\)$/ }).click();
+    await scrollToSettledBottom(page);
+
+    // Out and straight back, so the button ends up focused by a real Tab press whatever the tab order
+    // around it is. That press is what makes the restore below `:focus-visible`; a bare
+    // `locator.focus()` would leave the modality a pointer one and fail this for the wrong reason.
+    await checkbox(page, sixth).focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect(checkbox(page, sixth)).toBeFocused();
+    await page.keyboard.press(" ");
+
+    // The row reaching the unchecked list is the mutation landing; the button keeps focus across the
+    // remount, so `toBeFocused` alone would pass against the pre-transition tree.
+    await expect.poll(async () => uncheckedNames(page)).toContain(sixth);
+    await expect(checkbox(page, sixth)).toBeFocused();
+    await expect(row(page, sixth)).toBeInViewport({ ratio: 1 });
+    const clearsHeader = await page.evaluate((name) => {
+      const btn = document.querySelector(`button[aria-label="Check off ${name}"]`)!;
+      const header = document.querySelector("header")!;
+      return btn.getBoundingClientRect().top >= header.getBoundingClientRect().bottom;
+    }, sixth);
+    expect(clearsHeader).toBe(true);
   });
 
   test("delete is reachable without a pointer", async ({ page }) => {
