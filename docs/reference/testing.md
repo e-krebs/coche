@@ -97,7 +97,10 @@ type-checking, not a test suite itself.
   sheet's focus contract and Tab containment, and the sidebar's own focus seats), the rule that
   keeps one panel on screen, the shared rows under either role set, the language dialog (radio
   roving, opener restore including a destroyed opener), and the sync indicator, whose suite pins
-  that it is *not* a live region.
+  that it is *not* a live region. The media-query hooks are here too, on a `MediaQueryList` the suite
+  installs itself: both the generic one and the width's, whose crossing marker and deferred narrow
+  commit — the sidebar still answering wide while it slides out — are asserted here rather than
+  through a viewport the unit tier has no way to change.
 - [../../src/client/components/ShoppingList/__tests__/](../../src/client/components/ShoppingList/__tests__/)
   — shopping-list components and hooks.
 - [../../src/client/i18n/__tests__/](../../src/client/i18n/__tests__/) — i18n resources/lookup.
@@ -145,7 +148,10 @@ vs. real-Clerk trade-off), see
   that need a width neither project has get a fixed viewport of their own and run once: the centred
   sheet and the edge-to-edge header bar between `sm` and `lg`, and the crossing into the sidebar's
   width, which starts below the threshold and resizes past it in-test — the one way to ask for two
-  panels at once.
+  panels at once, and the only place the crossing's four keyframes — the sidebar's slide and the
+  header's, which carries the title — and their reduced-motion guard are observable. That last case emulates the preference itself rather than living in
+  `motion.spec.ts`: the marker leaves the sidebar with no animation to measure outside a crossing,
+  and the crossing needs a viewport neither project has.
 - Hermetic by design: [../../e2e/local/fixtures.ts](../../e2e/local/fixtures.ts) extends `context`
   to seed `localStorage["shopping:userId"]` with a fixed test user via `addInitScript`, and to abort
   every non-localhost request via `context.route` — the app boots offline-only, with no sync Worker
@@ -157,7 +163,9 @@ vs. real-Clerk trade-off), see
   `row`, `announcer` (the list's polite live region, matched by `[data-announcer]` because dnd-kit
   mounts a `role="status"` region of its own), `gotoApp`, `addItem`, `uncheckedNames`,
   `waitForServiceWorker`, `waitForDragShift`, the swipe trio — `startSwipe`, `swipeSurface` and
-  `deletePill` — plus
+  `deletePill` — the crossing pair — `watchSidebar`, which has to be armed *before* the resize
+  because the animations it collects live a quarter of a second, and `crossing`, which reads whether
+  the root element still carries the marker — plus
   the lists-panel helpers — `switchList`, `listTitle`, `sidebar`, `sheet`, `editRow`, `pickList`,
   `openListEditor` and `createList`. Three of those are **layout-aware**, because the panel has two
   homes ([../adr/0016-roster-two-homes-by-width.md](../adr/0016-roster-two-homes-by-width.md),

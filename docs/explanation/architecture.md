@@ -93,11 +93,12 @@ Decisions that aren't obvious from the markup:
   while its title band, add/find field and sync notice sit in the same capped column as the items
   below them. A cap on the wrapper the two share would stop the bar where the list stops, leaving a
   floating card wherever the window is wider than the column. The phone-shaped compromises inside
-  that column are conditional rather than universal. Three properties decide, and all are read
-  through `useMediaQuery`
-  ([../../src/client/components/media.ts](../../src/client/components/media.ts)): room for the
+  that column are conditional rather than universal. Three properties decide, all read through
+  [../../src/client/components/media.ts](../../src/client/components/media.ts): room for the
   sidebar (`lg`), a precise **pointer**, and the two together (`md` and precise) for the header's
-  scroll reclaim. Pointer, not width alone, because a tablet in landscape is as
+  scroll reclaim. The width has a hook of its own, `useWide`, because the sidebar animates in and
+  out of that crossing and losing it waits for the slide to finish; the other two read
+  `useMediaQuery`. Pointer, not width alone, because a tablet in landscape is as
   wide as a laptop while being half as tall and about to lose a third of that to a soft keyboard —
   the case where reclaiming vertical space still earns its complexity. There is deliberately no
   height term: a short desktop window keeps the tall header, which is the trade for not carrying a
@@ -118,7 +119,8 @@ Decisions that aren't obvious from the markup:
   [../adr/0016-roster-two-homes-by-width.md](../adr/0016-roster-two-homes-by-width.md). **Crossing
   that width mid-interaction** swaps the wrapper rather than the panel: a sheet that was only picking
   gives way to the sidebar doing the same job, while an edit session — which the sidebar has no
-  equivalent for — rides across in either direction, half-typed names included. Its rows are
+  equivalent for — rides across in either direction, half-typed names included. The sidebar slides
+  in and back out as that width is crossed, as a drawer described under Motion below. Its rows are
   a **menu** of `menuitemradio`s, not a radiogroup:
   arrows rove without selecting, because selecting switches list and closes the sheet, so the first
   arrow press would end the interaction. The trigger carries **no `aria-label`** — the list name has
@@ -129,7 +131,9 @@ Decisions that aren't obvious from the markup:
   at any offset. The cost is a taller scrolled header. The shrink is **frozen on a wide screen with
   a precise pointer, and wherever the sidebar is on screen**: it buys vertical room a desktop never
   ran out of, freezing it stops the band twitching on every wheel tick, and beside the sidebar the
-  title is a plain heading with no smaller size to shrink to. That band's side columns are **fixed at one
+  title is a plain heading with no smaller size to shrink to. Crossing that width flips the freeze,
+  and on the way down it flips when the drawer has finished closing rather than when the width
+  changed, since that is the moment the narrow layout commits. That band's side columns are **fixed at one
   avatar wide**, not `1fr`: with elastic columns, anything that changes the right cluster's width —
   the avatar arriving, a longer sync label — moves the centred title, a shift on every cold load and
   every reconnect. Each list shows its **unchecked** count only: the number you'd act on, so `0`
@@ -383,6 +387,33 @@ Decisions that aren't obvious from the markup:
   utility accepts a `sm:` variant. The sidebar's widening for edit mode is a transition on its own
   `width`, with the grid column sized to it: `grid-template-columns` interpolates unevenly across
   engines, and two same-specificity breakpoint variants of one utility would leave the winner to
+  sheet order. **Crossing `lg` slides it in and back out as a drawer**, which is two keyframes
+  rather than a transition, because a mount and an unmount are neither. `useWide` marks the crossing
+  on the root element with `data-crossing`, whose value is the direction, and **holds the narrow
+  commit back for the length of the slide** so the sidebar is still mounted while it leaves. The
+  marker is what makes the animation the crossing's rather than every mount's, since deleting the
+  active list remounts the view, and the deferred commit is what keeps exactly one panel on screen:
+  the width still reads wide while the drawer closes, so the sheet cannot mount behind it. Each
+  keyframe moves a negative `margin-left` of the sidebar's own width, not a transform: the margin
+  shrinks the grid column that is sized to the element, so the column closes as the panel slides and
+  the list beside it follows, where a transform alone would slide a panel across a column that was
+  already at its full width. Both leave their other end implicit, which is how they pick up edit
+  mode's 22 rem as readily as picking's 17 rem. A view transition was the other candidate for the
+  departure and lost: the spec skips a running transition whenever the viewport keeps changing size,
+  and dragging a window edge across the threshold is a resize on every frame.
+  **The title crosses with the drawer.** It is centred on a phone and flush left beside the sidebar,
+  and nothing interpolates centred to flush left for text of unknown width — so the title is offset
+  by a fraction of its cell and pulled back by the same fraction of itself, where 50% is centred and
+  0% is flush left. The band's own animation slides between them and takes the width of its leading
+  gutter along, or the cell the title centres in would jump a gutter wide in the same frame. Both
+  fractions are **registered** custom properties, because an unregistered one is a token that swaps
+  rather than interpolates. The caret that marks the title as the switcher stays in the heading at
+  zero width beside the sidebar, rather than being mounted only below `lg`: it then grows on the way
+  down with the slide, through the same size transition the scroll shrink uses, instead of arriving
+  in the frame that swaps the tag and shifting the title it sits beside. **The column's cap** changes at `md`, and every element bound to it
+  transitions its own `max-width` rather than swapping: a media query flipping a class is a state
+  change, which is the cheapest tier. The title band folds that into the transition it already has
+  for its padding, since two `transition-property` utilities on one element would leave the winner to
   sheet order. The row's hover-revealed Delete is a plain opacity transition,
   the cheapest tier for a state change. Swipe-to-delete tracks the finger with a CSS
   transform and springs back with a CSS transition, and crossing the delete threshold plays a short
@@ -395,7 +426,8 @@ Decisions that aren't obvious from the markup:
   resolves, so there is no from-state): a photo landing at full opacity over a glyph that is still
   on screen shows the glyph through any alpha it carries, and reads as a broken layer rather than
   as a transition. Motion is CSS-driven (no hand-rolled JS animation) and all of it is gated on
-  `prefers-reduced-motion`.
+  `prefers-reduced-motion` — by a CSS guard where the motion is a keyframe or a transition, and by
+  the helper's own bypass wherever a view transition would otherwise start.
   [../../src/client/components/ShoppingList/helpers.ts](../../src/client/components/ShoppingList/helpers.ts),
   [ItemRow.tsx](../../src/client/components/ShoppingList/ItemRow.tsx).
 - **Scroll restoration** — page-level scroll under a sticky header. The offset is persisted to

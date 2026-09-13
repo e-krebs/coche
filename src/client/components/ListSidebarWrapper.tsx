@@ -27,10 +27,13 @@ export const ListSidebarWrapper = ({
     onKeyDown={onKeyDown}
     // `overflow-y` forces `overflow-x` to `auto`, and mid-transition an edit row is wider than the
     // column — so clip rather than offer a scrollbar that lasts 300ms.
+    // `--sidebar-w` mirrors those two widths for the crossing's keyframes, which slide the panel by
+    // a margin of its own width and cannot read one from a class.
     className={`
       sticky top-0 flex h-dvh w-68 flex-col overflow-x-hidden overflow-y-auto border-r
       border-hairline bg-header transition-[width] duration-300 ease-out
-      data-editing:w-88
+      [--sidebar-w:17rem]
+      data-editing:w-88 data-editing:[--sidebar-w:22rem]
       motion-reduce:transition-none
     `}
   >

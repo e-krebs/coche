@@ -3,7 +3,7 @@ import { Navigate, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useLists, writeLastList } from "client/store/lists";
 import { useTranslation } from "client/i18n/useTranslation";
 import { ListView } from "client/components/ListView";
-import { WIDE, useMediaQuery } from "client/components/media";
+import { useWide } from "client/components/media";
 
 const ListRoute = () => {
   const { listId } = Route.useParams();
@@ -11,12 +11,12 @@ const ListRoute = () => {
   const t = useTranslation();
   const lists = useLists();
   // One source for both halves of the switch, so the sidebar and the title can't disagree about who
-  // owns picking. `useSyncExternalStore` has the answer on the first render, so there is no
-  // phone-shaped flash to hide with a CSS-only sidebar — and at phone width the sidebar is then
-  // genuinely absent from the DOM rather than merely hidden. Read here rather than in `ListView`, so
-  // the component deciding which surface the lists get takes the width as a prop and keeps both of
-  // its branches reachable under jsdom.
-  const wide = useMediaQuery(WIDE);
+  // owns picking. The hook has the answer on the first render, so there is no phone-shaped flash to
+  // hide with a CSS-only sidebar — and at phone width the sidebar is then genuinely absent from the
+  // DOM rather than merely hidden. Read here rather than in `ListView`, so the component deciding
+  // which surface the lists get takes the width as a prop and keeps both of its branches reachable
+  // under jsdom.
+  const wide = useWide();
   const active = lists.find((l) => l.id === listId);
   const activeId = active?.id;
 

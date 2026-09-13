@@ -6,6 +6,7 @@ import {
   addItem,
   checkbox,
   createList,
+  crossing,
   editRow,
   fillScreen,
   listTitle,
@@ -18,6 +19,7 @@ import {
   switchList,
   titleBand,
   uncheckedNames,
+  watchSidebar,
 } from "./fixtures";
 
 /**
@@ -123,6 +125,9 @@ test.describe("desktop layout", () => {
     // The sidebar is the switcher now, so the title claims no dialog and takes no focus.
     await expect(listTitle(page).getByRole("button")).toHaveCount(0);
     await expect(switchList(page)).toHaveAttribute("aria-current", "true");
+    // Its caret stays in the heading at zero width rather than leaving it: a caret that is only
+    // mounted below `lg` arrives in the frame a crossing swaps the tag, and shifts the title.
+    await expect(listTitle(page).locator("svg")).toHaveCSS("width", "0px");
   });
 
   test("switches list in one click, with no dialog in the way", async ({ page }) => {
@@ -233,8 +238,23 @@ test.describe("tablet layout", () => {
     test.skip(test.info().project.name !== "desktop", "both projects share this fixed viewport");
     await gotoApp(page);
 
+    // The cap transitions across `md`, so a box read straight after a resize catches it mid-flight.
+    // Settled means two reads a beat apart agree, the same shape `scrollToSettledBottom` uses.
+    const settle = async () => {
+      let previous = -1;
+      await expect
+        .poll(async () => {
+          const current = await titleBand(page).evaluate((el) => el.getBoundingClientRect().width);
+          const same = current === previous;
+          previous = current;
+          return same;
+        })
+        .toBe(true);
+    };
+
     const measure = async (width: number) => {
       await page.setViewportSize({ width, height: 800 });
+      await settle();
       const bar = await page.locator("header").boundingBox();
       const band = await titleBand(page).boundingBox();
       if (!bar || !band) throw new Error(`header not laid out at ${width}`);
@@ -257,6 +277,16 @@ test.describe("tablet layout", () => {
       expect(band.width, `band capped at ${width}`).toBeLessThan(bar.width);
       expect(band.x, `band left at ${width}`).toBeCloseTo(column.left, 0);
       expect(band.x + band.width, `band right at ${width}`).toBeCloseTo(column.right, 0);
+    }
+
+    // The cap itself changes between those two widths, and every element it binds grows into the
+    // new one rather than jumping to it.
+    for (const selector of ["header > div", "header form", "main"]) {
+      const property = await page
+        .locator(selector)
+        .first()
+        .evaluate((el) => getComputedStyle(el).transitionProperty);
+      expect(property, `${selector} cap`).toContain("max-width");
     }
   });
 
@@ -294,6 +324,53 @@ test.describe("crossing into the sidebar's width", () => {
     await page.setViewportSize({ width: 900, height: 800 });
     await expect(sheetPanel(page)).toHaveCount(0);
     await expect(sidebar(page)).toHaveCount(0);
+  });
+
+  // The crossing's own two animations. Both are keyframes on the sidebar, and the departure plays
+  // while it is still mounted: the commit that unmounts it is held back for the slide.
+  test("slides the sidebar in as the width crosses", async ({ page }) => {
+    test.skip(test.info().project.name !== "desktop", "both projects share this fixed viewport");
+    await gotoApp(page);
+    const arrival = await watchSidebar(page);
+
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await expect(sidebar(page)).toBeVisible();
+    // The title travels with it, from centred to flush left, rather than changing seat in a frame.
+    expect((await arrival()).names).toEqual(["sidebar-in", "header-in"]);
+  });
+
+  test("slides the sidebar out as the width crosses back", async ({ page }) => {
+    test.skip(test.info().project.name !== "desktop", "both projects share this fixed viewport");
+    await gotoApp(page);
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await expect(sidebar(page)).toBeVisible();
+    // Let the arrival end first. A resize inside a running transition is what skips one, and the
+    // marker going away is the crossing saying it is done.
+    await expect.poll(async () => crossing(page)).toBe(false);
+    const departure = await watchSidebar(page);
+
+    await page.setViewportSize({ width: 900, height: 800 });
+    const seen = await departure();
+    expect(seen.names).toEqual(["sidebar-out", "header-out"]);
+    // The slide runs on the sidebar itself, so the commit that unmounts it has to come after.
+    expect(seen.mounted).toBe(true);
+    await expect(sidebar(page)).toHaveCount(0);
+  });
+
+  test("crosses both ways with nothing animating under reduced motion", async ({ page }) => {
+    test.skip(test.info().project.name !== "desktop", "both projects share this fixed viewport");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await gotoApp(page);
+    const arrival = await watchSidebar(page);
+
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await expect(sidebar(page)).toBeVisible();
+    expect((await arrival()).names).toEqual([]);
+
+    const departure = await watchSidebar(page);
+    await page.setViewportSize({ width: 900, height: 800 });
+    await expect(sidebar(page)).toHaveCount(0);
+    expect((await departure()).names).toEqual([]);
   });
 
   test("carries an edit session across, drafts and all", async ({ page }) => {
