@@ -11,8 +11,8 @@ Client logic runs under Vitest (jsdom) in
 `src/client/**`; the sync server runs under `@cloudflare/vitest-pool-workers` (miniflare) in
 `src/server/__tests__/`. Two Playwright tiers exercise the browser:
 
-- **Local-only** ([../../e2e/local/](../../e2e/local/)) — offline cold-boot, drag reorder, multi-tab
-  persistence. Runs against a `vite preview` build with the sync server off (`VITE_SYNC_URL` empty)
+- **Local-only** ([../../e2e/local/](../../e2e/local/)) — offline cold-boot, drag reorder, swipe to
+  delete, multi-tab persistence. Runs against a `vite preview` build with the sync server off (`VITE_SYNC_URL` empty)
   and Clerk's network blocked, so the app boots from a seeded cached identity
   ([../../e2e/local/fixtures.ts](../../e2e/local/fixtures.ts)). Hermetic, so it runs unconditionally
   in CI. It runs twice, once per viewport project — a phone and a desktop — because the responsive
@@ -21,7 +21,8 @@ Client logic runs under Vitest (jsdom) in
   [../../playwright.config.sync.ts](../../playwright.config.sync.ts)) — real Clerk via
   `@clerk/testing` against a local `wrangler dev` Worker, provisioning a fresh `+clerk_test` user
   per test (each gets an isolated HMAC-derived sync unit, so a clean Durable Object). Covers live
-  two-context CRDT merge, cross-user isolation, and sign-out clearing local data. CI runs it only
+  two-context CRDT merge, cross-user isolation, sign-out clearing local data, and the swipe gate that
+  only a first sync can open. CI runs it only
   when `CLERK_SECRET_KEY` is present.
 
 Source: [../../src/client/store/](../../src/client/store/),

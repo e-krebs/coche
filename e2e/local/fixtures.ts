@@ -1,4 +1,4 @@
-import { test as base, expect, type Page } from "@playwright/test";
+import { test as base, expect, type Locator, type Page } from "@playwright/test";
 
 export const TEST_USER = "user_e2e_local";
 
@@ -212,6 +212,103 @@ export const uncheckedNames = async (page: Page): Promise<string[]> =>
 
 /** The sortable <li> wrapping an item. */
 export const row = (page: Page, name: string) => page.locator("li", { has: checkbox(page, name) });
+
+/** The row content the swipe translates. The delete pill is its sibling, and comes first. */
+export const swipeSurface = (page: Page, name: string) => row(page, name).locator("> div").last();
+
+/**
+ * The delete pill, mounted only while a swipe is open. Narrowed to a `div` because the row's icons
+ * carry `aria-hidden` too.
+ */
+export const deletePill = (page: Page, name: string) => row(page, name).locator("div[aria-hidden]");
+
+interface Finger {
+  id: number;
+  x: number;
+  y: number;
+}
+
+/**
+ * Dispatches one touch event carrying real `Touch` objects, constructed in the page. Playwright's
+ * own `locator.dispatchEvent("touchmove", …)` cannot drive the swipe: the touches it takes stay
+ * plain objects, so the hook reads `clientX` as `undefined` and every move is a silent no-op — a
+ * spring-back or cancel case written that way then passes with no gesture at all. `bubbles` is
+ * load-bearing too, because the hook's end and cancel listeners sit on `window`.
+ */
+const dispatchTouch = async ({
+  target,
+  type,
+  touches,
+  changed = touches,
+}: {
+  target: Locator;
+  type: "touchstart" | "touchmove" | "touchend" | "touchcancel";
+  touches: Finger[];
+  changed?: Finger[];
+}): Promise<void> =>
+  target.evaluate(
+    (el, args) => {
+      const make = (f: Finger) =>
+        new Touch({ identifier: f.id, target: el, clientX: f.x, clientY: f.y });
+      const down = args.touches.map(make);
+      el.dispatchEvent(
+        new TouchEvent(args.type, {
+          touches: down,
+          targetTouches: down,
+          changedTouches: args.changed.map(make),
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    },
+    { type, touches, changed },
+  );
+
+/**
+ * Puts one finger down on a row and returns the gesture. `move` takes deltas from the touchdown
+ * point, which is the frame the hook measures in — under 8px in both axes stays below its axis lock
+ * and moves nothing. `threshold` is how far left a release must have travelled to delete rather than
+ * spring back.
+ */
+export const startSwipe = async ({
+  page,
+  name,
+  id = 1,
+}: {
+  page: Page;
+  name: string;
+  id?: number;
+}) => {
+  const target = swipeSurface(page, name);
+  const box = (await target.boundingBox())!;
+  const start: Finger = { id, x: box.x + box.width - 8, y: box.y + box.height / 2 };
+  let at = start;
+  await dispatchTouch({ target, type: "touchstart", touches: [start] });
+  return {
+    threshold: box.width / 3,
+    move: async ({ dx = 0, dy = 0 }: { dx?: number; dy?: number }): Promise<void> => {
+      at = { id, x: start.x + dx, y: start.y + dy };
+      await dispatchTouch({ target, type: "touchmove", touches: [at] });
+    },
+    release: async (): Promise<void> =>
+      dispatchTouch({ target, type: "touchend", touches: [], changed: [at] }),
+    /** A system interruption: an edge back-swipe, the notification shade, an app switch. */
+    interrupt: async (): Promise<void> =>
+      dispatchTouch({ target, type: "touchcancel", touches: [], changed: [at] }),
+    /** A second finger landing elsewhere, which reaches the hook's window listener alone. */
+    secondFinger: async (): Promise<void> => {
+      const other: Finger = { id: id + 1, x: 20, y: 20 };
+      await dispatchTouch({
+        target: page.locator("header"),
+        type: "touchstart",
+        touches: [at, other],
+        changed: [other],
+      });
+    },
+    transform: async (): Promise<string> => target.evaluate((el) => el.style.transform),
+    transition: async (): Promise<string> => target.evaluate((el) => el.style.transition),
+  };
+};
 
 export const waitForServiceWorker = async (page: Page): Promise<void> => {
   await page.evaluate(async () => navigator.serviceWorker.ready.then(() => undefined));
