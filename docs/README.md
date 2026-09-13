@@ -18,6 +18,8 @@ conventions for these docs live in the `diataxis-docs` skill
   CI.
 - [how-to/run-the-tests.md](how-to/run-the-tests.md) — commands and setup for every test tier: unit,
   Worker, both Playwright tiers, typechecks, and lint.
+- [how-to/check-on-a-device.md](how-to/check-on-a-device.md) — open the SPA from a phone or tablet
+  on the same Wi-Fi, and what still needs `localhost`.
 
 ## Reference — information
 

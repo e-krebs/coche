@@ -40,7 +40,7 @@ First time? Follow the tutorial:
 [docs/README.md](docs/README.md) is the map. The docs follow [Diátaxis](https://diataxis.fr/):
 
 - [docs/tutorials/](docs/tutorials/) — learning: get the app running locally.
-- [docs/how-to/](docs/how-to/) — tasks: deploy, run the tests.
+- [docs/how-to/](docs/how-to/) — tasks: deploy, run the tests, check on a device.
 - [docs/reference/](docs/reference/) — facts: data model, glossary, test infrastructure.
 - [docs/explanation/](docs/explanation/) — understanding: architecture, auth & sync, tooling.
 - [docs/adr/](docs/adr/) — architecture decision records.
