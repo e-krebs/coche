@@ -218,7 +218,8 @@ export const ShoppingList = ({
         // `md`/`2xl`, not the header's `104`/`160`: these caps include the `px-4` below, so the item
         // column lands the same width as the band above it.
         className={`
-          mx-auto w-full max-w-md px-4 pb-4
+          mx-auto w-full max-w-md px-4 pb-4 transition-[max-width] duration-300 ease-out
+          motion-reduce:transition-none
           md:max-w-2xl
         `}
       >

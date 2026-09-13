@@ -107,6 +107,74 @@ html {
   }
 }
 
+/* the lists sidebar crossing `lg`, in both directions, as one drawer. Keyframes rather than
+   transitions because a mount and an unmount are neither: `useWide` sets `data-crossing` and holds
+   the narrow commit back for the length of the slide, so the sidebar is still mounted while it
+   leaves. The margin is what makes it a drawer rather than a panel over a gap — a negative one
+   shrinks the grid column that is sized to this element, so the column closes as the panel slides
+   and the list beside it follows. Both keyframes leave their other end implicit, which is how they
+   pick up the 22rem of edit mode as readily as the 17rem of picking. `overflow-x: clip` on the root
+   above is what hides the half that is off screen. */
+@keyframes sidebar-in {
+  from { margin-left: calc(-1 * var(--sidebar-w)); }
+}
+@keyframes sidebar-out {
+  to { margin-left: calc(-1 * var(--sidebar-w)); }
+}
+:root[data-crossing="in"] [data-list-sidebar] {
+  animation: sidebar-in 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+/* `both`, because the shorthand resets fill-mode and the end state is off screen: without it the
+   panel snaps back for the frame between the slide ending and the commit that unmounts it. */
+:root[data-crossing="out"] [data-list-sidebar] {
+  animation: sidebar-out 0.25s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+/* the header's title crossing with the drawer. It is centred on a phone and flush left beside the
+   sidebar, and nothing interpolates centred to flush left for text of unknown width — but `left` and
+   `translate` do: the title is offset by `--title-x` of its cell and pulled back by the same
+   fraction of itself, so 50% is centred, 0% is flush left and everything between is a slide.
+   `--gutter` takes the band's leading column with it, or the cell the title centres in would jump a
+   gutter wide at the same moment. Both are registered, because an unregistered custom property is a
+   token that swaps rather than interpolates, and both sit on the band so one animation carries
+   them. */
+@property --gutter {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --title-x {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 0%;
+}
+@keyframes header-in {
+  from { --gutter: calc(var(--spacing) * 11); --title-x: 50%; }
+}
+@keyframes header-out {
+  to { --gutter: calc(var(--spacing) * 11); --title-x: 50%; }
+}
+:root[data-crossing="in"] [data-title-band] {
+  animation: header-in 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+:root[data-crossing="out"] [data-title-band] {
+  animation: header-out 0.25s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+/* The title's caret, which is in both titles and zero-wide beside the sidebar, already transitions
+   its own size for the scroll shrink. Holding it at the phone's size for either crossing is what
+   keeps the title's box the same width either side of the frame that swaps the tag: the caret is a
+   new node each time, with no size to transition from, so it would otherwise pop in on the way down
+   and out on the way up — and the box that pops is the one the slide is centring. It shrinks through
+   its own transition once the marker is dropped. Selected by shape because the icon takes only a
+   class. */
+:root[data-crossing] h1 svg {
+  width: calc(var(--spacing) * 5);
+  height: calc(var(--spacing) * 5);
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-crossing] [data-list-sidebar],
+  :root[data-crossing] [data-title-band] { animation: none; }
+}
+
 @keyframes snackbar-in {
   from { transform: translateY(1rem); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }

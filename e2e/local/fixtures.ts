@@ -310,6 +310,53 @@ export const startSwipe = async ({
   };
 };
 
+interface Crossing {
+  names: string[];
+  /** Whether the sidebar was still in the document on the frame those animations were running. */
+  mounted: boolean;
+}
+
+declare global {
+  interface Window {
+    sidebarAnimations?: Promise<Crossing>;
+  }
+}
+
+/**
+ * Arms a watcher for the crossing's animations — the sidebar's slide and the header's, which carries
+ * the title — and returns the read. It has to be armed before the resize that starts them: they live
+ * around 250ms, so a list read afterwards is empty and an assertion made there passes with no
+ * animation at all. Resolves on the first frame that has one, or empty after two seconds, which is
+ * the shape a reduced-motion case needs, where nothing is the expected answer. Matched by name, so
+ * an unrelated animation (the sync badge's own pulse) can't resolve it early.
+ */
+export const watchSidebar = async (page: Page): Promise<() => Promise<Crossing>> => {
+  await page.evaluate(() => {
+    window.sidebarAnimations = new Promise((resolve) => {
+      const deadline = performance.now() + 2000;
+      const tick = () => {
+        const names = document
+          .getAnimations()
+          .flatMap((a) =>
+            a instanceof CSSAnimation && /^(sidebar|header)-(in|out)$/.test(a.animationName)
+              ? [a.animationName]
+              : [],
+          );
+        const mounted = document.querySelector("[data-list-sidebar]") !== null;
+        if (names.length > 0 || performance.now() > deadline) resolve({ names, mounted });
+        else requestAnimationFrame(tick);
+      };
+      tick();
+    });
+  });
+  return async () =>
+    page.evaluate(async () => (await window.sidebarAnimations) ?? { names: [], mounted: false });
+};
+
+/** Whether a crossing is still in flight, which is what the sidebar's two animations key on. */
+export const crossing = async (page: Page): Promise<boolean> =>
+  page.evaluate(() => document.documentElement.hasAttribute("data-crossing"));
+
 export const waitForServiceWorker = async (page: Page): Promise<void> => {
   await page.evaluate(async () => navigator.serviceWorker.ready.then(() => undefined));
 };

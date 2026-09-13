@@ -42,6 +42,14 @@ test.describe("reduced motion", () => {
     );
   });
 
+  // The column's cap changes at `md`, which is a transition on `max-width` rather than a jump.
+  test("the column's cap does not grow with a transition", async ({ page }) => {
+    await gotoApp(page);
+    expect(
+      await page.locator("main").evaluate((el) => getComputedStyle(el).transitionProperty),
+    ).toBe("none");
+  });
+
   test("the checked fold does not transition", async ({ page }) => {
     await gotoApp(page);
     await addItem(page, "Milk");
