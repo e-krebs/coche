@@ -1,11 +1,13 @@
-import { type CSSProperties, useEffect, useRef, useState } from "react";
-import { prefersReducedMotion } from "./helpers";
+import { useEffect, useRef, useState } from "react";
 
 const SWIPE_THRESHOLD = 1 / 3; // fraction of row width to pass before a release deletes
 
 /**
  * Manual listeners so touchmove is non-passive: preventDefault only once the swipe locks
  * horizontal, leaving scroll and dnd-kit's drag intact (touch-action:pan-y would break the drag).
+ *
+ * Gesture state only. The row's transform and the pill's geometry are the caller's, which keeps both
+ * reduced-motion reads and both spring curves in one file.
  */
 export const useSwipeToDelete = ({
   onDelete,
@@ -165,12 +167,5 @@ export const useSwipeToDelete = ({
     };
   }, [enabled]);
 
-  const style: CSSProperties = {
-    transform: dx ? `translateX(${dx}px)` : undefined,
-    transition:
-      swiping || prefersReducedMotion()
-        ? undefined
-        : "transform 0.3s cubic-bezier(0.34, 1.15, 0.64, 1)",
-  };
-  return { ref, style, dx, swiping, reached, releasing };
+  return { ref, dx, swiping, reached, releasing };
 };
