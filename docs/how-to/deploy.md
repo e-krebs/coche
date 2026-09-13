@@ -43,7 +43,10 @@ may suffix, so it need not match the project name.
 - **Content-Security-Policy**: `yarn build` resolves
   [../../csp/prod.headers.template](../../csp/prod.headers.template) into `dist/_headers`, which Pages
   serves; [../../csp/dev.headers](../../csp/dev.headers) mirrors the same policy for local `vite
-  dev`/`vite preview`. Both ship **enforcing** (`Content-Security-Policy`, not Report-Only) —
+  dev`/`vite preview`, with one addition: `connect-src` carries `ws://*:3000` — any host on the
+  dev-server port — so the Vite HMR socket connects when the app is opened from a LAN address (see
+  [check-on-a-device.md](check-on-a-device.md)). Both ship **enforcing** (`Content-Security-Policy`,
+  not Report-Only) —
   validated against a real sign-in, `UserButton`, and a live synced write with zero violations, both
   under `vite dev` (matching `ALLOWED_ORIGINS`) and the built `vite preview` output.
   No `'unsafe-eval'` is needed: zod v4's `eval`-availability probe is disabled via

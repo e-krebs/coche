@@ -103,5 +103,6 @@ This tutorial stops at a single device with local persistence. From here:
 - **Deploy it** — see [Deployment](../how-to/deploy.md) for shipping the SPA to Cloudflare Pages
   and the sync server to a Cloudflare Worker + Durable Object.
 - **Run the test suite** — see [Running the tests](../how-to/run-the-tests.md).
+- **Check it on a phone or tablet** — see [Check on a device](../how-to/check-on-a-device.md).
 - **Understand the system as a whole** — see [Architecture](../explanation/architecture.md) for
   the full diagram, components, and design rationale.
