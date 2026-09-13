@@ -43,6 +43,12 @@ const focusRing = `outline-hidden
 // that padding for good scrolls the page to the top instead.
 const clearsHeader = "scroll-mt-32";
 
+// The swipe's own motion, which is inline because both values follow the finger: a spring the row
+// and the pill share on release, and the fade the pill arms with. The gesture hook returns state
+// alone, so the reduced-motion decision for both lives here.
+const SPRING = "0.3s cubic-bezier(0.34, 1.15, 0.64, 1)";
+const ARMING_FADE = "background-color 0.15s ease-out";
+
 /**
  * Stop a control's press from reaching the row's drag sensor so it doesn't arm a long-press drag.
  */
@@ -137,10 +143,9 @@ export const ItemRow = ({
   const qtyEditing = editing?.id === item.id && editing.mode === "qty";
   const { quantity } = item;
   // Destructured, not held as one object: the compiler types every property of a ref-bearing bag as
-  // a ref read, so `ref=`/`style=` off it trip react(refs).
+  // a ref read, so `ref=` off it trips react(refs).
   const {
     ref: swipeRef,
-    style: swipeStyle,
     dx,
     swiping,
     reached,
@@ -152,6 +157,21 @@ export const ItemRow = ({
     enabled: !nameEditing && !swipeLocked,
     syncing,
   });
+  // Read once for both surfaces below. A finger already on the row owns the movement, so nothing
+  // transitions until it lifts — bar the pill's colour, which arms mid-gesture.
+  const reducedMotion = prefersReducedMotion();
+  const swipeStyle: CSSProperties = {
+    transform: dx ? `translateX(${dx}px)` : undefined,
+    transition: swiping || reducedMotion ? undefined : `transform ${SPRING}`,
+  };
+  const pillStyle: CSSProperties = {
+    width: Math.max(0, -dx - 24), // stops short of the row's right inset
+    transition: reducedMotion
+      ? undefined
+      : swiping
+        ? ARMING_FADE
+        : `width ${SPRING}, ${ARMING_FADE}`,
+  };
 
   const hintId = useId();
   const nameBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -213,14 +233,7 @@ export const ItemRow = ({
             overflow-hidden rounded-full bg-danger-soft text-white
             data-reached:bg-danger
           `}
-          style={{
-            width: Math.max(0, -dx - 24),
-            transition: prefersReducedMotion()
-              ? undefined
-              : swiping
-                ? "background-color 0.15s ease-out"
-                : "width 0.3s cubic-bezier(0.34, 1.15, 0.64, 1), background-color 0.15s ease-out",
-          }}
+          style={pillStyle}
           aria-hidden
         >
           <span className="inline-flex" data-reached-bump={reached || undefined}>
