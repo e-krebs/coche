@@ -1227,18 +1227,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@clerk/backend@npm:^3.11.7":
-  version: 3.17.1
-  resolution: "@clerk/backend@npm:3.17.1"
-  dependencies:
-    "@clerk/shared": "npm:^4.31.0"
-    standardwebhooks: "npm:^1.0.0"
-    tslib: "npm:2.8.1"
-  checksum: 10c0/b7c3c1b9f297c6045cac7c741553dcf86d79d15e81863856400d3f4cdcbedeb075f30a1861d2c8fc61103314d35b7854911e731af77b7c7357f4026ea0368ea3
-  languageName: node
-  linkType: hard
-
-"@clerk/backend@npm:^3.20.1":
+"@clerk/backend@npm:^3.11.7, @clerk/backend@npm:^3.20.1":
   version: 3.20.1
   resolution: "@clerk/backend@npm:3.20.1"
   dependencies:
@@ -1340,27 +1329,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@clerk/shared@npm:^4.25.5, @clerk/shared@npm:^4.31.0":
-  version: 4.31.0
-  resolution: "@clerk/shared@npm:4.31.0"
-  dependencies:
-    "@tanstack/query-core": "npm:^5.100.6"
-    dequal: "npm:2.0.3"
-    glob-to-regexp: "npm:0.4.1"
-    js-cookie: "npm:3.0.7"
-  peerDependencies:
-    react: ^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0
-    react-dom: ^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0
-  peerDependenciesMeta:
-    react:
-      optional: true
-    react-dom:
-      optional: true
-  checksum: 10c0/cdc4d0dd5e8ef283d7e7f052a45f26ee06f325f9d66a6cd9938b9937d68c8caa5b9aefe1d38a45f3182dde6344be8a47d7d51be49267c6650cfc8ba75f4c44c8
-  languageName: node
-  linkType: hard
-
-"@clerk/shared@npm:^4.36.0":
+"@clerk/shared@npm:^4.25.5, @clerk/shared@npm:^4.36.0":
   version: 4.36.0
   resolution: "@clerk/shared@npm:4.36.0"
   dependencies:
@@ -4465,13 +4434,6 @@ __metadata:
   version: 5.87.4
   resolution: "@tanstack/query-core@npm:5.87.4"
   checksum: 10c0/00898c96d199ba8f0cd2004b76da8e5e3355b97473a6c16dd13de65f5063c4f2abfae64e9f32fc395557c2f446af09e1646a82f62992256fdda6062c9399c2a3
-  languageName: node
-  linkType: hard
-
-"@tanstack/query-core@npm:^5.100.6":
-  version: 5.101.2
-  resolution: "@tanstack/query-core@npm:5.101.2"
-  checksum: 10c0/c3288757bfd563ca35cee21bf6ed0edb2f4425a8c92f75d84dcb36a0580a59e48bd97fcdbbc7c8d8e95a4c40376edfc5772b14665b85d183079a0ba7e17793b2
   languageName: node
   linkType: hard
 
@@ -8763,16 +8725,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"seroval-plugins@npm:^1.5.4":
-  version: 1.6.4
-  resolution: "seroval-plugins@npm:1.6.4"
-  peerDependencies:
-    seroval: ^1.0
-  checksum: 10c0/c9172ef41b556720c1e0bb6e4807c80ab95a76cd61c60ff65ade74adf85ac55a7659d8b49db217893d0054e8e461d5ac0a38fadcfe15bfe178d85448e0088c58
-  languageName: node
-  linkType: hard
-
-"seroval-plugins@npm:^1.6.7":
+"seroval-plugins@npm:^1.5.4, seroval-plugins@npm:^1.6.7":
   version: 1.6.7
   resolution: "seroval-plugins@npm:1.6.7"
   peerDependencies:
@@ -8781,14 +8734,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"seroval@npm:^1.5.4":
-  version: 1.6.4
-  resolution: "seroval@npm:1.6.4"
-  checksum: 10c0/bdcfe885378387e25c04bb90f76d5328d9ee1b7feefcac62299c6bb2af897b33d2737c095a341bc09dac19243619d1fe2a838c5fa8c9a026e4b39215f244b456
-  languageName: node
-  linkType: hard
-
-"seroval@npm:^1.6.7":
+"seroval@npm:^1.5.4, seroval@npm:^1.6.7":
   version: 1.6.7
   resolution: "seroval@npm:1.6.7"
   checksum: 10c0/cf191a813eb395d3f29e25df295e6de2c21a5fbb3f82e23ad1d6d770c7a1b30d2b624f28483a7d543dd680d5416b748783d902d562289143b07bf8359765fe71
@@ -10682,14 +10628,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zod@npm:^4.4.3":
-  version: 4.5.4
-  resolution: "zod@npm:4.5.4"
-  checksum: 10c0/511a2a4d1a6f875dfdd70a1586989a8b14ef126776cd6218a2c760b9f65f14ef389ec20d92ee1aa4fcb4566d4ff3fa012956044f9dc503510d82e4c756a8ba92
-  languageName: node
-  linkType: hard
-
-"zod@npm:^4.6.5":
+"zod@npm:^4.4.3, zod@npm:^4.6.5":
   version: 4.6.5
   resolution: "zod@npm:4.6.5"
   checksum: 10c0/32eb6c5e98becbe045675b2141c3611451c16ba567f9779231d79af41c4d651ca1c22f154aef7e6c6e77b929f23e43f1154ca05b82e119e922353725d6776af5
