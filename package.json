@@ -75,7 +75,7 @@
     "@cloudflare/workers-types": "^5.20260928.1",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
-    "@tanstack/router-plugin": "^1.168.41",
+    "@tanstack/router-plugin": "^1.168.48",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
